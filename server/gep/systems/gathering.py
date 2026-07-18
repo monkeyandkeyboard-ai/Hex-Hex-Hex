@@ -73,13 +73,14 @@ def register(engine: TickEngine, floor: FloorState, resources: dict, xp_table: d
         yield_cfg = resource["yield"]
         yield_count = random.randint(yield_cfg["min"], yield_cfg["max"])
 
-        # Award items (for now: emit an event; inventory storage is wired when
-        # inventory is built -- the event is the authoritative record)
+        # Add item to player inventory; emit item_gained regardless (for log)
+        player.add_item(resource_id, yield_count)
         events.append({
             "type": "item_gained",
             "player_id": player_id,
             "item_id": resource_id,
             "quantity": yield_count,
+            "inventory": player.inventory_snapshot(),
         })
 
         # Award XP for every skill in the resource's XP block

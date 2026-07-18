@@ -20,13 +20,21 @@ export const state = {
   // player_id -> player object (all players on floor)
   players: new Map(),
 
-  // Our own player's live stats (kept updated from events)
+  // Our own player's live stats (kept updated from player_update events)
   selfHp: 0,
   selfMaxHp: 1,
+  // skill -> { level, xp, xp_next }
   selfSkills: {},
+  // 28-element array, each null or { item_id, quantity }
+  selfInventory: new Array(28).fill(null),
+  // { main_hand, off_hand, helmet, ... }
+  selfEquipment: {},
 
   // Camera
   cameraX: 0,
   cameraY: 0,
   zoom: 1.0,
+
+  // Active sidebar tab: "skills" | "inventory" | "equipment"
+  activeTab: "skills",
 };

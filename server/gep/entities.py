@@ -14,6 +14,35 @@ from dataclasses import dataclass, field
 from gep.config_loader import COMBAT_SKILLS
 from gep.stats import compute_max_hp, compute_max_mana
 
+EQUIPMENT_SLOTS = (
+    "main_hand", "off_hand", "helmet", "amulet",
+    "body", "gloves", "ring", "legs", "feet", "back",
+)
+
+INVENTORY_SIZE = 28
+BAG_SLOTS = 6
+
+
+@dataclass
+class Equipment:
+    main_hand: str | None = None
+    off_hand: str | None = None
+    helmet: str | None = None
+    amulet: str | None = None
+    body: str | None = None
+    gloves: str | None = None
+    ring: str | None = None
+    legs: str | None = None
+    feet: str | None = None
+    back: str | None = None
+
+    def to_dict(self) -> dict:
+        return {s: getattr(self, s) for s in EQUIPMENT_SLOTS}
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "Equipment":
+        return cls(**{s: d.get(s) for s in EQUIPMENT_SLOTS})
+
 
 def xp_to_level(xp: float, xp_table: dict) -> int:
     from gep.stats import level_from_xp
@@ -41,11 +70,37 @@ class Player:
     max_mana: float
     weapon_id: str
     skills: Skills = field(default_factory=Skills)
+    equipment: Equipment = field(default_factory=Equipment)
+    # slot_index -> {item_id, quantity} | None  (28 base slots)
+    inventory: dict[int, dict | None] = field(default_factory=dict)
+    # 6 bag slots hold bag items that expand inventory
+    bag_slots: list[str | None] = field(default_factory=lambda: [None] * BAG_SLOTS)
     weapon_ready_tick: int = 0
     alive: bool = True
 
     def combat_stat(self, skill: str) -> float:
         return self.skills.combat.get(skill, 1)
+
+    def add_item(self, item_id: str, quantity: int) -> bool:
+        """Stack with existing slot first, then find an empty slot.
+        Returns True if the item fit, False if inventory is full.
+        """
+        # Try to stack with an existing slot
+        for i in range(INVENTORY_SIZE):
+            slot = self.inventory.get(i)
+            if slot and slot["item_id"] == item_id:
+                slot["quantity"] += quantity
+                return True
+        # Find an empty slot
+        for i in range(INVENTORY_SIZE):
+            if self.inventory.get(i) is None:
+                self.inventory[i] = {"item_id": item_id, "quantity": quantity}
+                return True
+        return False
+
+    def inventory_snapshot(self) -> list:
+        """28-element list, each None or {item_id, quantity}."""
+        return [self.inventory.get(i) for i in range(INVENTORY_SIZE)]
 
 
 @dataclass
