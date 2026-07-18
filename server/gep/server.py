@@ -15,9 +15,11 @@ import json
 import logging
 import pathlib
 import uuid
+from urllib.parse import parse_qs, urlparse
 
 import websockets
 
+from gep import db
 from gep.config_loader import ConfigStore
 from gep.entities import Player, Skills, roll_monster
 from gep.floorgen import generate_floor
@@ -108,7 +110,7 @@ def floor_snapshot(floor: FloorState, tick: int, tick_duration: float) -> dict:
                 "tile": list(p.tile),
                 "hp": p.hp,
                 "max_hp": p.max_hp,
-                "skills": p.skills.combat,
+                "skills": {**p.skills.combat, **p.skills.non_combat},
             }
             for pid, p in floor.players.items()
         },
@@ -125,30 +127,47 @@ async def run_server():
     connections: dict[str, websockets.ServerConnection] = {}
 
     async def handle_client(ws):
-        player_id = str(uuid.uuid4())[:8]
+        # Persistent identity: client sends ?token=<uuid> in the WS URL.
+        # The same token always resolves to the same saved player.
+        qs = parse_qs(urlparse(ws.request.path).query)
+        token = qs.get("token", [None])[0]
+        player_id = token[:36] if token else str(uuid.uuid4())
+
         ss = cfg.stat_scaling
-        start_tile = (0, 0)
+        saved = db.load_player(player_id)
         max_hp = compute_max_hp(1, ss)
         max_mana = compute_max_mana(1, ss)
+
+        skills = Skills()
+        skills.non_combat = {s: 1 for s in cfg.skills["non_combat_skills"]}
+        skills.non_combat_xp = {s: 0.0 for s in cfg.skills["non_combat_skills"]}
+
+        if saved:
+            skills.combat = {**skills.combat, **saved["combat_levels"]}
+            skills.combat_xp = {**skills.combat_xp, **saved["combat_xp"]}
+            skills.non_combat = {**skills.non_combat, **saved["non_combat_levels"]}
+            skills.non_combat_xp = {**skills.non_combat_xp, **saved["non_combat_xp"]}
+            name = saved["name"]
+        else:
+            name = f"Player-{player_id[:8]}"
+
         player = Player(
             id=player_id,
-            name=f"Player-{player_id}",
+            name=name,
             tower_id="tower-a",
             floor_number=1,
-            tile=start_tile,
+            tile=(0, 0),
             hp=max_hp,
             max_hp=max_hp,
             mana=max_mana,
             max_mana=max_mana,
             weapon_id="fists",
-            skills=Skills(),
+            skills=skills,
         )
-        player.skills.non_combat = {s: 1 for s in cfg.skills["non_combat_skills"]}
-        player.skills.non_combat_xp = {s: 0.0 for s in cfg.skills["non_combat_skills"]}
 
         floor.players[player_id] = player
         connections[player_id] = ws
-        log.info("Player %s connected", player_id)
+        log.info("Player %s connected (saved=%s)", player_id[:8], saved is not None)
 
         try:
             await ws.send(json.dumps({
@@ -168,9 +187,10 @@ async def run_server():
         except websockets.exceptions.ConnectionClosed:
             pass
         finally:
+            db.save_player(player)
             floor.players.pop(player_id, None)
             connections.pop(player_id, None)
-            log.info("Player %s disconnected", player_id)
+            log.info("Player %s saved and disconnected", player_id[:8])
 
     async def tick_loop():
         import time
@@ -189,6 +209,18 @@ async def run_server():
 
             if not connections:
                 continue
+
+            # Push authoritative player state every tick so the HUD stays live.
+            for pid in list(connections.keys()):
+                p = floor.players.get(pid)
+                if p:
+                    result.events.append({
+                        "type": "player_update",
+                        "player_id": pid,
+                        "hp": p.hp,
+                        "max_hp": p.max_hp,
+                        "skills": {**p.skills.combat, **p.skills.non_combat},
+                    })
 
             broadcast = json.dumps({
                 "tick": result.tick,

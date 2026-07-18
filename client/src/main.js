@@ -4,7 +4,14 @@ import { initInput } from "./input.js";
 import { initHud, updateHud } from "./hud.js";
 import { initEvents, applySnapshot, applyTickResult } from "./events.js";
 
-const WS_URL = `ws://${location.hostname}:8765`;
+// Persistent identity — stored across page refreshes so the server can
+// load the player's saved progress from the database.
+let _token = localStorage.getItem("mud_token");
+if (!_token) {
+  _token = crypto.randomUUID();
+  localStorage.setItem("mud_token", _token);
+}
+const WS_URL = `ws://${location.hostname}:8765?token=${_token}`;
 
 const canvas    = document.getElementById("game");
 const logEl     = document.getElementById("event-log");
@@ -42,11 +49,6 @@ function connect() {
       applySnapshot(msg);
     } else if (msg.tick !== undefined) {
       applyTickResult(msg);
-      // Keep self skills up to date from the player entry
-      const self = state.players.get(state.playerId);
-      if (self && self.skills) state.selfSkills = { ...self.skills };
-      const selfState = state.players.get(state.playerId);
-      if (selfState) { state.selfHp = selfState.hp; state.selfMaxHp = selfState.max_hp; }
     }
   };
 

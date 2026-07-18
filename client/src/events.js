@@ -112,6 +112,19 @@ function applyEvent(ev) {
     case "level_up":
       logEvent(`Level up! ${ev.skill} → ${ev.new_level}`, "xp");
       break;
+    case "player_update": {
+      const p = state.players.get(ev.player_id) || {};
+      p.hp = ev.hp;
+      p.max_hp = ev.max_hp;
+      p.skills = ev.skills;
+      state.players.set(ev.player_id, p);
+      if (ev.player_id === state.playerId) {
+        state.selfHp = ev.hp;
+        state.selfMaxHp = ev.max_hp;
+        state.selfSkills = { ...ev.skills };
+      }
+      break;
+    }
     case "move_blocked":
       logEvent("Path blocked", "system");
       break;
