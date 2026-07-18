@@ -47,6 +47,8 @@ export function applySnapshot(msg) {
     state.selfHp = self.hp;
     state.selfMaxHp = self.max_hp;
     state.selfSkills = { ...(self.skills || {}) };
+    if (self.inventory) state.selfInventory = self.inventory;
+    if (self.equipment) state.selfEquipment = { ...self.equipment };
   }
 
   // Reset camera to centre on first snapshot
@@ -98,6 +100,9 @@ function applyEvent(ev) {
       break;
     }
     case "item_gained":
+      if (ev.player_id === state.playerId && ev.inventory) {
+        state.selfInventory = ev.inventory;
+      }
       logEvent(`+${ev.quantity}x ${ev.item_id}`, "gather");
       break;
     case "node_depleted":
@@ -122,6 +127,16 @@ function applyEvent(ev) {
         state.selfHp = ev.hp;
         state.selfMaxHp = ev.max_hp;
         state.selfSkills = { ...ev.skills };
+        if (ev.inventory) state.selfInventory = ev.inventory;
+        if (ev.equipment) state.selfEquipment = { ...ev.equipment };
+      }
+      break;
+    }
+    case "equipment_update": {
+      if (ev.player_id === state.playerId) {
+        state.selfEquipment = { ...ev.equipment };
+        state.selfInventory = ev.inventory;
+        logEvent("Equipment changed", "system");
       }
       break;
     }

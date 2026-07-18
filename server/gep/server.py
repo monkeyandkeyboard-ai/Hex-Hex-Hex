@@ -158,7 +158,14 @@ async def run_server():
         token = qs.get("token", [None])[0]
         result = db.validate_session(token) if token else None
         if result:
-            return result  # (player_id, username)
+            player_id, username = result
+            await ws.send(json.dumps({
+                "type": "auth_ok",
+                "player_id": player_id,
+                "your_name": username,
+                "session_token": token,
+            }))
+            return result
 
         # No valid token -- require credentials
         await ws.send(json.dumps({"type": "auth_required"}))
