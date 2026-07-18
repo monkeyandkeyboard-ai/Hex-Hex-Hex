@@ -18,10 +18,12 @@ COMBAT_SKILLS = (
 _MONSTER_REQUIRED = {
     "id",
     "display_name",
-    "base_level",
-    "stats",
-    "weapon_base_damage",
-    "damage_type",
+    "level",
+    "rarity_min",
+    "rarity_max",
+    "skills",
+    "combat",
+    "respawn_ticks",
     "xp_reward",
     "loot_table",
 }
@@ -40,9 +42,10 @@ _RESOURCE_REQUIRED = {
 _WEAPON_REQUIRED = {
     "id",
     "display_name",
-    "weapon_base_damage",
-    "damage_type",
-    "cooldown_ticks",
+    "damage_min",
+    "damage_max",
+    "speed_ticks",
+    "equipment_slot",
 }
 
 
@@ -74,14 +77,21 @@ def _load_dir(path: Path, required_keys: set[str]) -> dict[str, dict]:
 
 def _validate_monster_stats(monsters: dict[str, dict]) -> None:
     for monster_id, data in monsters.items():
-        missing_skills = set(COMBAT_SKILLS) - data["stats"].keys()
+        missing_skills = set(COMBAT_SKILLS) - data["skills"].keys()
         if missing_skills:
-            raise ConfigError(f"monster {monster_id}: missing stat ranges {sorted(missing_skills)}")
-        for skill, rng in data["stats"].items():
-            if "min" not in rng or "max" not in rng:
-                raise ConfigError(f"monster {monster_id}: stat {skill} needs min/max")
-            if rng["min"] > rng["max"]:
-                raise ConfigError(f"monster {monster_id}: stat {skill} min > max")
+            raise ConfigError(f"monster {monster_id}: missing skill blocks {sorted(missing_skills)}")
+        for skill, block in data["skills"].items():
+            for field in ("base", "minrandom", "maxrandom"):
+                if field not in block:
+                    raise ConfigError(f"monster {monster_id}: skill {skill} missing '{field}'")
+            if block["minrandom"] > block["maxrandom"]:
+                raise ConfigError(f"monster {monster_id}: skill {skill} minrandom > maxrandom")
+        combat = data["combat"]
+        for field in ("damage_min", "damage_max", "speed_ticks"):
+            if field not in combat:
+                raise ConfigError(f"monster {monster_id}: combat block missing '{field}'")
+        if combat["damage_min"] > combat["damage_max"]:
+            raise ConfigError(f"monster {monster_id}: damage_min > damage_max")
 
 
 class ConfigStore:
@@ -94,6 +104,8 @@ class ConfigStore:
         self.combat_constants = _load_json(root / "combat_scaling_constants.json")
         self.xp_rates = _load_json(root / "xp_rates.json")
         self.stat_scaling = _load_json(root / "stat_scaling.json")
+        self.xp_table = _load_json(root / "xp_table.json")
+        self.modifiers = _load_json(root / "modifiers.json")
 
         self.monsters = _load_dir(root / "monsters", _MONSTER_REQUIRED)
         _validate_monster_stats(self.monsters)

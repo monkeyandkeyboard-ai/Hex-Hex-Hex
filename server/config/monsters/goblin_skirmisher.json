@@ -1,17 +1,23 @@
 {
   "id": "goblin_skirmisher",
   "display_name": "Goblin Skirmisher",
-  "base_level": 6,
-  "stats": {
-    "precision": { "min": 8, "max": 12 },
-    "strength": { "min": 7, "max": 11 },
-    "dexterity": { "min": 6, "max": 10 },
-    "arcana": { "min": 0, "max": 0 },
-    "mana_attunement": { "min": 0, "max": 0 },
-    "constitution": { "min": 8, "max": 12 }
+  "level": 7,
+  "rarity_min": 1,
+  "rarity_max": 19.5,
+  "skills": {
+    "constitution":    { "base": 9,  "minrandom": -3, "maxrandom": 5 },
+    "precision":       { "base": 10, "minrandom": -3, "maxrandom": 5 },
+    "strength":        { "base": 9,  "minrandom": -3, "maxrandom": 5 },
+    "dexterity":       { "base": 8,  "minrandom": -2, "maxrandom": 4 },
+    "arcana":          { "base": 0,  "minrandom":  0, "maxrandom": 0 },
+    "mana_attunement": { "base": 0,  "minrandom":  0, "maxrandom": 0 }
   },
-  "weapon_base_damage": 6,
-  "damage_type": "physical",
-  "xp_reward": { "combat_base": 25 },
+  "combat": {
+    "damage_min": 6,
+    "damage_max": 12,
+    "speed_ticks": 5
+  },
+  "respawn_ticks": 45,
+  "xp_reward": { "combat_base": 28 },
   "loot_table": [["nothing", 5], ["iron_ore", 1], ["copper_ore", 2]]
 }

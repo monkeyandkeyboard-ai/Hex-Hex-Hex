@@ -1,17 +1,23 @@
 {
   "id": "cave_rat",
   "display_name": "Cave Rat",
-  "base_level": 2,
-  "stats": {
-    "precision": { "min": 3, "max": 6 },
-    "strength": { "min": 2, "max": 5 },
-    "dexterity": { "min": 4, "max": 7 },
-    "arcana": { "min": 0, "max": 0 },
-    "mana_attunement": { "min": 0, "max": 0 },
-    "constitution": { "min": 3, "max": 5 }
+  "level": 4,
+  "rarity_min": 1,
+  "rarity_max": 11.0,
+  "skills": {
+    "constitution":    { "base": 6, "minrandom": -2, "maxrandom": 4 },
+    "precision":       { "base": 6, "minrandom": -2, "maxrandom": 4 },
+    "strength":        { "base": 6, "minrandom": -2, "maxrandom": 4 },
+    "dexterity":       { "base": 6, "minrandom": -2, "maxrandom": 4 },
+    "arcana":          { "base": 0, "minrandom":  0, "maxrandom": 0 },
+    "mana_attunement": { "base": 0, "minrandom":  0, "maxrandom": 0 }
   },
-  "weapon_base_damage": 3,
-  "damage_type": "physical",
-  "xp_reward": { "combat_base": 10 },
+  "combat": {
+    "damage_min": 4,
+    "damage_max": 8,
+    "speed_ticks": 4
+  },
+  "respawn_ticks": 30,
+  "xp_reward": { "combat_base": 12 },
   "loot_table": [["nothing", 8], ["copper_ore", 1]]
 }

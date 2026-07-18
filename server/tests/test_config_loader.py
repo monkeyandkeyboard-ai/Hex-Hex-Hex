@@ -14,10 +14,19 @@ def test_loads_real_config_dir():
     assert "iron_ore" in store.resources
     assert "copper_ore" in store.resources
     assert "fists" in store.weapons
-    assert store.skills["combat_skills"] == [
-        "precision", "strength", "dexterity", "arcana", "mana_attunement", "constitution",
-    ]
     assert len(store.skills["non_combat_skills"]) == 8
+    assert isinstance(store.xp_table, dict)
+    assert str(1) in store.xp_table
+    assert str(2000) in store.xp_table
+    assert isinstance(store.modifiers, list)
+    assert len(store.modifiers) == 54
+
+
+def test_real_stat_scaling_values(store=None):
+    store = ConfigStore(CONFIG_DIR)
+    ss = store.stat_scaling
+    assert ss["hp_base"] == 500
+    assert ss["hp_per_con"] == 10
 
 
 def test_rejects_missing_required_key(tmp_path):
@@ -50,7 +59,28 @@ def test_rejects_dangling_ruleset_reference(tmp_path):
         ConfigStore(tmp_path)
 
 
+def test_rejects_minrandom_greater_than_maxrandom(tmp_path):
+    _mirror_config(tmp_path)
+    bad = tmp_path / "monsters" / "bad_variance.json"
+    bad.write_text("""{
+        "id": "bad_variance", "display_name": "Bad", "level": 1,
+        "rarity_min": 1, "rarity_max": 5,
+        "skills": {
+            "constitution":    {"base": 5, "minrandom": 3, "maxrandom": 1},
+            "precision":       {"base": 5, "minrandom": 0, "maxrandom": 0},
+            "strength":        {"base": 5, "minrandom": 0, "maxrandom": 0},
+            "dexterity":       {"base": 5, "minrandom": 0, "maxrandom": 0},
+            "arcana":          {"base": 0, "minrandom": 0, "maxrandom": 0},
+            "mana_attunement": {"base": 0, "minrandom": 0, "maxrandom": 0}
+        },
+        "combat": {"damage_min": 3, "damage_max": 6, "speed_ticks": 4},
+        "respawn_ticks": 30, "xp_reward": {"combat_base": 10},
+        "loot_table": [["nothing", 1]]
+    }""", encoding="utf-8")
+    with pytest.raises(ConfigError, match="minrandom > maxrandom"):
+        ConfigStore(tmp_path)
+
+
 def _mirror_config(tmp_path: pathlib.Path) -> None:
     import shutil
-
     shutil.copytree(CONFIG_DIR, tmp_path, dirs_exist_ok=True)

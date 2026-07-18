@@ -1,12 +1,13 @@
 {
-  "evasion_multiplier": 1.5,
-  "precision_constant_c": 50,
+  "hit_chance_base": 0.5,
   "hit_chance_cap": 0.95,
-  "hit_chance_floor": 0.5,
-  "strength_damage_divisor": 40,
-  "arcana_potency_exponent": 1.1,
-  "arcana_potency_divisor": 40,
-  "mitigation_multiplier": 1.2,
-  "damage_type_weighting": { "physical": 1.0, "arcana": 0.5, "elemental": 0.75 },
-  "defense_soft_cap_factor": 60
+  "evasion_multiplier": 1.0,
+  "constant_c": 10,
+  "constant_divisor": 1,
+  "defense_soft_cap_factor": 500,
+  "damage_type_weighting": {
+    "physical": 1.0,
+    "arcana": 0.5,
+    "elemental": 0.75
+  }
 }
