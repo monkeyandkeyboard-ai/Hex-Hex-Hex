@@ -10,6 +10,15 @@ export const state = {
   radius: null,
   upExit: null,
   downExit: null,
+  archetype: null,
+  safe: false,
+
+  // tile key "q,r" -> biome_id
+  regions: new Map(),
+  // set of tile keys "q,r" that are road tiles
+  roads: new Set(),
+  // biome_id -> { color, display_name }
+  biomes: {},
 
   // tile key "q,r" -> resource_id
   resourceNodes: new Map(),

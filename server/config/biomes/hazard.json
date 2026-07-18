@@ -1,0 +1,9 @@
+{
+  "id": "hazard",
+  "display_name": "Scorched Fault",
+  "color": "#3a2018",
+  "resource_spawn_chance": 0.03,
+  "resource_weights": [["iron_ore", 2], ["copper_ore", 1]],
+  "monster_weight": 2.5,
+  "monster_weights": [["goblin_skirmisher", 4], ["cave_rat", 1]]
+}

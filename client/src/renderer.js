@@ -10,6 +10,7 @@ const COLORS = {
   tileHover:    "#252535",
   upExit:       "#1a3a1a",
   downExit:     "#1a1a3a",
+  road:         "#5a4a30",
   resource:     "#3a2a10",
   resourceDot:  "#c8901a",
   monster:      "#3a1010",
@@ -31,6 +32,28 @@ export function initRenderer(canvasEl) {
   window.addEventListener("resize", resize);
   canvas.addEventListener("mousemove", onMouseMove);
   canvas.addEventListener("mouseleave", () => { hoveredTile = null; });
+  canvas.addEventListener("wheel", onWheel, { passive: false });
+}
+
+const ZOOM_MIN = 0.3, ZOOM_MAX = 5.0, ZOOM_STEP = 1.15;
+
+function onWheel(e) {
+  e.preventDefault();
+  const rect = canvas.getBoundingClientRect();
+  const px = e.clientX - rect.left;
+  const py = e.clientY - rect.top;
+
+  const oldZoom = state.zoom;
+  const newZoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN,
+    e.deltaY < 0 ? oldZoom * ZOOM_STEP : oldZoom / ZOOM_STEP));
+  if (newZoom === oldZoom) return;
+
+  // Keep the world point under the cursor fixed: world scale is
+  // proportional to zoom, so scale the cursor->camera offset by the ratio.
+  const k = newZoom / oldZoom;
+  state.cameraX = px - (px - state.cameraX) * k;
+  state.cameraY = py - (py - state.cameraY) * k;
+  state.zoom = newZoom;
 }
 
 function resize() {
@@ -109,8 +132,9 @@ export function render() {
     return;
   }
 
-  // Adjust zoom/tile size based on floor radius
-  tileSize = Math.max(8, Math.min(28, Math.floor(Math.min(w, h) / (state.radius * 2.4))));
+  // Base tile size fits the floor to the viewport; zoom scales it
+  const baseSize = Math.max(8, Math.min(28, Math.floor(Math.min(w, h) / (state.radius * 2.4))));
+  tileSize = baseSize * state.zoom;
 
   // Center camera on floor origin if first load
   if (state.cameraX === 0 && state.cameraY === 0) {
@@ -129,14 +153,21 @@ export function render() {
     const rHi = Math.min(r, -q + r);
     for (let rv = rLo; rv <= rHi; rv++) {
       const key = `${q},${rv}`;
+
+      // Base fill: biome color if this tile belongs to a region.
       let fill = COLORS.tile;
+      const biomeId = state.regions.get(key);
+      if (biomeId && state.biomes[biomeId]) fill = state.biomes[biomeId].color;
+
+      const isRoad = state.roads.has(key);
+      if (isRoad) fill = COLORS.road;
 
       if (state.upExit && q === state.upExit[0] && rv === state.upExit[1]) fill = COLORS.upExit;
       else if (state.downExit && q === state.downExit[0] && rv === state.downExit[1]) fill = COLORS.downExit;
       else if (resourceKeys.has(key)) fill = COLORS.resource;
 
       const isHovered = hoveredTile && hoveredTile[0] === q && hoveredTile[1] === rv;
-      drawTile(q, rv, isHovered ? COLORS.tileHover : fill, COLORS.tileBorder);
+      drawTile(q, rv, isHovered ? COLORS.tileHover : fill, isRoad ? "#6a5636" : COLORS.tileBorder);
     }
   }
 

@@ -1,0 +1,20 @@
+{
+  "default_archetype": "dungeon",
+  "overrides": [
+    { "floor_multiple_of": 25, "archetype": "town" }
+  ],
+  "archetypes": {
+    "dungeon": {
+      "safe": false,
+      "region_count": 6,
+      "biome_weights": [["rocky", 3], ["fungal", 2], ["hazard", 1]],
+      "monster_spawn_count": 12
+    },
+    "town": {
+      "safe": true,
+      "region_count": 1,
+      "biome_weights": [["town", 1]],
+      "monster_spawn_count": 0
+    }
+  }
+}

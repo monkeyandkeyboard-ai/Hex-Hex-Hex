@@ -48,6 +48,16 @@ _WEAPON_REQUIRED = {
     "equipment_slot",
 }
 
+_BIOME_REQUIRED = {
+    "id",
+    "display_name",
+    "color",
+    "resource_spawn_chance",
+    "resource_weights",
+    "monster_weight",
+    "monster_weights",
+}
+
 
 class ConfigError(Exception):
     pass
@@ -100,6 +110,7 @@ class ConfigStore:
 
         self.world = _load_json(root / "world.json")
         self.floor_ruleset = _load_json(root / "floor_ruleset.json")
+        self.floor_archetypes = _load_json(root / "floor_archetypes.json")
         self.skills = _load_json(root / "skills.json")
         self.combat_constants = _load_json(root / "combat_scaling_constants.json")
         self.xp_rates = _load_json(root / "xp_rates.json")
@@ -113,9 +124,28 @@ class ConfigStore:
         self.resources = _load_dir(root / "resources", _RESOURCE_REQUIRED)
         self.weapons = _load_dir(root / "weapons", _WEAPON_REQUIRED)
 
-        for weight_pair in self.floor_ruleset["monster_weights"]:
-            if weight_pair[0] not in self.monsters:
-                raise ConfigError(f"floor_ruleset references unknown monster {weight_pair[0]!r}")
-        for weight_pair in self.floor_ruleset["resource_weights"]:
-            if weight_pair[0] not in self.resources:
-                raise ConfigError(f"floor_ruleset references unknown resource {weight_pair[0]!r}")
+        self.biomes = _load_dir(root / "biomes", _BIOME_REQUIRED)
+        self._validate_biomes()
+        self._validate_archetypes()
+
+    def _validate_biomes(self) -> None:
+        for biome_id, data in self.biomes.items():
+            for pair in data["resource_weights"]:
+                if pair[0] not in self.resources:
+                    raise ConfigError(f"biome {biome_id}: unknown resource {pair[0]!r}")
+            for pair in data["monster_weights"]:
+                if pair[0] not in self.monsters:
+                    raise ConfigError(f"biome {biome_id}: unknown monster {pair[0]!r}")
+
+    def _validate_archetypes(self) -> None:
+        archetypes = self.floor_archetypes.get("archetypes", {})
+        for name, params in archetypes.items():
+            for pair in params.get("biome_weights", []):
+                if pair[0] not in self.biomes:
+                    raise ConfigError(f"archetype {name}: unknown biome {pair[0]!r}")
+        for rule in self.floor_archetypes.get("overrides", []):
+            if rule["archetype"] not in archetypes:
+                raise ConfigError(f"archetype override references unknown archetype {rule['archetype']!r}")
+        default = self.floor_archetypes.get("default_archetype")
+        if default not in archetypes:
+            raise ConfigError(f"default_archetype {default!r} is not defined")

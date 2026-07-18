@@ -48,14 +48,25 @@ def test_rejects_id_filename_mismatch(tmp_path):
         ConfigStore(tmp_path)
 
 
-def test_rejects_dangling_ruleset_reference(tmp_path):
+def test_rejects_dangling_biome_reference(tmp_path):
     _mirror_config(tmp_path)
-    ruleset_path = tmp_path / "floor_ruleset.json"
-    ruleset_path.write_text(
-        ruleset_path.read_text(encoding="utf-8").replace("cave_rat", "nonexistent_monster"),
+    biome_path = tmp_path / "biomes" / "rocky.json"
+    biome_path.write_text(
+        biome_path.read_text(encoding="utf-8").replace("cave_rat", "nonexistent_monster"),
         encoding="utf-8",
     )
     with pytest.raises(ConfigError, match="unknown monster"):
+        ConfigStore(tmp_path)
+
+
+def test_rejects_dangling_archetype_biome(tmp_path):
+    _mirror_config(tmp_path)
+    arch_path = tmp_path / "floor_archetypes.json"
+    arch_path.write_text(
+        arch_path.read_text(encoding="utf-8").replace('"rocky"', '"nonexistent_biome"'),
+        encoding="utf-8",
+    )
+    with pytest.raises(ConfigError, match="unknown biome"):
         ConfigStore(tmp_path)
 
 

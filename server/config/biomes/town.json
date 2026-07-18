@@ -1,0 +1,9 @@
+{
+  "id": "town",
+  "display_name": "Waystation",
+  "color": "#2a2a33",
+  "resource_spawn_chance": 0.0,
+  "resource_weights": [],
+  "monster_weight": 0.0,
+  "monster_weights": []
+}

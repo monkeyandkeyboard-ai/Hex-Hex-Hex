@@ -24,8 +24,22 @@ export function applySnapshot(msg) {
   state.radius = msg.radius;
   state.upExit = msg.up_exit;
   state.downExit = msg.down_exit;
+  state.archetype = msg.archetype;
+  state.safe = msg.safe;
   state.tick = msg.tick;
   state.tickDuration = msg.tick_duration;
+
+  state.biomes = msg.biomes || {};
+
+  state.regions.clear();
+  for (const [key, bid] of Object.entries(msg.regions || {})) {
+    state.regions.set(key, bid);
+  }
+
+  state.roads.clear();
+  for (const t of msg.roads || []) {
+    state.roads.add(`${t[0]},${t[1]}`);
+  }
 
   state.resourceNodes.clear();
   for (const [key, rid] of Object.entries(msg.resource_nodes || {})) {
@@ -55,7 +69,8 @@ export function applySnapshot(msg) {
   state.cameraX = 0;
   state.cameraY = 0;
 
-  logEvent(`Floor ${state.floorNumber} loaded`, "system");
+  const tag = state.safe ? " (safe town)" : "";
+  logEvent(`Floor ${state.floorNumber} loaded${tag}`, "system");
 }
 
 export function applyTickResult(msg) {

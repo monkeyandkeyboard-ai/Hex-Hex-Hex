@@ -72,6 +72,8 @@ def build_floor_state(floor_number: int, cfg: ConfigStore) -> tuple[FloorState, 
         floor_number=floor_number,
         global_seed=cfg.world["global_seed"],
         ruleset=cfg.floor_ruleset,
+        archetypes=cfg.floor_archetypes,
+        biomes=cfg.biomes,
     )
     floor = FloorState.from_layout(layout)
 
@@ -106,7 +108,7 @@ def build_floor_state(floor_number: int, cfg: ConfigStore) -> tuple[FloorState, 
     return floor, engine
 
 
-def floor_snapshot(floor: FloorState, tick: int, tick_duration: float, xp_table: dict) -> dict:
+def floor_snapshot(floor: FloorState, tick: int, tick_duration: float, xp_table: dict, biomes: dict) -> dict:
     layout = floor.layout
     return {
         "type": "floor_snapshot",
@@ -114,8 +116,13 @@ def floor_snapshot(floor: FloorState, tick: int, tick_duration: float, xp_table:
         "tick_duration": tick_duration,
         "floor_number": layout.floor_number,
         "radius": layout.radius,
+        "archetype": layout.archetype,
+        "safe": layout.safe,
         "up_exit": list(layout.up_exit),
         "down_exit": list(layout.down_exit) if layout.down_exit else None,
+        "regions": {f"{q},{r}": bid for (q, r), bid in layout.regions.items()},
+        "roads": [list(t) for t in layout.roads],
+        "biomes": {bid: {"color": b["color"], "display_name": b["display_name"]} for bid, b in biomes.items()},
         "resource_nodes": {f"{q},{r}": rid for (q, r), rid in floor.resource_nodes.items()},
         "monsters": {
             mid: {
@@ -261,7 +268,7 @@ async def run_server():
         log.info("Player %s (%s) connected", username, player_id[:8])
 
         try:
-            await ws.send(json.dumps(floor_snapshot(floor, engine.tick, engine.tick_duration, cfg.xp_table)))
+            await ws.send(json.dumps(floor_snapshot(floor, engine.tick, engine.tick_duration, cfg.xp_table, cfg.biomes)))
 
             async for raw in ws:
                 try:

@@ -19,7 +19,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
 
 def start_in_thread():
-    server = http.server.HTTPServer(("0.0.0.0", HTTP_PORT), Handler)
+    # ThreadingHTTPServer: browsers fetch all ES modules in parallel, and a
+    # single-threaded server refuses the overflow connections, which breaks
+    # the whole module graph (page loads, scripts never run).
+    server = http.server.ThreadingHTTPServer(("0.0.0.0", HTTP_PORT), Handler)
     t = threading.Thread(target=server.serve_forever, daemon=True)
     t.start()
     return server
