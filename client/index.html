@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Hex Tower MUD</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; background: #0d0d0f; color: #e0e0e0; font-family: monospace; overflow: hidden; }
+
+    #root { display: flex; flex-direction: column; height: 100%; }
+
+    #hud {
+      display: flex; align-items: center; gap: 12px;
+      padding: 6px 10px; background: #161618; border-bottom: 1px solid #2a2a2e;
+      font-size: 12px; flex-shrink: 0;
+    }
+    #hud .bar-label { color: #888; }
+    .bar { display: inline-block; width: 80px; height: 10px; background: #222; border-radius: 3px; vertical-align: middle; margin: 0 4px; }
+    .bar-fill { height: 100%; border-radius: 3px; transition: width 0.2s; }
+    #hp-fill  { background: #c0392b; }
+    #tick-info { margin-left: auto; color: #555; }
+
+    #game-area { display: flex; flex: 1; overflow: hidden; }
+
+    #canvas-wrap { flex: 1; position: relative; }
+    #game { display: block; width: 100%; height: 100%; cursor: crosshair; touch-action: none; }
+
+    #sidebar {
+      width: 200px; background: #161618; border-left: 1px solid #2a2a2e;
+      display: flex; flex-direction: column; font-size: 12px; overflow: hidden;
+      flex-shrink: 0;
+    }
+    #sidebar h3 { padding: 8px 10px; background: #1e1e22; border-bottom: 1px solid #2a2a2e; font-size: 11px; color: #888; letter-spacing: 1px; text-transform: uppercase; }
+    #skills-list, #event-log { overflow-y: auto; padding: 6px 10px; }
+    #skills-list { flex: 0 0 auto; max-height: 200px; }
+    #skills-list .skill-row { display: flex; justify-content: space-between; padding: 2px 0; }
+    #skills-list .skill-name { color: #aaa; }
+    #skills-list .skill-lvl  { color: #7ec8e3; }
+    #event-log { flex: 1; }
+    #event-log .ev { padding: 2px 0; border-bottom: 1px solid #1a1a1e; color: #aaa; }
+    #event-log .ev.combat  { color: #e07070; }
+    #event-log .ev.xp      { color: #7ec8e3; }
+    #event-log .ev.gather  { color: #7ed87e; }
+    #event-log .ev.system  { color: #555; }
+
+    #status-bar { padding: 4px 10px; background: #161618; border-top: 1px solid #2a2a2e; font-size: 11px; color: #555; }
+  </style>
+</head>
+<body>
+<div id="root">
+  <div id="hud">
+    <span class="bar-label">HP</span>
+    <span class="bar"><span id="hp-fill" class="bar-fill" style="width:100%"></span></span>
+    <span id="hp-text">---</span>
+    <span id="floor-label" style="margin-left:12px;color:#888">Floor --</span>
+    <span id="tick-info">tick 0  |  1.0s</span>
+  </div>
+
+  <div id="game-area">
+    <div id="canvas-wrap">
+      <canvas id="game"></canvas>
+    </div>
+    <div id="sidebar">
+      <h3>Skills</h3>
+      <div id="skills-list"></div>
+      <h3>Event Log</h3>
+      <div id="event-log"></div>
+    </div>
+  </div>
+
+  <div id="status-bar" id="status">Connecting…</div>
+</div>
+
+<script type="module" src="src/main.js"></script>
+</body>
+</html>
