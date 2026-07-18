@@ -48,13 +48,17 @@ function handleTap(px, py) {
     return;
   }
 
-  // Up/down exits
+  // Up/down exits: use them only while standing on the tile, otherwise walk
+  // there first (a second click on the tile then takes the stairs).
+  const onTile = self && self.tile[0] === q && self.tile[1] === r;
   if (state.upExit && q === state.upExit[0] && r === state.upExit[1]) {
-    sendIntent({ intent_type: "use-exit", direction: "up" });
+    sendIntent(onTile ? { intent_type: "use-exit", direction: "up" }
+                      : { intent_type: "move-to-tile", target_q: q, target_r: r });
     return;
   }
   if (state.downExit && q === state.downExit[0] && r === state.downExit[1]) {
-    sendIntent({ intent_type: "use-exit", direction: "down" });
+    sendIntent(onTile ? { intent_type: "use-exit", direction: "down" }
+                      : { intent_type: "move-to-tile", target_q: q, target_r: r });
     return;
   }
 

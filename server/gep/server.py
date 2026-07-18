@@ -26,6 +26,7 @@ from gep.config_loader import ConfigStore
 from gep.entities import Equipment, Player, Skills, roll_monster
 from gep.floorgen import generate_floor
 from gep.floor_state import FloorState
+from gep.floor_manager import FloorManager
 from gep.stats import compute_max_hp, compute_max_mana
 from gep.systems import combat_system, floor_exits, gathering, movement
 from gep.systems import inventory_system
@@ -66,7 +67,7 @@ def _skills_payload(player: Player, xp_table: dict) -> dict:
     return out
 
 
-def build_floor_state(floor_number: int, cfg: ConfigStore) -> tuple[FloorState, TickEngine]:
+def build_floor_state(floor_number: int, cfg: ConfigStore, on_change_floor) -> tuple[FloorState, TickEngine]:
     layout = generate_floor(
         tower_id="tower-a",
         floor_number=floor_number,
@@ -87,9 +88,6 @@ def build_floor_state(floor_number: int, cfg: ConfigStore) -> tuple[FloorState, 
         floor.monsters[monster_id] = monster
 
     engine = TickEngine(tick_duration=1.0 / TICK_HZ)
-
-    def on_change_floor(player_id, direction):
-        pass  # V1 stub
 
     movement.register(engine, floor)
     gathering.register(engine, floor, cfg.resources, cfg.xp_table)
@@ -153,10 +151,23 @@ def floor_snapshot(floor: FloorState, tick: int, tick_duration: float, xp_table:
 
 async def run_server():
     cfg = ConfigStore(CONFIG_DIR)
-    floor, engine = build_floor_state(floor_number=1, cfg=cfg)
+
+    # Floors are built on demand and cached. Each floor owns its own tick
+    # engine (its own action queue), so a respawn scheduled on floor 3 never
+    # touches floor 1. Every instantiated floor is stepped each tick.
+    def _build(floor_number, on_change_floor):
+        log.info("Built floor %d", floor_number)
+        return build_floor_state(floor_number, cfg, on_change_floor)
+
+    manager = FloorManager(_build)
+    floors = manager.floors
+    player_floor = manager.player_floor
+    pending_snapshots = manager.pending_snapshots
 
     intent_queue: list[dict] = []
     connections: dict[str, websockets.ServerConnection] = {}
+
+    manager.get_or_build(1)  # floor 1 always exists
 
     async def authenticate(ws) -> tuple[str, str] | None:
         """Returns (player_id, username) or None if auth fails/disconnects."""
@@ -263,7 +274,8 @@ async def run_server():
             inventory=inventory,
         )
 
-        floor.players[player_id] = player
+        floor = manager.add_player(player, 1)
+        engine = floors[1][1]
         connections[player_id] = ws
         log.info("Player %s (%s) connected", username, player_id[:8])
 
@@ -281,7 +293,7 @@ async def run_server():
             pass
         finally:
             db.save_player(player)
-            floor.players.pop(player_id, None)
+            manager.remove_player(player_id)
             connections.pop(player_id, None)
             log.info("Player %s saved and disconnected", username)
 
@@ -297,35 +309,66 @@ async def run_server():
                 await asyncio.sleep(sleep_for)
             next_tick += tick_interval
 
-            intents, intent_queue[:] = list(intent_queue), []
-            result = engine.step(intents)
+            # Route each queued intent to the engine of the floor its player
+            # is currently on.
+            drained, intent_queue[:] = list(intent_queue), []
+            per_floor: dict[int, list[dict]] = {}
+            for intent in drained:
+                fl = player_floor.get(intent.get("player_id"))
+                if fl is not None:
+                    per_floor.setdefault(fl, []).append(intent)
+
+            # Step every instantiated floor (a use-exit handler may move a
+            # player and populate pending_snapshots during its step).
+            results: dict[int, object] = {}
+            for fl_num, (floor_state, floor_engine) in list(floors.items()):
+                results[fl_num] = floor_engine.step(per_floor.get(fl_num, []))
 
             if not connections:
                 continue
 
-            # Push authoritative player state every tick
-            for pid in list(connections.keys()):
-                p = floor.players.get(pid)
-                if p:
-                    result.events.append({
-                        "type": "player_update",
-                        "player_id": pid,
-                        "hp": p.hp,
-                        "max_hp": p.max_hp,
-                        "skills": _skills_payload(p, cfg.xp_table),
-                        "inventory": p.inventory_snapshot(),
-                        "equipment": p.equipment.to_dict(),
-                    })
+            # Deliver a fresh snapshot to anyone who just changed floor.
+            if pending_snapshots:
+                for pid in list(pending_snapshots):
+                    ws = connections.get(pid)
+                    fl = player_floor.get(pid)
+                    if ws and fl in floors:
+                        fs, fe = floors[fl]
+                        try:
+                            await ws.send(json.dumps(
+                                floor_snapshot(fs, fe.tick, fe.tick_duration, cfg.xp_table, cfg.biomes)
+                            ))
+                        except websockets.exceptions.ConnectionClosed:
+                            pass
+                pending_snapshots.clear()
 
-            broadcast = json.dumps({
-                "tick": result.tick,
-                "tick_duration": result.tick_duration,
-                "events": result.events,
-            })
-            await asyncio.gather(
-                *(ws.send(broadcast) for ws in connections.values()),
-                return_exceptions=True,
-            )
+            # Broadcast each floor's tick result to the players standing on it.
+            for fl_num, (floor_state, floor_engine) in list(floors.items()):
+                recipients = [pid for pid, ws in connections.items() if player_floor.get(pid) == fl_num]
+                if not recipients:
+                    continue
+                result = results[fl_num]
+                for pid in recipients:
+                    p = floor_state.players.get(pid)
+                    if p:
+                        result.events.append({
+                            "type": "player_update",
+                            "player_id": pid,
+                            "hp": p.hp,
+                            "max_hp": p.max_hp,
+                            "skills": _skills_payload(p, cfg.xp_table),
+                            "inventory": p.inventory_snapshot(),
+                            "equipment": p.equipment.to_dict(),
+                        })
+                broadcast = json.dumps({
+                    "tick": result.tick,
+                    "tick_duration": result.tick_duration,
+                    "events": result.events,
+                })
+                await asyncio.gather(
+                    *(connections[pid].send(broadcast) for pid in recipients),
+                    return_exceptions=True,
+                )
 
     log.info("GEP server starting on ws://%s:%d", HOST, PORT)
     async with websockets.serve(handle_client, HOST, PORT):

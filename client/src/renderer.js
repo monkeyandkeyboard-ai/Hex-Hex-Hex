@@ -118,6 +118,14 @@ function drawDot(q, r, color, size = 5) {
   ctx.fill();
 }
 
+function drawEmoji(q, r, glyph, size) {
+  const [cx, cy] = hexToPixel(q, r);
+  ctx.font = `${size}px serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(glyph, cx, cy);
+}
+
 export function render() {
   if (!canvas) return;
   const w = canvas.clientWidth, h = canvas.clientHeight;
@@ -177,12 +185,12 @@ export function render() {
     drawDot(q, rv, COLORS.resourceDot, 3);
   }
 
-  // Monsters
+  // Monsters — skull icon on a dark red tile
   for (const [, m] of state.monsters) {
     if (!m.alive) continue;
     const [q, rv] = m.tile;
     drawTile(q, rv, COLORS.monster, "#5a2020");
-    drawDot(q, rv, COLORS.monsterDot, 4);
+    drawEmoji(q, rv, "💀", tileSize * 1.1);
   }
 
   // Other players
