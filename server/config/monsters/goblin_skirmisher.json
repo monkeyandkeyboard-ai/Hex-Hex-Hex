@@ -1,0 +1,17 @@
+{
+  "id": "goblin_skirmisher",
+  "display_name": "Goblin Skirmisher",
+  "base_level": 6,
+  "stats": {
+    "precision": { "min": 8, "max": 12 },
+    "strength": { "min": 7, "max": 11 },
+    "dexterity": { "min": 6, "max": 10 },
+    "arcana": { "min": 0, "max": 0 },
+    "mana_attunement": { "min": 0, "max": 0 },
+    "constitution": { "min": 8, "max": 12 }
+  },
+  "weapon_base_damage": 6,
+  "damage_type": "physical",
+  "xp_reward": { "combat_base": 25 },
+  "loot_table": [["nothing", 5], ["iron_ore", 1], ["copper_ore", 2]]
+}

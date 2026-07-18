@@ -1,0 +1,8 @@
+{
+  "combat": {
+    "damage_dealt_xp_per_point": { "physical": 1.33, "arcana": 1.33, "elemental": 1.33 },
+    "damage_taken_xp_per_point": 1.33,
+    "mana_used_xp_per_point": 2.0
+  },
+  "non_combat_influence_share": 0.25
+}

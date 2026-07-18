@@ -1,0 +1,7 @@
+{
+  "id": "fists",
+  "display_name": "Fists",
+  "weapon_base_damage": 2,
+  "damage_type": "physical",
+  "cooldown_ticks": 2
+}

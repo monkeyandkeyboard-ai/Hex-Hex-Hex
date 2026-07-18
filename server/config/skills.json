@@ -1,0 +1,14 @@
+{
+  "combat_skills": ["precision", "strength", "dexterity", "arcana", "mana_attunement", "constitution"],
+  "non_combat_skills": {
+    "mineralogy": { "influences": { "strength": 0.6, "dexterity": 0.4 } },
+    "smithing": { "influences": { "strength": 0.5, "dexterity": 0.5 } },
+    "foraging": { "influences": { "dexterity": 0.7, "precision": 0.3 } },
+    "farming": { "influences": { "constitution": 0.5, "dexterity": 0.5 } },
+    "alchemy": { "influences": { "arcana": 0.6, "mana_attunement": 0.4 } },
+    "enchanting": { "influences": { "arcana": 0.7, "mana_attunement": 0.3 } },
+    "aboriculture": { "influences": { "strength": 0.4, "constitution": 0.6 } },
+    "craftsmanship": { "influences": { "dexterity": 0.6, "precision": 0.4 } }
+  },
+  "xp_curve": { "base_xp": 50, "exponent": 2.0, "max_level": 99 }
+}

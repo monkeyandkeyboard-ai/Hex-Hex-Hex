@@ -1,0 +1,10 @@
+{
+  "max_hp_base": 10,
+  "max_hp_per_constitution": 8,
+  "max_mana_base": 5,
+  "max_mana_per_mana_attunement": 6,
+  "hp_regen_tick_interval": 10,
+  "hp_regen_amount": 1,
+  "mana_regen_tick_interval": 8,
+  "mana_regen_amount": 1
+}

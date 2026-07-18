@@ -1,0 +1,10 @@
+{
+  "id": "iron_ore",
+  "display_name": "Iron Ore",
+  "skill": "mineralogy",
+  "gather_ticks": 4,
+  "respawn_ticks": 40,
+  "xp": { "mineralogy": 10, "strength": 2 },
+  "yield": { "min": 1, "max": 2 },
+  "grade_weights": [["crude", 5], ["common", 3], ["fine", 1]]
+}

@@ -1,0 +1,17 @@
+{
+  "id": "cave_rat",
+  "display_name": "Cave Rat",
+  "base_level": 2,
+  "stats": {
+    "precision": { "min": 3, "max": 6 },
+    "strength": { "min": 2, "max": 5 },
+    "dexterity": { "min": 4, "max": 7 },
+    "arcana": { "min": 0, "max": 0 },
+    "mana_attunement": { "min": 0, "max": 0 },
+    "constitution": { "min": 3, "max": 5 }
+  },
+  "weapon_base_damage": 3,
+  "damage_type": "physical",
+  "xp_reward": { "combat_base": 10 },
+  "loot_table": [["nothing", 8], ["copper_ore", 1]]
+}

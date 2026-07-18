@@ -1,0 +1,6 @@
+{
+  "global_seed": "hex-tower-v1",
+  "towers": {
+    "tower-a": { "display_name": "Tower A" }
+  }
+}

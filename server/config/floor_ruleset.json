@@ -1,0 +1,13 @@
+{
+  "radius": 64,
+  "resource_spawn_chance": 0.02,
+  "resource_weights": [
+    ["iron_ore", 3],
+    ["copper_ore", 2]
+  ],
+  "monster_spawn_count": 12,
+  "monster_weights": [
+    ["cave_rat", 3],
+    ["goblin_skirmisher", 2]
+  ]
+}

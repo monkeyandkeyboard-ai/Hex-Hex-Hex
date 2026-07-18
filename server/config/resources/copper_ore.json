@@ -1,0 +1,10 @@
+{
+  "id": "copper_ore",
+  "display_name": "Copper Ore",
+  "skill": "mineralogy",
+  "gather_ticks": 3,
+  "respawn_ticks": 25,
+  "xp": { "mineralogy": 6, "strength": 1 },
+  "yield": { "min": 1, "max": 3 },
+  "grade_weights": [["crude", 6], ["common", 3], ["fine", 1]]
+}
