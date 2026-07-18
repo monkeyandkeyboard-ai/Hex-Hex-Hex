@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "gep-server",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "gep.server"],
+      "cwd": "server",
+      "port": 8080
+    }
+  ]
+}
