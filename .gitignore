@@ -1,6 +1,10 @@
 # Runtime data
 players.db
 
+# Share/export artifacts -- zipped snapshots of the tree, not project sources
+MUD.zip
+*.zip
+
 __pycache__/
 *.pyc
 .pytest_cache/
