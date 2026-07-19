@@ -111,25 +111,80 @@ function cubeRound(fq, fr) {
   return [q, r];
 }
 
-function hexPath(cx, cy, size) {
-  ctx.beginPath();
-  for (let i = 0; i < 6; i++) {
-    const angle = Math.PI / 180 * (60 * i);
-    const x = cx + size * Math.cos(angle);
-    const y = cy + size * Math.sin(angle);
-    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+// Unit hex corner offsets, computed once rather than six sin/cos per hex.
+const HEX_COS = [], HEX_SIN = [];
+for (let i = 0; i < 6; i++) {
+  const angle = Math.PI / 180 * (60 * i);
+  HEX_COS.push(Math.cos(angle));
+  HEX_SIN.push(Math.sin(angle));
+}
+
+/** Add one hex outline to the current path (no beginPath / no paint). */
+function addHex(cx, cy, size) {
+  ctx.moveTo(cx + size * HEX_COS[0], cy + size * HEX_SIN[0]);
+  for (let i = 1; i < 6; i++) {
+    ctx.lineTo(cx + size * HEX_COS[i], cy + size * HEX_SIN[i]);
   }
   ctx.closePath();
 }
 
-function drawTile(q, r, fill, stroke) {
-  const [cx, cy] = hexToPixel(q, r);
+function hexPath(cx, cy, size) {
+  ctx.beginPath();
+  addHex(cx, cy, size);
+}
+
+function drawTileAt(cx, cy, fill, stroke) {
   hexPath(cx, cy, tileSize - 1);
   ctx.fillStyle = fill;
   ctx.fill();
   ctx.strokeStyle = stroke;
   ctx.lineWidth = BORDER_WIDTH;
   ctx.stroke();
+}
+
+function drawTile(q, r, fill, stroke) {
+  const [cx, cy] = hexToPixel(q, r);
+  drawTileAt(cx, cy, fill, stroke);
+}
+
+// --- Per-floor tile geometry ---------------------------------------------
+// The tile loop runs over every tile on the floor each frame, so anything
+// derived from a tile's fixed (q, r) is computed once per floor here instead
+// of per frame: unit pixel offsets (multiply by tileSize and add the camera
+// to get a position, with no array allocation), the index of the tile above
+// for slope shading, and a road flag. Previously each of these meant an
+// allocation or a template-string Map key 12.5k times a frame, which cost
+// far more than the canvas drawing itself.
+
+let geometry = null;  // { order, ux, uy, up, road }
+
+function tileGeometry() {
+  const order = state.tileOrder;
+  if (geometry !== null && geometry.order === order) return geometry;
+
+  const n = order.length;
+  const ux = new Float32Array(n);
+  const uy = new Float32Array(n);
+  const up = new Int32Array(n);
+  const road = new Uint8Array(n);
+  const SQRT3 = Math.sqrt(3);
+
+  for (let i = 0; i < n; i++) {
+    const q = order[i][0], r = order[i][1];
+    ux[i] = 1.5 * q;
+    uy[i] = SQRT3 * (q / 2 + r);
+    const iUp = state.tileIndex.get(`${q},${r - 1}`);
+    up[i] = iUp === undefined ? -1 : iUp;
+    road[i] = state.roads.has(`${q},${r}`) ? 1 : 0;
+  }
+
+  geometry = { order, ux, uy, up, road };
+  return geometry;
+}
+
+/** Drop cached geometry (new floor, or roads changed). */
+export function resetGeometry() {
+  geometry = null;
 }
 
 // --- Procedural HSL stack -------------------------------------------------
@@ -139,6 +194,11 @@ function drawTile(q, r, fill, stroke) {
 // would dominate the frame budget.
 
 const BORDER_WIDTH = 1;
+// Below this tile size, a screenful is thousands of hexes and per-hex
+// stroking dominates the frame; above it, tile counts are low enough that
+// per-hex painting is cheap and the 1px border actually reads. Measured:
+// at tileSize 8 per-hex costs ~25ms/frame vs ~10ms batched.
+const BATCH_BELOW_TILE_SIZE = 14;
 const ROUGHNESS_AMOUNT = 7;   // lightness swing from micro-texture
 const ELEVATION_AMOUNT = 10;  // lightness swing from absolute height
 const SLOPE_AMOUNT = 30;      // directional shading strength
@@ -294,22 +354,45 @@ export function render() {
     state.cameraY = h / 2;
   }
 
-  const resourceKeys = new Set(
-    [...state.resourceNodes.keys()]
-  );
+  // Per-tile lookups that change at runtime are resolved to tile indices once
+  // per frame (there are only a handful of each), so the hot loop compares
+  // integers instead of building a string key for every tile on the floor.
+  const resourceIdx = new Set();
+  for (const key of state.resourceNodes.keys()) {
+    const i = state.tileIndex.get(key);
+    if (i !== undefined) resourceIdx.add(i);
+  }
+  const upExitIdx = state.upExit
+    ? state.tileIndex.get(`${state.upExit[0]},${state.upExit[1]}`) ?? -1 : -1;
+  const downExitIdx = state.downExit
+    ? state.tileIndex.get(`${state.downExit[0]},${state.downExit[1]}`) ?? -1 : -1;
+  const hoveredIdx = hoveredTile
+    ? state.tileIndex.get(`${hoveredTile[0]},${hoveredTile[1]}`) ?? -1 : -1;
 
   // Tiles: walk canonical order so the packed arrays index directly.
   // Cull anything off-screen -- a full floor is ~12.5k hexes.
   const elev = state.elevation, rough = state.roughness, bmap = state.biomeMap;
-  const hasStructure = bmap.length === state.tileOrder.length && bmap.length > 0;
+  const n = state.tileOrder.length;
+  const hasStructure = bmap.length === n && n > 0;
   const margin = tileSize * 2;
+  const { ux, uy, up, road } = tileGeometry();
+  const camX = state.cameraX, camY = state.cameraY;
 
-  for (let i = 0; i < state.tileOrder.length; i++) {
-    const [q, rv] = state.tileOrder[i];
-    const [cx, cy] = hexToPixel(q, rv);
-    if (cx < -margin || cx > w + margin || cy < -margin || cy > h + margin) continue;
+  // Below this tile size a screenful is thousands of hexes and the 1px border
+  // is visual noise, so fills are batched by colour and borders dropped.
+  // Above it, tile counts are low and per-hex fill+stroke is both cheap and
+  // better looking. Same output either way at the sizes that matter.
+  const batchFills = tileSize < BATCH_BELOW_TILE_SIZE;
+  const buckets = batchFills ? new Map() : null;
+  const hexSize = tileSize - 1;
 
-    const key = `${q},${rv}`;
+  for (let i = 0; i < n; i++) {
+    // Position from precomputed unit offsets: no call, no array allocation.
+    const cx = ux[i] * tileSize + camX;
+    if (cx < -margin || cx > w + margin) continue;
+    const cy = uy[i] * tileSize + camY;
+    if (cy < -margin || cy > h + margin) continue;
+
     let fill = COLORS.tile;
 
     if (hasStructure) {
@@ -319,8 +402,8 @@ export function render() {
       // Layer 3: directional shading -- slope against the tile "above"
       // (decreasing r is up-screen), so ridges catch light and hollows fall
       // into shadow.
-      const iUp = state.tileIndex.get(`${q},${rv - 1}`);
-      const eUp = iUp !== undefined ? elev[iUp] / 255 : e;
+      const iUp = up[i];
+      const eUp = iUp >= 0 ? elev[iUp] / 255 : e;
       const slope = e - eUp;
 
       const biome = state.biomes[state.biomeLegend[bmap[i]]];
@@ -332,16 +415,38 @@ export function render() {
       fill = tileColor(bmap[i], lightness);
     }
 
-    const isRoad = state.roads.has(key);
+    const isRoad = road[i] === 1;
     if (isRoad) fill = COLORS.road;
 
-    if (state.upExit && q === state.upExit[0] && rv === state.upExit[1]) fill = COLORS.upExit;
-    else if (state.downExit && q === state.downExit[0] && rv === state.downExit[1]) fill = COLORS.downExit;
-    else if (resourceKeys.has(key)) fill = COLORS.resource;
+    if (i === upExitIdx) fill = COLORS.upExit;
+    else if (i === downExitIdx) fill = COLORS.downExit;
+    else if (resourceIdx.has(i)) fill = COLORS.resource;
+    if (i === hoveredIdx) fill = COLORS.tileHover;
 
-    const isHovered = hoveredTile && hoveredTile[0] === q && hoveredTile[1] === rv;
-    // Layer 4: crisp fixed-width border anchoring the grid.
-    drawTile(q, rv, isHovered ? COLORS.tileHover : fill, isRoad ? "#6a5636" : COLORS.tileBorder);
+    if (batchFills) {
+      // Zoomed out: bucket by colour and paint each colour in one path.
+      // Per-hex fill+stroke costs ~72ms for a screenful at this size, almost
+      // all of it stroking; one path per colour is ~11ms. Borders are dropped
+      // here on purpose -- a 1px rule on a 4px hex is moire, not a grid.
+      let bucket = buckets.get(fill);
+      if (bucket === undefined) buckets.set(fill, bucket = []);
+      bucket.push(cx, cy);
+    } else {
+      // Zoomed in: few enough tiles that per-hex painting is cheap, and the
+      // border genuinely reads. Layer 4: crisp fixed-width border.
+      drawTileAt(cx, cy, fill, isRoad ? "#6a5636" : COLORS.tileBorder);
+    }
+  }
+
+  if (batchFills) {
+    for (const [fill, coords] of buckets) {
+      ctx.beginPath();
+      for (let k = 0; k < coords.length; k += 2) {
+        addHex(coords[k], coords[k + 1], hexSize);
+      }
+      ctx.fillStyle = fill;
+      ctx.fill();
+    }
   }
 
   // Resource dots

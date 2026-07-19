@@ -37,6 +37,15 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return str(ART_DIR / inside)
         return super().translate_path(path)
 
+    def end_headers(self):
+        # Dev server: never let the browser cache client code. Without this
+        # there are no cache headers at all, so browsers apply heuristic
+        # freshness and can serve a stale module after an edit -- which shows
+        # up as a mismatched-import error between one fresh file and one
+        # cached one, not as an obvious "you have old code" symptom.
+        self.send_header("Cache-Control", "no-store, must-revalidate")
+        super().end_headers()
+
     def log_message(self, fmt, *args):
         pass  # suppress per-request noise
 

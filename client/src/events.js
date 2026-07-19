@@ -3,6 +3,7 @@
 
 import { state } from "./state.js";
 import { resetMotion } from "./motion.js";
+import { resetGeometry } from "./renderer.js";
 
 const MAX_LOG = 80;
 let logEl;
@@ -80,8 +81,10 @@ export function applySnapshot(msg) {
   }
 
   // A snapshot is a fresh floor (or a resync): nothing should glide in from
-  // wherever it happened to be standing on the previous one.
+  // wherever it happened to be standing on the previous one, and the cached
+  // per-tile geometry describes the old floor.
   resetMotion();
+  resetGeometry();
 
   state.monsters.clear();
   for (const [mid, m] of Object.entries(msg.monsters || {})) {

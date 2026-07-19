@@ -32,8 +32,19 @@ class FloorState:
         )
 
     @property
-    def tile_set(self) -> set[Tile]:
-        return set(self.layout.tiles)
+    def tile_set(self) -> frozenset[Tile]:
+        """The floor's tiles as a set, built once and reused.
+
+        This sits in A*'s inner loop by way of is_passable, so rebuilding it
+        per call meant re-materialising ~12.5k tuples for every neighbour of
+        every expanded node. Cached against the layout object rather than a
+        plain attribute so that swapping the layout can't serve a stale set.
+        """
+        cached = getattr(self, "_tile_set_cache", None)
+        if cached is None or cached[0] is not self.layout:
+            cached = (self.layout, frozenset(self.layout.tiles))
+            self._tile_set_cache = cached
+        return cached[1]
 
     def is_valid_tile(self, tile: Tile) -> bool:
         return tile in self.tile_set
