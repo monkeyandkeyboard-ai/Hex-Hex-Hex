@@ -44,6 +44,26 @@ PORT = 8765
 TICK_HZ = 1.0
 
 
+def save_players(players) -> int:
+    """Persist each player, returning how many writes succeeded.
+
+    Saving only in the disconnect handler means a crash, a kill, or a pulled
+    plug loses everything since login, because the `finally` never runs. The
+    autosave interval bounds that loss; this is the part that does the work.
+
+    One player failing must not abandon the rest, and must never take the
+    tick loop down -- the next interval will try again.
+    """
+    saved = 0
+    for player in players:
+        try:
+            db.save_player(player)
+            saved += 1
+        except Exception:
+            log.exception("failed to save player %s", getattr(player, "id", "?"))
+    return saved
+
+
 def _xp_next_level(current_xp: float, xp_table: dict) -> float:
     """Cumulative XP required to reach the next level above current_xp."""
     sorted_levels = sorted(int(k) for k in xp_table)
@@ -318,10 +338,25 @@ async def run_server():
             connections.pop(player_id, None)
             log.info("Player %s saved and disconnected", username)
 
+    def save_connected_players() -> int:
+        """Flush every connected player to the database."""
+        players = []
+        for pid in list(connections):
+            fl = player_floor.get(pid)
+            if fl is None or fl not in floors:
+                continue
+            player = floors[fl][0].players.get(pid)
+            if player is not None:
+                players.append(player)
+        return save_players(players)
+
     async def tick_loop():
         import time
         tick_interval = 1.0 / TICK_HZ
         next_tick = time.monotonic() + tick_interval
+
+        autosave_every = int(cfg.world.get("autosave_interval_ticks", 30))
+        ticks_since_autosave = 0
 
         while True:
             now = time.monotonic()
@@ -344,6 +379,14 @@ async def run_server():
             results: dict[int, object] = {}
             for fl_num, (floor_state, floor_engine) in list(floors.items()):
                 results[fl_num] = floor_engine.step(per_floor.get(fl_num, []))
+
+            if autosave_every > 0:
+                ticks_since_autosave += 1
+                if ticks_since_autosave >= autosave_every:
+                    ticks_since_autosave = 0
+                    count = save_connected_players()
+                    if count:
+                        log.debug("autosaved %d player(s)", count)
 
             if not connections:
                 continue
@@ -392,8 +435,17 @@ async def run_server():
                 )
 
     log.info("GEP server starting on ws://%s:%d", HOST, PORT)
-    async with websockets.serve(handle_client, HOST, PORT):
-        await tick_loop()
+    try:
+        async with websockets.serve(handle_client, HOST, PORT):
+            await tick_loop()
+    finally:
+        # Ctrl+C and other orderly shutdowns: flush immediately rather than
+        # discarding up to an interval's worth of progress. A hard kill still
+        # falls back to the autosave interval, which is the point of having
+        # one -- this just makes the common case lossless.
+        count = save_connected_players()
+        if count:
+            log.info("saved %d player(s) on shutdown", count)
 
 
 def main():

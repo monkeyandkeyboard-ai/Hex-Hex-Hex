@@ -1,5 +1,7 @@
 {
   "global_seed": "hex-tower-v1",
+  "_autosave_comment": "Ticks between flushing connected players to the database. Bounds how much progress an unclean shutdown can lose. 0 disables.",
+  "autosave_interval_ticks": 30,
   "towers": {
     "tower-a": { "display_name": "Tower A" }
   }
