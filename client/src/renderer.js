@@ -171,20 +171,23 @@ function drawDot(q, r, color, size = 5) {
 }
 
 // --- Placeholder sprite pipeline -----------------------------------------
-// Every monster draws the same placeholder spritesheet; all visual identity
-// comes from the server-sent `visual` block (config-authored, never
-// client-guessed). The `sprite` id is resolved here rather than the server
-// sending a URL, so asset paths stay a client concern.
+// Monsters and players all draw from one shared placeholder sheet each; for
+// monsters, visual identity comes from the server-sent `visual` block
+// (config-authored, never client-guessed). The `sprite` id is resolved here
+// rather than the server sending a URL, so asset paths stay a client concern.
 
 const SPRITE_SHEETS = {
   monster_placeholder: "/art/monsters/Orc%20Captain.png",
+  character_placeholder: "/art/Character/character.png",
 };
 
-// Frame column order in the sheet, left to right.
+// Frame column order, left to right, shared by every sheet. The art is
+// labelled in compass terms (south, southeast, northeast, north, northwest,
+// southwest); these are the same six directions in the screen-relative names
+// the server and motion module already speak.
 const FACINGS = ["down", "right-down", "right-up", "up", "left-up", "left-down"];
-const FRAME_SIZE = 160;
 
-// Axial neighbour delta -> facing, for whenever monsters start moving.
+// Axial neighbour delta -> facing.
 // Derived from hexToPixel: +q is right-down, +r is straight down.
 export const FACING_BY_DELTA = {
   "0,1": "down",    "1,0": "right-down",  "1,-1": "right-up",
@@ -195,7 +198,10 @@ const VISUAL_FALLBACK = {
   hue_rotate: 0, saturate: 1, brightness: 1, scale: 1, tint: COLORS.monster,
 };
 
-// id -> {img, loaded}. Sheets load once; until a sheet is ready the monster
+// Players have no per-entity visual config -- they draw the sheet untouched.
+const PLAYER_VISUAL = { sprite: "character_placeholder", scale: 1 };
+
+// id -> {img, loaded}. Sheets load once; until a sheet is ready the entity
 // falls back to a dot so tiles never render empty.
 const spriteCache = new Map();
 
@@ -212,7 +218,7 @@ function getSheet(spriteId) {
   return entry;
 }
 
-function drawMonsterSprite(q, r, visual, facing) {
+function drawSprite(q, r, visual, facing, fallbackDot) {
   const v = visual || VISUAL_FALLBACK;
   const hue = v.hue_rotate ?? 0;
   const sat = v.saturate ?? 1;
@@ -221,9 +227,15 @@ function drawMonsterSprite(q, r, visual, facing) {
 
   const sheet = getSheet(v.sprite || "monster_placeholder");
   if (!sheet || !sheet.loaded) {
-    drawDot(q, r, COLORS.monsterDot, 4);
+    drawDot(q, r, fallbackDot, 4);
     return;
   }
+
+  // Frame size comes from the image, not a constant: sheets differ (the orc
+  // is 160px per frame, the character 128px) and a wrong guess silently
+  // slices halfway into the neighbouring pose.
+  const frameW = sheet.img.width / FACINGS.length;
+  const frameH = sheet.img.height;
 
   let col = FACINGS.indexOf(facing);
   if (col < 0) col = 0;  // unknown/absent facing -> front-facing frame
@@ -236,13 +248,17 @@ function drawMonsterSprite(q, r, visual, facing) {
   // Translate to the tile centre first so scaling happens in place rather
   // than dragging the sprite toward the canvas origin.
   ctx.translate(cx, cy);
-  ctx.filter = `hue-rotate(${hue}deg) saturate(${sat}) brightness(${bri})`;
+  // Skip the filter entirely when there is nothing to apply -- ctx.filter is
+  // not free, and players never carry modifiers.
+  if (hue !== 0 || sat !== 1 || bri !== 1) {
+    ctx.filter = `hue-rotate(${hue}deg) saturate(${sat}) brightness(${bri})`;
+  }
   ctx.imageSmoothingEnabled = false;  // keep the pixel art crisp
   // Anchored so the figure's feet sit near the tile centre rather than the
   // sprite being centred on it -- otherwise tall sprites read as floating.
   ctx.drawImage(
     sheet.img,
-    col * FRAME_SIZE, 0, FRAME_SIZE, FRAME_SIZE,
+    col * frameW, 0, frameW, frameH,
     -size / 2, -size * 0.72, size, size,
   );
   ctx.restore();
@@ -334,41 +350,39 @@ export function render() {
     drawDot(q, rv, COLORS.resourceDot, 3);
   }
 
-  // Monsters — placeholder sprite on a tinted tile.
-  // The tinted hex marks the tile the monster logically occupies, so it stays
+  // Monsters and players share one sprite pass.
+  // The tinted hex marks the tile an entity logically occupies, so it stays
   // on the grid; only the sprite glides between centres.
-  // Sprites are taller than a hex, so paint back-to-front by screen Y:
-  // in Map order a far monster could otherwise overlap a nearer one. Tiles
-  // are laid down in a first pass so no sprite is clipped by a later tile.
-  const drawnMonsters = [];
+  // Sprites are taller than a hex, so paint back-to-front by screen Y --
+  // monsters and players sorted together, since they overlap each other just
+  // as readily. Tiles are laid down first so no sprite is clipped by a later
+  // tile.
+  const sprites = [];
+
   for (const [mid, m] of state.monsters) {
     if (!m.alive) continue;
     const [q, rv] = m.tile;
     drawTile(q, rv, (m.visual && m.visual.tint) || COLORS.monster, "#5a2020");
-    drawnMonsters.push(resolveMotion(`m:${mid}`, m.tile, m.facing));
-    drawnMonsters[drawnMonsters.length - 1].visual = m.visual;
-  }
-  drawnMonsters.sort((a, b) => hexToPixel(a.q, a.r)[1] - hexToPixel(b.q, b.r)[1]);
-  for (const m of drawnMonsters) {
-    drawMonsterSprite(m.q, m.r, m.visual, m.facing);
+    const at = resolveMotion(`m:${mid}`, m.tile, m.facing);
+    at.visual = m.visual;
+    at.dot = COLORS.monsterDot;
+    sprites.push(at);
   }
 
-  // Other players — tile marks the occupied hex, dot glides between centres
   for (const [pid, p] of state.players) {
-    if (pid === state.playerId) continue;
+    const isSelf = pid === state.playerId;
     const [q, rv] = p.tile;
-    drawTile(q, rv, COLORS.otherPlayer, "#20205a");
+    drawTile(q, rv, isSelf ? COLORS.selfPlayer : COLORS.otherPlayer,
+             isSelf ? "#205a20" : "#20205a");
     const at = resolveMotion(`p:${pid}`, p.tile, p.facing);
-    drawDot(at.q, at.r, COLORS.otherDot, 4);
+    at.visual = PLAYER_VISUAL;
+    at.dot = isSelf ? COLORS.selfDot : COLORS.otherDot;
+    sprites.push(at);
   }
 
-  // Self
-  const self = state.players.get(state.playerId);
-  if (self) {
-    const [q, rv] = self.tile;
-    drawTile(q, rv, COLORS.selfPlayer, "#205a20");
-    const at = resolveMotion(`p:${state.playerId}`, self.tile, self.facing);
-    drawDot(at.q, at.r, COLORS.selfDot, 5);
+  sprites.sort((a, b) => hexToPixel(a.q, a.r)[1] - hexToPixel(b.q, b.r)[1]);
+  for (const s of sprites) {
+    drawSprite(s.q, s.r, s.visual, s.facing, s.dot);
   }
 
   // Exit labels

@@ -152,6 +152,7 @@ def floor_snapshot(floor: FloorState, tick: int, tick_duration: float, xp_table:
                 "id": pid,
                 "name": p.name,
                 "tile": list(p.tile),
+                "facing": p.facing,
                 "hp": p.hp,
                 "max_hp": p.max_hp,
                 "skills": _skills_payload(p, xp_table),

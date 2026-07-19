@@ -154,3 +154,35 @@ def test_each_intermediate_tile_emitted_as_separate_position_update():
 
     assert len(all_positions) == 3
     assert all_positions[-1] == [0, 3]
+
+
+def test_walking_updates_player_facing_per_step():
+    """Facing tracks the direction actually travelled, so the client can pick
+    the right spritesheet column without inferring it."""
+    floor = make_floor()
+    player = make_player(tile=(0, 0))
+    floor.players["p1"] = player
+    engine = setup_engine(floor)
+
+    # (0,0) -> (1,0) is the "right-down" neighbour on a flat-top layout.
+    result = engine.step([{"intent_type": "move-to-tile", "player_id": "p1", "target_q": 1, "target_r": 0}])
+    pos = [e for e in result.events if e["type"] == "position_update"][0]
+    assert player.facing == "right-down"
+    assert pos["facing"] == "right-down"
+
+    # Turn around: (1,0) -> (0,0) is "left-up".
+    result = engine.step([{"intent_type": "move-to-tile", "player_id": "p1", "target_q": 0, "target_r": 0}])
+    pos = [e for e in result.events if e["type"] == "position_update"][0]
+    assert player.facing == "left-up"
+    assert pos["facing"] == "left-up"
+
+
+def test_player_facing_defaults_and_survives_a_stationary_tick():
+    floor = make_floor()
+    player = make_player(tile=(0, 0))
+    floor.players["p1"] = player
+    engine = setup_engine(floor)
+
+    assert player.facing == "down"
+    engine.step([])
+    assert player.facing == "down"

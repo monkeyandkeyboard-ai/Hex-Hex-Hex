@@ -77,6 +77,8 @@ class Player:
     bag_slots: list[str | None] = field(default_factory=lambda: [None] * BAG_SLOTS)
     weapon_ready_tick: int = 0
     alive: bool = True
+    # Which spritesheet column the client draws, updated as the player walks.
+    facing: str = "down"
     # Incremented on every new move intent so previously-scheduled move-step
     # actions from the old path can detect they're stale and drop.
     move_seq: int = 0

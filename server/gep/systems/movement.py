@@ -12,6 +12,7 @@ Movement speed is a property of the player (or their active transport).
 Base speed = 1 tile/tick. Transport can grant speed 2+.
 """
 from gep.floor_state import FloorState
+from gep.hexgrid import facing_from_delta
 from gep.pathfinding import find_path
 from gep.tick import TickEngine
 
@@ -91,8 +92,16 @@ def register(engine: TickEngine, floor: FloorState) -> None:
                 events.append({"type": "move_blocked", "player_id": player_id, "tile": list(player.tile)})
                 return events
             remaining.pop(0)
+            facing = facing_from_delta(player.tile, next_tile)
+            if facing is not None:
+                player.facing = facing
             player.tile = next_tile
-            events.append({"type": "position_update", "player_id": player_id, "tile": list(next_tile)})
+            events.append({
+                "type": "position_update",
+                "player_id": player_id,
+                "tile": list(next_tile),
+                "facing": player.facing,
+            })
             steps_taken += 1
 
         if remaining:

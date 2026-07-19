@@ -123,7 +123,7 @@ function applyEvent(ev) {
   switch (ev.type) {
     case "position_update": {
       const p = state.players.get(ev.player_id);
-      if (p) p.tile = ev.tile;
+      if (p) { p.tile = ev.tile; if (ev.facing) p.facing = ev.facing; }
       break;
     }
     case "combat_result": {
