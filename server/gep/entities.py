@@ -138,12 +138,31 @@ class Monster:
     visual: dict = field(default_factory=dict)
     # Which spritesheet row/column the client should draw.
     facing: str = "down"
-    # Aggro anchor: player id this monster is hunting, or None when passive.
-    # Written only by the behaviour system (systems/monster_ai.py) -- combat
-    # never reaches in here, it just reports that damage landed.
-    threat_target: str | None = None
+    # Aggro: {player_id: threat_score} for every player that has drawn this
+    # monster's attention. Written only by the behaviour system
+    # (systems/monster_ai.py) -- combat never reaches in here, it just reports
+    # that damage landed.
+    threat_table: dict[str, float] = field(default_factory=dict)
     weapon_ready_tick: int = 0
     alive: bool = True
+
+    @property
+    def threat_target(self) -> str | None:
+        """The player currently being hunted: highest threat score, or None.
+
+        Ties break on the id so the choice is stable across ticks -- a monster
+        oscillating between two equally-hated players would re-path every
+        cycle and effectively stand still.
+        """
+        if not self.threat_table:
+            return None
+        return max(self.threat_table, key=lambda pid: (self.threat_table[pid], pid))
+
+    @threat_target.setter
+    def threat_target(self, player_id: str | None) -> None:
+        """Kept so callers can drop aggro outright with `= None`. Assigning an
+        id makes that player the sole entry rather than merely the top one."""
+        self.threat_table = {} if player_id is None else {player_id: 1.0}
 
     def combat_stat(self, skill: str) -> float:
         return self.stats.get(skill, 0)

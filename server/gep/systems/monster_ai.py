@@ -38,6 +38,26 @@ def register(
     """Returns `notify_threat(entity, attacker_id)` for combat to call."""
     roll = rng or random
 
+    # Reverse index: player id -> ids of monsters holding that player in their
+    # threat table. This is what makes dropping a dead player O(1) in the
+    # number of monsters on the floor; a per-monster dict alone would not,
+    # since finding *which* monsters to edit would still mean sweeping them
+    # all. Every write to a threat table goes through the helpers below so the
+    # two structures cannot drift apart.
+    threatened_by: dict[str, set[str]] = {}
+
+    def add_threat(monster, player_id: str, amount: float = 1.0) -> None:
+        monster.threat_table[player_id] = monster.threat_table.get(player_id, 0.0) + amount
+        threatened_by.setdefault(player_id, set()).add(monster.id)
+
+    def drop_threat(monster, player_id: str) -> None:
+        monster.threat_table.pop(player_id, None)
+        holders = threatened_by.get(player_id)
+        if holders is not None:
+            holders.discard(monster.id)
+            if not holders:
+                del threatened_by[player_id]
+
     def movement_cfg(template_id: str) -> dict:
         return monsters_cfg.get(template_id, {}).get("movement", {})
 
@@ -103,11 +123,13 @@ def register(
         The target's live tile is fed to pathfinding every cycle rather than a
         path being cached, so the monster re-routes as the player moves.
         """
-        target = floor.players.get(monster.threat_target)
+        target_id = monster.threat_target
+        target = floor.players.get(target_id)
         if target is None or not target.alive:
-            # Target left the floor or died -- drop threat and resume wandering
-            # on the next cycle rather than freezing in place.
-            monster.threat_target = None
+            # Target left the floor or died -- drop just that entry and resume
+            # wandering (or fall through to the next-highest threat on the
+            # following cycle) rather than freezing in place.
+            drop_threat(monster, target_id)
             return []
 
         # In range: ask for a strike. This module decides *when* an attack is
@@ -163,19 +185,24 @@ def register(
         """
         if attacker_id is None:
             return
-        if getattr(entity, "threat_target", "missing") == "missing":
+        if getattr(entity, "threat_table", None) is None:
             return
-        entity.threat_target = attacker_id
+        add_threat(entity, attacker_id)
 
     def handle_clear_threat(payload: dict, eng: TickEngine) -> list[dict]:
         """Forget a player entirely -- they died, or otherwise stopped being a
         valid target. Asked for by the respawn system, which knows nothing
         about how threat is stored; this module knows nothing about why.
+
+        Costs one dict lookup plus one deletion per monster that actually held
+        the player, rather than a pass over every monster on the floor.
         """
         player_id = payload.get("player_id")
-        for monster in floor.monsters.values():
-            if monster.threat_target == player_id:
-                monster.threat_target = None
+        for monster_id in list(threatened_by.get(player_id, ())):
+            monster = floor.monsters.get(monster_id)
+            if monster is not None:
+                monster.threat_table.pop(player_id, None)
+        threatened_by.pop(player_id, None)
         return []
 
     engine.register_action_handler(THINK_ACTION, handle_think)

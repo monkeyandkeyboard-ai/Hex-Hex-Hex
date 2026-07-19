@@ -7,7 +7,11 @@
   "defense_soft_cap_factor": 500,
   "damage_type_weighting": {
     "physical": 1.0,
-    "arcana": 0.5,
-    "elemental": 0.75
-  }
+    "magical": 0.5,
+    "fire": 0.75,
+    "ice": 0.75,
+    "electric": 0.75
+  },
+  "arcana_scaled_damage_types": ["magical", "fire", "ice", "electric"],
+  "default_damage_type": "physical"
 }

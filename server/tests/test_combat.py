@@ -85,7 +85,7 @@ def test_arcana_damage_uses_potency_not_strength(store, monkeypatch):
 
     force_rolls(monkeypatch, 0.99, 0.0)
 
-    result = resolve_attack(attacker, target, 10.0, "arcana", c)
+    result = resolve_attack(attacker, target, 10.0, "magical", c)
     a_potency = 1 + (40 ** 1.1) / c["constant_divisor"]
     expected_base = 10.0 * a_potency
     assert result["damage"] == pytest.approx(expected_base)
@@ -109,3 +109,56 @@ def test_config_constants_match_real_values(store):
     assert c["constant_c"] == 10
     assert c["constant_divisor"] == 1
     assert c["defense_soft_cap_factor"] == 500
+
+
+def test_elemental_types_share_the_configured_weighting(store):
+    """fire/ice/electric are config entries, not special-cased names."""
+    weighting = store.combat_constants["damage_type_weighting"]
+    assert weighting["physical"] == 1.0
+    assert weighting["magical"] == 0.5
+    assert weighting["fire"] == weighting["ice"] == weighting["electric"] == 0.75
+
+
+@pytest.mark.parametrize("damage_type", ["magical", "fire", "ice", "electric"])
+def test_weight_is_coefficient_on_mitigation_before_soft_cap(store, monkeypatch, damage_type):
+    """pct = (con * weight) / (con * weight + cap), not weight applied after."""
+    c = store.combat_constants
+    con = 400
+    attacker = make_player(precision=1000, strength=0, arcana=0)
+    target = make_player(dexterity=0, constitution=con)
+    force_rolls(monkeypatch, 0.99, 0.0)
+
+    result = resolve_attack(attacker, target, 100.0, damage_type, c)
+
+    weight = c["damage_type_weighting"][damage_type]
+    effective = con * weight
+    pct = effective / (effective + c["defense_soft_cap_factor"])
+    # arcana=0 and strength=0 make both scaling multipliers 1.0, isolating mitigation
+    assert result["damage"] == pytest.approx(100.0 * (1 - pct))
+
+
+def test_unknown_damage_type_falls_back_to_default_not_unmitigated(store, monkeypatch):
+    """A flavour word like the "Unarmed" in weapons/fists.json must not slip
+    through a dict miss and collect the 1.0 weighting by accident."""
+    c = store.combat_constants
+    con = 400
+    target_a = make_player(dexterity=0, constitution=con)
+    target_b = make_player(dexterity=0, constitution=con)
+    attacker = make_player(precision=1000, strength=0, arcana=0)
+
+    force_rolls(monkeypatch, 0.99, 0.0)
+    unknown = resolve_attack(attacker, target_a, 100.0, "Unarmed", c)
+    force_rolls(monkeypatch, 0.99, 0.0)
+    physical = resolve_attack(attacker, target_b, 100.0, "physical", c)
+
+    assert unknown["damage"] == pytest.approx(physical["damage"])
+
+
+def test_damage_type_is_case_insensitive(store, monkeypatch):
+    c = store.combat_constants
+    a = make_player(precision=1000, strength=0, arcana=0)
+    force_rolls(monkeypatch, 0.99, 0.0)
+    hot = resolve_attack(a, make_player(dexterity=0, constitution=400), 100.0, "FIRE", c)
+    force_rolls(monkeypatch, 0.99, 0.0)
+    cold = resolve_attack(a, make_player(dexterity=0, constitution=400), 100.0, "fire", c)
+    assert hot["damage"] == pytest.approx(cold["damage"])

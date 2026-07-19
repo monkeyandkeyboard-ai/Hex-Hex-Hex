@@ -9,6 +9,7 @@ import ast
 import pathlib
 import random
 
+from gep.actions import CLEAR_THREAT
 from gep.config_loader import ConfigStore
 from gep.entities import Player, Skills, roll_monster
 from gep.floorgen import generate_floor
@@ -224,3 +225,81 @@ def test_behaviour_never_reaches_into_combat():
     for damage_concept in ("damage_min", "damage_max", "roll_damage", "hp"):
         assert damage_concept not in attributes, \
             f"behaviour touches {damage_concept}: damage belongs to combat"
+
+
+def test_threat_table_accumulates_per_attacker():
+    """Threat is a table now, not a single slot: two attackers both register,
+    and the one with more accumulated threat is the one hunted."""
+    floor = make_floor()
+    monster = add_monster(floor)
+    notify = monster_ai.register(TickEngine(), floor, ALWAYS, rng=random.Random(1))
+
+    notify(monster, "p1")
+    notify(monster, "p2")
+    notify(monster, "p2")
+
+    assert monster.threat_table == {"p1": 1.0, "p2": 2.0}
+    assert monster.threat_target == "p2"
+
+
+def test_defeat_removes_only_the_dead_player_leaving_other_aggro_intact():
+    """The regression the old floor-wide sweep could not express: one player
+    dying must not wipe the monster's threat on everyone else."""
+    floor = make_floor()
+    monster = add_monster(floor)
+    engine = TickEngine()
+    notify = monster_ai.register(engine, floor, ALWAYS, rng=random.Random(1))
+
+    add_player(floor, tile=(0, 5), pid="p1")
+    add_player(floor, tile=(0, 6), pid="p2")
+    notify(monster, "p1")
+    notify(monster, "p2")
+    notify(monster, "p2")
+
+    engine.schedule(0, CLEAR_THREAT, {"player_id": "p2"})
+    run(engine, 1)
+
+    assert "p2" not in monster.threat_table
+    assert monster.threat_target == "p1", "surviving attacker lost aggro"
+
+
+def test_clear_threat_does_not_scan_monsters_that_never_held_the_player():
+    """O(1): the handler touches only monsters in the reverse index, so its
+    cost tracks the number of actual holders, not the floor's population."""
+    floor = make_floor()
+    engine = TickEngine()
+    notify = monster_ai.register(engine, floor, ALWAYS, rng=random.Random(1))
+
+    holder = add_monster(floor, tile=(0, 0), mid="holder")
+    bystanders = [add_monster(floor, tile=(0, i), mid=f"m{i}") for i in range(1, 40)]
+    add_player(floor, tile=(0, 5), pid="p1")
+    notify(holder, "p1")
+
+    visited = []
+
+    class CountingDict(dict):
+        def get(self, key, *default):
+            visited.append(key)
+            return super().get(key, *default)
+
+    floor.monsters = CountingDict(floor.monsters)
+    engine.schedule(0, CLEAR_THREAT, {"player_id": "p1"})
+    run(engine, 1)
+
+    assert visited == ["holder"], f"swept extra monsters: {visited}"
+    assert holder.threat_table == {}
+    assert all(b.threat_table == {} for b in bystanders)
+
+
+def test_clearing_an_unknown_player_is_a_noop():
+    floor = make_floor()
+    monster = add_monster(floor)
+    engine = TickEngine()
+    notify = monster_ai.register(engine, floor, ALWAYS, rng=random.Random(1))
+    add_player(floor, tile=(0, 5), pid="p1")
+    notify(monster, "p1")
+
+    engine.schedule(0, CLEAR_THREAT, {"player_id": "ghost"})
+    run(engine, 1)
+
+    assert monster.threat_target == "p1"

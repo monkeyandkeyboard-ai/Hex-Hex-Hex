@@ -20,7 +20,7 @@ second, faster rate.
 """
 import random
 
-from gep.combat import resolve_attack
+from gep.combat import normalize_damage_type, resolve_attack
 from gep.floor_state import FloorState
 from gep.actions import MONSTER_STRIKE, PLAYER_DEFEATED
 from gep.hexgrid import facing_toward
@@ -98,9 +98,7 @@ def register(
         events = face_target(player, monster)
 
         weapon_damage = weapon["damage_min"] + random.random() * (weapon["damage_max"] - weapon["damage_min"])
-        damage_type = weapon.get("type", "physical").lower()
-        if damage_type not in ("physical", "arcana", "elemental"):
-            damage_type = "physical"
+        damage_type = normalize_damage_type(weapon.get("type"), combat_constants)
 
         result = resolve_attack(player, monster, weapon_damage, damage_type, combat_constants)
         events.append(result)
@@ -221,9 +219,8 @@ def register(
             return []   # still on cooldown -- silently drop the request
 
         template = monsters_cfg.get(monster.template_id, {})
-        damage_type = template.get("combat", {}).get("damage_type", "physical").lower()
-        if damage_type not in ("physical", "arcana", "elemental"):
-            damage_type = "physical"
+        damage_type = normalize_damage_type(
+            template.get("combat", {}).get("damage_type"), combat_constants)
 
         # Attacker first, target second: the monster is swinging at the player.
         result = resolve_attack(monster, player, monster.roll_damage(), damage_type,

@@ -11,6 +11,24 @@ monster's damage_min..damage_max range before this call).
 import random
 
 
+def normalize_damage_type(damage_type: str | None, constants: dict) -> str:
+    """Fold an arbitrary config-supplied type name onto a known one.
+
+    The set of valid types is whatever `damage_type_weighting` declares, so
+    adding a type is a config edit alone. Anything unrecognised (a typo, or a
+    weapon whose `type` field is a flavour word like "Unarmed") falls back to
+    `default_damage_type` rather than silently picking up a 1.0 weighting from
+    a dict miss -- an unknown type should be visibly the default, not
+    accidentally the least-mitigated one.
+    """
+    weighting = constants["damage_type_weighting"]
+    default = constants.get("default_damage_type", "physical")
+    if damage_type is None:
+        return default
+    key = str(damage_type).lower()
+    return key if key in weighting else default
+
+
 def resolve_attack(attacker, target, weapon_damage: float, damage_type: str, constants: dict) -> dict:
     dex_t = target.combat_stat("dexterity")
     prec_a = attacker.combat_stat("precision")
@@ -38,12 +56,20 @@ def resolve_attack(attacker, target, weapon_damage: float, damage_type: str, con
     if random.random() >= a_hit_chance:
         return {"type": "combat_result", "result": "miss", "attacker": attacker.id, "target": target.id}
 
-    # Step 4: base damage (weapon_damage already rolled by caller)
-    type_multiplier = a_potency if damage_type == "arcana" else a_damage_multiplier
+    # Step 4: base damage (weapon_damage already rolled by caller).
+    # Which types scale off Arcana rather than Strength is config, not a
+    # hardcoded name check -- a new elemental type joins the magic scaling by
+    # being listed, without touching this line.
+    damage_type = normalize_damage_type(damage_type, constants)
+    arcana_scaled = constants.get("arcana_scaled_damage_types", [])
+    type_multiplier = a_potency if damage_type in arcana_scaled else a_damage_multiplier
     base_damage = weapon_damage * type_multiplier
 
-    # Step 5: mitigation
-    weighting = constants["damage_type_weighting"].get(damage_type, 1.0)
+    # Step 5: mitigation. The type weight is the coefficient on effective
+    # mitigation *before* the soft-cap divisor, so a 0.5-weight type meets
+    # half the defence a physical hit does:
+    #     pct = (con * weight) / (con * weight + soft_cap_factor)
+    weighting = constants["damage_type_weighting"][damage_type]
     effective_mitigation = t_raw_mitigation * weighting
     mitigation_pct = effective_mitigation / (effective_mitigation + constants["defense_soft_cap_factor"])
 
