@@ -6,6 +6,25 @@ max(|x|, |y|, |z|) <= radius (compendium §4.1, tile count = 3*r^2 + 3*r + 1).
 """
 
 
+# Facing names shared with the client's spritesheet column order. Derived from
+# the client's hexToPixel: +q moves right-and-down the screen, +r moves
+# straight down. Keep in sync with FACINGS in client/src/renderer.js.
+FACING_BY_DELTA = {
+    (0, 1): "down",
+    (1, 0): "right-down",
+    (1, -1): "right-up",
+    (0, -1): "up",
+    (-1, 0): "left-up",
+    (-1, 1): "left-down",
+}
+
+
+def facing_from_delta(origin: tuple[int, int], target: tuple[int, int]) -> str | None:
+    """Facing for a step between adjacent tiles, or None if not neighbours."""
+    delta = (target[0] - origin[0], target[1] - origin[1])
+    return FACING_BY_DELTA.get(delta)
+
+
 def tile_count(radius: int) -> int:
     return 3 * radius * radius + 3 * radius + 1
 

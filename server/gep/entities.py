@@ -121,6 +121,9 @@ class Monster:
     # Placeholder-sprite render modifiers bound from the static template
     # (config_loader guarantees a complete block).
     visual: dict = field(default_factory=dict)
+    # Which spritesheet row/column the client should draw. Monsters are
+    # stationary today, so this stays "down" until an AI system turns them.
+    facing: str = "down"
     weapon_ready_tick: int = 0
     alive: bool = True
 

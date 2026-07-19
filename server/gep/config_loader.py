@@ -95,6 +95,28 @@ MONSTER_VISUAL_DEFAULTS: dict = {
 }
 
 
+MONSTER_MOVEMENT_DEFAULTS: dict = {
+    "wander_interval_ticks": 6,   # ticks between wander attempts
+    "wander_chance": 0.5,         # probability of stepping on each attempt
+}
+
+
+def _normalize_monster_movement(monsters: dict[str, dict]) -> None:
+    """Same contract as visuals: fill omitted keys, reject nonsense early."""
+    for monster_id, data in monsters.items():
+        move = {**MONSTER_MOVEMENT_DEFAULTS, **data.get("movement", {})}
+        unknown = move.keys() - MONSTER_MOVEMENT_DEFAULTS.keys()
+        if unknown:
+            raise ConfigError(f"monster {monster_id}: unknown movement keys {sorted(unknown)}")
+        if not isinstance(move["wander_interval_ticks"], int) or move["wander_interval_ticks"] < 1:
+            raise ConfigError(
+                f"monster {monster_id}: 'wander_interval_ticks' must be an integer >= 1"
+            )
+        if not 0 <= move["wander_chance"] <= 1:
+            raise ConfigError(f"monster {monster_id}: 'wander_chance' must be within 0..1")
+        data["movement"] = move
+
+
 def _normalize_monster_visuals(monsters: dict[str, dict]) -> None:
     """Fill in any omitted visual keys so every template serializes a complete
     block. Content uses one placeholder sprite; only these modifiers vary.
@@ -148,6 +170,7 @@ class ConfigStore:
         self.monsters = _load_dir(root / "monsters", _MONSTER_REQUIRED)
         _validate_monster_stats(self.monsters)
         _normalize_monster_visuals(self.monsters)
+        _normalize_monster_movement(self.monsters)
 
         self.resources = _load_dir(root / "resources", _RESOURCE_REQUIRED)
         self.weapons = _load_dir(root / "weapons", _WEAPON_REQUIRED)

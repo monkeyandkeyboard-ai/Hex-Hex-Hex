@@ -2,6 +2,7 @@
 // No game logic here -- only state mutation and DOM updates.
 
 import { state } from "./state.js";
+import { resetMotion } from "./motion.js";
 
 const MAX_LOG = 80;
 let logEl;
@@ -78,6 +79,10 @@ export function applySnapshot(msg) {
     state.resourceNodes.set(key, rid);
   }
 
+  // A snapshot is a fresh floor (or a resync): nothing should glide in from
+  // wherever it happened to be standing on the previous one.
+  resetMotion();
+
   state.monsters.clear();
   for (const [mid, m] of Object.entries(msg.monsters || {})) {
     state.monsters.set(mid, { ...m, tile: m.tile });
@@ -131,6 +136,11 @@ function applyEvent(ev) {
       }
       break;
     }
+    case "monster_moved": {
+      const m = state.monsters.get(ev.monster_id);
+      if (m) { m.tile = ev.tile; m.facing = ev.facing; }
+      break;
+    }
     case "monster_died": {
       const m = state.monsters.get(ev.monster_id);
       if (m) m.alive = false;
@@ -144,6 +154,7 @@ function applyEvent(ev) {
         tile: ev.tile,
         hp: 1, max_hp: 1, alive: true,
         visual: ev.visual,
+        facing: ev.facing,
       });
       break;
     }

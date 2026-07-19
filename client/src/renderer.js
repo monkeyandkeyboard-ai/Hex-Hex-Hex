@@ -2,6 +2,7 @@
 // Hex layout: flat-top pointy-top axial. Size = pixel radius of a tile.
 
 import { state } from "./state.js";
+import { beginFrame, endFrame, resolve as resolveMotion } from "./motion.js";
 
 const COLORS = {
   bg:           "#0d0d0f",
@@ -28,8 +29,17 @@ let hoveredTile = null;
 export function initRenderer(canvasEl) {
   canvas = canvasEl;
   ctx = canvas.getContext("2d");
-  resize();
-  window.addEventListener("resize", resize);
+  syncCanvasSize();
+  // ResizeObserver, not just window.onresize: the canvas box also changes
+  // from layout (sidebar width, pane reflow, an embedding iframe resizing)
+  // with no window resize event. When the backing store drifts from the CSS
+  // box the browser stretches the drawing while pointer coords stay in CSS
+  // pixels, so the hover highlight slides off the cursor.
+  if (typeof ResizeObserver !== "undefined") {
+    new ResizeObserver(syncCanvasSize).observe(canvas);
+  } else {
+    window.addEventListener("resize", syncCanvasSize);
+  }
   canvas.addEventListener("mousemove", onMouseMove);
   canvas.addEventListener("mouseleave", () => { hoveredTile = null; });
   canvas.addEventListener("wheel", onWheel, { passive: false });
@@ -56,10 +66,22 @@ function onWheel(e) {
   state.zoom = newZoom;
 }
 
-function resize() {
-  canvas.width  = canvas.clientWidth  * devicePixelRatio;
-  canvas.height = canvas.clientHeight * devicePixelRatio;
-  ctx.scale(devicePixelRatio, devicePixelRatio);
+// Point the backing store at the current CSS box. Cheap to call every frame:
+// it only touches the canvas when the size actually drifted, and resizing a
+// canvas clears it. setTransform (not scale) because assigning width/height
+// resets the transform, and scale() would compound on the calls where the
+// size was unchanged.
+function syncCanvasSize() {
+  if (!canvas) return;
+  const dpr = devicePixelRatio;
+  const w = Math.round(canvas.clientWidth * dpr);
+  const h = Math.round(canvas.clientHeight * dpr);
+  if (w === 0 || h === 0) return;  // laid out to zero (hidden tab) -- skip
+  if (canvas.width !== w || canvas.height !== h) {
+    canvas.width = w;
+    canvas.height = h;
+  }
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
 
 // Axial -> pixel (flat-top)
@@ -149,39 +171,87 @@ function drawDot(q, r, color, size = 5) {
 }
 
 // --- Placeholder sprite pipeline -----------------------------------------
-// Every monster draws the same placeholder glyph; all visual identity comes
-// from the server-sent `visual` block (config-authored, never client-guessed).
+// Every monster draws the same placeholder spritesheet; all visual identity
+// comes from the server-sent `visual` block (config-authored, never
+// client-guessed). The `sprite` id is resolved here rather than the server
+// sending a URL, so asset paths stay a client concern.
 
-const PLACEHOLDER_SPRITE = "💀";
+const SPRITE_SHEETS = {
+  monster_placeholder: "/art/monsters/Orc%20Captain.png",
+};
+
+// Frame column order in the sheet, left to right.
+const FACINGS = ["down", "right-down", "right-up", "up", "left-up", "left-down"];
+const FRAME_SIZE = 160;
+
+// Axial neighbour delta -> facing, for whenever monsters start moving.
+// Derived from hexToPixel: +q is right-down, +r is straight down.
+export const FACING_BY_DELTA = {
+  "0,1": "down",    "1,0": "right-down",  "1,-1": "right-up",
+  "0,-1": "up",     "-1,0": "left-up",    "-1,1": "left-down",
+};
 
 const VISUAL_FALLBACK = {
   hue_rotate: 0, saturate: 1, brightness: 1, scale: 1, tint: COLORS.monster,
 };
 
-function drawMonsterSprite(q, r, visual) {
+// id -> {img, loaded}. Sheets load once; until a sheet is ready the monster
+// falls back to a dot so tiles never render empty.
+const spriteCache = new Map();
+
+function getSheet(spriteId) {
+  let entry = spriteCache.get(spriteId);
+  if (entry === undefined) {
+    const url = SPRITE_SHEETS[spriteId];
+    if (!url) return null;
+    entry = { img: new Image(), loaded: false };
+    entry.img.onload = () => { entry.loaded = true; };
+    entry.img.src = url;
+    spriteCache.set(spriteId, entry);
+  }
+  return entry;
+}
+
+function drawMonsterSprite(q, r, visual, facing) {
   const v = visual || VISUAL_FALLBACK;
   const hue = v.hue_rotate ?? 0;
   const sat = v.saturate ?? 1;
   const bri = v.brightness ?? 1;
   const scale = v.scale ?? 1;
 
+  const sheet = getSheet(v.sprite || "monster_placeholder");
+  if (!sheet || !sheet.loaded) {
+    drawDot(q, r, COLORS.monsterDot, 4);
+    return;
+  }
+
+  let col = FACINGS.indexOf(facing);
+  if (col < 0) col = 0;  // unknown/absent facing -> front-facing frame
+
   const [cx, cy] = hexToPixel(q, r);
+  // Draw a bit wider than the hex so the figure reads at small tile sizes.
+  const size = tileSize * 2.2 * scale;
 
   ctx.save();
-  // Scale about the tile centre so the sprite grows/shrinks in place rather
-  // than drifting toward the canvas origin.
+  // Translate to the tile centre first so scaling happens in place rather
+  // than dragging the sprite toward the canvas origin.
   ctx.translate(cx, cy);
-  ctx.scale(scale, scale);
   ctx.filter = `hue-rotate(${hue}deg) saturate(${sat}) brightness(${bri})`;
-  ctx.font = `${tileSize * 1.1}px serif`;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText(PLACEHOLDER_SPRITE, 0, 0);
+  ctx.imageSmoothingEnabled = false;  // keep the pixel art crisp
+  // Anchored so the figure's feet sit near the tile centre rather than the
+  // sprite being centred on it -- otherwise tall sprites read as floating.
+  ctx.drawImage(
+    sheet.img,
+    col * FRAME_SIZE, 0, FRAME_SIZE, FRAME_SIZE,
+    -size / 2, -size * 0.72, size, size,
+  );
   ctx.restore();
 }
 
 export function render() {
   if (!canvas) return;
+  // Guard against any resize the observer hasn't delivered yet this frame.
+  syncCanvasSize();
   const w = canvas.clientWidth, h = canvas.clientHeight;
   ctx.fillStyle = COLORS.bg;
   ctx.fillRect(0, 0, w, h);
@@ -193,6 +263,10 @@ export function render() {
     ctx.fillText("Connecting…", w / 2, h / 2);
     return;
   }
+
+  // Advance every entity's glide by this frame's delta before anything reads
+  // a position; endFrame() at the bottom retires entities that went away.
+  beginFrame();
 
   // Base tile size fits the floor to the viewport; zoom scales it
   const baseSize = Math.max(8, Math.min(28, Math.floor(Math.min(w, h) / (state.radius * 2.4))));
@@ -260,21 +334,32 @@ export function render() {
     drawDot(q, rv, COLORS.resourceDot, 3);
   }
 
-  // Monsters — skull icon on a dark red tile
-  for (const [, m] of state.monsters) {
+  // Monsters — placeholder sprite on a tinted tile.
+  // The tinted hex marks the tile the monster logically occupies, so it stays
+  // on the grid; only the sprite glides between centres.
+  // Sprites are taller than a hex, so paint back-to-front by screen Y:
+  // in Map order a far monster could otherwise overlap a nearer one. Tiles
+  // are laid down in a first pass so no sprite is clipped by a later tile.
+  const drawnMonsters = [];
+  for (const [mid, m] of state.monsters) {
     if (!m.alive) continue;
     const [q, rv] = m.tile;
-    const visual = m.visual;
-    drawTile(q, rv, (visual && visual.tint) || COLORS.monster, "#5a2020");
-    drawMonsterSprite(q, rv, visual);
+    drawTile(q, rv, (m.visual && m.visual.tint) || COLORS.monster, "#5a2020");
+    drawnMonsters.push(resolveMotion(`m:${mid}`, m.tile, m.facing));
+    drawnMonsters[drawnMonsters.length - 1].visual = m.visual;
+  }
+  drawnMonsters.sort((a, b) => hexToPixel(a.q, a.r)[1] - hexToPixel(b.q, b.r)[1]);
+  for (const m of drawnMonsters) {
+    drawMonsterSprite(m.q, m.r, m.visual, m.facing);
   }
 
-  // Other players
+  // Other players — tile marks the occupied hex, dot glides between centres
   for (const [pid, p] of state.players) {
     if (pid === state.playerId) continue;
     const [q, rv] = p.tile;
     drawTile(q, rv, COLORS.otherPlayer, "#20205a");
-    drawDot(q, rv, COLORS.otherDot, 4);
+    const at = resolveMotion(`p:${pid}`, p.tile, p.facing);
+    drawDot(at.q, at.r, COLORS.otherDot, 4);
   }
 
   // Self
@@ -282,7 +367,8 @@ export function render() {
   if (self) {
     const [q, rv] = self.tile;
     drawTile(q, rv, COLORS.selfPlayer, "#205a20");
-    drawDot(q, rv, COLORS.selfDot, 5);
+    const at = resolveMotion(`p:${state.playerId}`, self.tile, self.facing);
+    drawDot(at.q, at.r, COLORS.selfDot, 5);
   }
 
   // Exit labels
@@ -300,6 +386,8 @@ export function render() {
     ctx.textAlign = "center";
     ctx.fillText("▼", cx, cy + 4);
   }
+
+  endFrame();
 }
 
 function onMouseMove(e) {

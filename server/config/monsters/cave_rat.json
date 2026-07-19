@@ -25,6 +25,10 @@
     "scale": 0.8,
     "tint": "#3a2418"
   },
+  "movement": {
+    "wander_interval_ticks": 3,
+    "wander_chance": 0.75
+  },
   "respawn_ticks": 30,
   "xp_reward": { "combat_base": 12 },
   "loot_table": [["nothing", 8], ["copper_ore", 1]]

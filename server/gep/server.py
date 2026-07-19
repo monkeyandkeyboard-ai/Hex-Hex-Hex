@@ -29,7 +29,7 @@ from gep.floor_state import FloorState
 from gep.floor_manager import FloorManager
 from gep.stats import compute_max_hp, compute_max_mana
 from gep.systems import combat_system, floor_exits, gathering, movement
-from gep.systems import inventory_system
+from gep.systems import inventory_system, monster_ai
 from gep.tick import TickEngine
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -100,6 +100,7 @@ def build_floor_state(floor_number: int, cfg: ConfigStore, on_change_floor) -> t
         xp_table=cfg.xp_table,
         stat_scaling=cfg.stat_scaling,
     )
+    monster_ai.register(engine, floor, monsters_cfg=cfg.monsters)
     floor_exits.register(engine, floor, on_change_floor)
     inventory_system.register(engine, floor, cfg.weapons)
 
@@ -142,6 +143,7 @@ def floor_snapshot(floor: FloorState, tick: int, tick_duration: float, xp_table:
                 "max_hp": m.max_hp,
                 "alive": m.alive,
                 "visual": m.visual,
+                "facing": m.facing,
             }
             for mid, m in floor.monsters.items()
         },

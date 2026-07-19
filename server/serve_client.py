@@ -5,14 +5,37 @@ Runs alongside the GEP WebSocket server so the whole game is one
 import http.server
 import pathlib
 import threading
+import urllib.parse
 
-CLIENT_DIR = pathlib.Path(__file__).resolve().parent.parent / "client"
+ROOT_DIR = pathlib.Path(__file__).resolve().parent.parent
+CLIENT_DIR = ROOT_DIR / "client"
+ART_DIR = ROOT_DIR / "ART"
 HTTP_PORT = 8080
 
 
 class Handler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(CLIENT_DIR), **kwargs)
+
+    def translate_path(self, path):
+        """Serve /art/* out of ART/ so source art stays in one place instead
+        of being duplicated into client/. Everything else falls through to
+        the normal client/ root.
+        """
+        parsed = urllib.parse.urlsplit(path).path
+        if parsed == "/art" or parsed.startswith("/art/"):
+            rel = parsed[len("/art"):]
+            # Reuse the base implementation's traversal-safe normalisation by
+            # resolving against ART_DIR and confirming we stayed inside it.
+            target = pathlib.Path(
+                super().translate_path("/" + rel.lstrip("/"))
+            )
+            try:
+                inside = target.relative_to(CLIENT_DIR)
+            except ValueError:
+                return super().translate_path(path)
+            return str(ART_DIR / inside)
+        return super().translate_path(path)
 
     def log_message(self, fmt, *args):
         pass  # suppress per-request noise
