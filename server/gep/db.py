@@ -61,6 +61,12 @@ def _migrate(c: sqlite3.Connection) -> None:
     for col, default in [("inventory", "'{}'"), ("equipment", "'{}'")]:
         if col not in existing:
             c.execute(f"ALTER TABLE players ADD COLUMN {col} TEXT NOT NULL DEFAULT {default}")
+    # Vitality is nullable on purpose: NULL means "no saved value", which is
+    # how a pre-existing row (or a brand new character) asks to start at full
+    # health rather than at some number chosen by a migration default.
+    for col in ("hp", "mana"):
+        if col not in existing:
+            c.execute(f"ALTER TABLE players ADD COLUMN {col} REAL")
 
 
 # ---------------------------------------------------------------------------
@@ -158,7 +164,7 @@ def load_player(player_id: str) -> dict | None:
     with _conn() as c:
         row = c.execute(
             "SELECT name, combat_xp, non_combat_xp, combat_levels, non_combat_levels, "
-            "inventory, equipment FROM players WHERE id = ?",
+            "inventory, equipment, hp, mana FROM players WHERE id = ?",
             (player_id,),
         ).fetchone()
     if row is None:
@@ -171,6 +177,9 @@ def load_player(player_id: str) -> dict | None:
         "non_combat_levels": json.loads(row[4]),
         "inventory": json.loads(row[5]),
         "equipment": json.loads(row[6]),
+        # None when the character predates vitality persistence, or is new.
+        "hp": row[7],
+        "mana": row[8],
     }
 
 
@@ -181,8 +190,8 @@ def save_player(player) -> None:
         c.execute(
             """INSERT INTO players
                    (id, name, combat_xp, non_combat_xp, combat_levels,
-                    non_combat_levels, inventory, equipment)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    non_combat_levels, inventory, equipment, hp, mana)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                ON CONFLICT(id) DO UPDATE SET
                    name              = excluded.name,
                    combat_xp         = excluded.combat_xp,
@@ -190,7 +199,9 @@ def save_player(player) -> None:
                    combat_levels     = excluded.combat_levels,
                    non_combat_levels = excluded.non_combat_levels,
                    inventory         = excluded.inventory,
-                   equipment         = excluded.equipment""",
+                   equipment         = excluded.equipment,
+                   hp                = excluded.hp,
+                   mana              = excluded.mana""",
             (
                 player.id,
                 player.name,
@@ -200,5 +211,7 @@ def save_player(player) -> None:
                 json.dumps(player.skills.non_combat),
                 json.dumps(inv),
                 json.dumps(equip),
+                player.hp,
+                player.mana,
             ),
         )

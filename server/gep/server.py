@@ -44,6 +44,77 @@ PORT = 8765
 TICK_HZ = 1.0
 
 
+def build_player(player_id: str, username: str, saved: dict | None, cfg) -> Player:
+    """Construct the live player for a session from their saved record.
+
+    Vitality is restored, not reset: a character who logged out injured logs
+    back in injured. Max HP/mana are derived from the *loaded* skill levels,
+    so constitution actually raises the ceiling -- previously they were
+    computed from a hardcoded level 1 before the save was read, which meant
+    levelling constitution never raised max HP at all.
+    """
+    ss = cfg.stat_scaling
+
+    skills = Skills()
+    skills.non_combat = {s: 1 for s in cfg.skills["non_combat_skills"]}
+    skills.non_combat_xp = {s: 0.0 for s in cfg.skills["non_combat_skills"]}
+
+    equipment = Equipment()
+    inventory: dict[int, dict | None] = {}
+
+    if saved:
+        skills.combat = {**skills.combat, **saved["combat_levels"]}
+        skills.combat_xp = {**skills.combat_xp, **saved["combat_xp"]}
+        skills.non_combat = {**skills.non_combat, **saved["non_combat_levels"]}
+        skills.non_combat_xp = {**skills.non_combat_xp, **saved["non_combat_xp"]}
+        equipment = Equipment.from_dict(saved["equipment"])
+        inventory = {int(k): v for k, v in saved["inventory"].items()}
+
+    max_hp = compute_max_hp(skills.combat.get("constitution", 1), ss)
+    max_mana = compute_max_mana(skills.combat.get("mana_attunement", 1), ss)
+
+    hp = _restore_vitality(saved.get("hp") if saved else None, max_hp, player_id, "hp")
+    mana = _restore_vitality(saved.get("mana") if saved else None, max_mana, player_id, "mana")
+
+    return Player(
+        id=player_id,
+        name=username,
+        tower_id="tower-a",
+        floor_number=1,
+        tile=(0, 0),
+        hp=hp,
+        max_hp=max_hp,
+        mana=mana,
+        max_mana=max_mana,
+        weapon_id=equipment.main_hand or "fists",
+        skills=skills,
+        equipment=equipment,
+        inventory=inventory,
+    )
+
+
+def _restore_vitality(saved_value, maximum: float, player_id: str, what: str) -> float:
+    """Saved current-value -> the value to start the session at.
+
+    None means no saved value (new character, or one predating vitality
+    persistence): start full. Otherwise clamp into range, because the ceiling
+    can move between sessions -- a constitution level-up raises max HP, and a
+    balance change to stat_scaling.json can lower it.
+
+    A non-positive saved value would strand the character dead on arrival:
+    nothing damages players yet and there is no respawn flow (compendium §14
+    leaves it [OPEN]), so they would be unrecoverable. Restore to full and say
+    so, rather than inventing death-on-login semantics here.
+    """
+    if saved_value is None:
+        return maximum
+    if saved_value <= 0:
+        log.warning("player %s loaded with %s=%s; restoring to full pending "
+                    "death/respawn rules (compendium 14)", player_id, what, saved_value)
+        return maximum
+    return min(float(saved_value), maximum)
+
+
 def save_players(players) -> int:
     """Persist each player, returning how many writes succeeded.
 
@@ -279,41 +350,8 @@ async def run_server():
             return
         player_id, username = auth
 
-        ss = cfg.stat_scaling
         saved = db.load_player(player_id)
-        max_hp = compute_max_hp(1, ss)
-        max_mana = compute_max_mana(1, ss)
-
-        skills = Skills()
-        skills.non_combat = {s: 1 for s in cfg.skills["non_combat_skills"]}
-        skills.non_combat_xp = {s: 0.0 for s in cfg.skills["non_combat_skills"]}
-
-        equipment = Equipment()
-        inventory: dict[int, dict | None] = {}
-
-        if saved:
-            skills.combat = {**skills.combat, **saved["combat_levels"]}
-            skills.combat_xp = {**skills.combat_xp, **saved["combat_xp"]}
-            skills.non_combat = {**skills.non_combat, **saved["non_combat_levels"]}
-            skills.non_combat_xp = {**skills.non_combat_xp, **saved["non_combat_xp"]}
-            equipment = Equipment.from_dict(saved["equipment"])
-            inventory = {int(k): v for k, v in saved["inventory"].items()}
-
-        player = Player(
-            id=player_id,
-            name=username,
-            tower_id="tower-a",
-            floor_number=1,
-            tile=(0, 0),
-            hp=max_hp,
-            max_hp=max_hp,
-            mana=max_mana,
-            max_mana=max_mana,
-            weapon_id=equipment.main_hand or "fists",
-            skills=skills,
-            equipment=equipment,
-            inventory=inventory,
-        )
+        player = build_player(player_id, username, saved, cfg)
 
         floor = manager.add_player(player, 1)
         engine = floors[1][1]

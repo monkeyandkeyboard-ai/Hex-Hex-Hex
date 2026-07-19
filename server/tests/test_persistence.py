@@ -3,11 +3,21 @@
 The save/load path had no tests, which is uncomfortable for the one piece of
 code whose failure silently destroys player progress rather than throwing.
 """
+import pathlib
+
 import pytest
 
 from gep import db
+from gep.config_loader import ConfigStore
 from gep.entities import Player, Skills
-from gep.server import save_players
+from gep.server import build_player, save_players
+
+CONFIG_DIR = pathlib.Path(__file__).resolve().parents[1] / "config"
+
+
+@pytest.fixture
+def cfg():
+    return ConfigStore(CONFIG_DIR)
 
 
 @pytest.fixture
@@ -102,3 +112,96 @@ def test_one_bad_save_does_not_abandon_the_others(temp_db):
     assert temp_db.load_player("good1") is not None
     assert temp_db.load_player("good2") is not None
     assert temp_db.load_player("broken") is None
+
+
+# --- Vitality persistence -------------------------------------------------
+# A character who logs out injured must log back in injured, which is the
+# stable baseline healing and regen work will be measured against.
+
+
+def test_injured_player_reloads_still_injured(temp_db, cfg):
+    player = make_player()
+    player.hp = 137.5
+    player.mana = 12.25
+    temp_db.save_player(player)
+
+    restored = build_player("p1", "Hero", temp_db.load_player("p1"), cfg)
+
+    assert restored.hp == pytest.approx(137.5)
+    assert restored.mana == pytest.approx(12.25)
+
+
+def test_new_character_starts_at_full(temp_db, cfg):
+    fresh = build_player("nobody", "Newbie", None, cfg)
+    assert fresh.hp == fresh.max_hp
+    assert fresh.mana == fresh.max_mana
+
+
+def test_character_predating_vitality_columns_starts_full(temp_db, cfg):
+    """A row saved before hp/mana existed reads back as NULL, which must mean
+    'full', not 'zero'."""
+    player = make_player()
+    temp_db.save_player(player)
+    saved = temp_db.load_player("p1")
+    saved["hp"] = saved["mana"] = None          # simulate the legacy row
+
+    restored = build_player("p1", "Hero", saved, cfg)
+    assert restored.hp == restored.max_hp
+    assert restored.mana == restored.max_mana
+
+
+def test_max_hp_follows_constitution(temp_db, cfg):
+    """Levelling constitution must actually raise the ceiling. This was
+    previously computed from a hardcoded level 1 before the save was read."""
+    weak = make_player("weak")
+    weak.skills.combat["constitution"] = 1
+    strong = make_player("strong")
+    strong.skills.combat["constitution"] = 12
+    temp_db.save_player(weak)
+    temp_db.save_player(strong)
+
+    a = build_player("weak", "A", temp_db.load_player("weak"), cfg)
+    b = build_player("strong", "B", temp_db.load_player("strong"), cfg)
+
+    assert b.max_hp > a.max_hp
+    assert b.max_hp == pytest.approx(
+        cfg.stat_scaling["hp_base"] + 12 * cfg.stat_scaling["hp_per_con"])
+
+
+def test_saved_hp_above_current_max_is_clamped(temp_db, cfg):
+    """The ceiling can move down between sessions (a stat_scaling rebalance),
+    and current HP must not be left above it."""
+    player = make_player()
+    player.hp = 999_999
+    temp_db.save_player(player)
+
+    restored = build_player("p1", "Hero", temp_db.load_player("p1"), cfg)
+    assert restored.hp == restored.max_hp
+
+
+def test_non_positive_saved_hp_restores_to_full(temp_db, cfg):
+    """Nothing damages players yet and there is no respawn flow, so loading a
+    character at 0 hp would strand them permanently."""
+    player = make_player()
+    player.hp = 0
+    temp_db.save_player(player)
+
+    restored = build_player("p1", "Hero", temp_db.load_player("p1"), cfg)
+    assert restored.hp == restored.max_hp
+
+
+def test_vitality_survives_the_full_save_load_cycle_with_xp(temp_db, cfg):
+    """The whole record moves together: an injured, experienced character."""
+    player = make_player()
+    player.skills.combat.update({"constitution": 5, "precision": 13})
+    player.skills.combat_xp.update({"precision": 3330.05})
+    player.hp = 88.0
+    temp_db.save_player(player)
+
+    restored = build_player("p1", "Hero", temp_db.load_player("p1"), cfg)
+
+    assert restored.hp == pytest.approx(88.0)
+    assert restored.max_hp == pytest.approx(
+        cfg.stat_scaling["hp_base"] + 5 * cfg.stat_scaling["hp_per_con"])
+    assert restored.skills.combat["precision"] == 13
+    assert restored.skills.combat_xp["precision"] == pytest.approx(3330.05)
