@@ -29,7 +29,7 @@ from gep.floor_state import FloorState
 from gep.floor_manager import FloorManager
 from gep.stats import compute_max_hp, compute_max_mana
 from gep.systems import combat_system, floor_exits, gathering, movement
-from gep.systems import inventory_system, monster_ai
+from gep.systems import inventory_system, monster_ai, regeneration, respawn
 from gep.tick import TickEngine
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -186,6 +186,9 @@ def build_floor_state(floor_number: int, cfg: ConfigStore, on_change_floor) -> t
     #   monster_ai -> combat  (combat reports damage, behaviour reacts)
     #   combat -> movement    (movement reports a move, combat disengages)
     # Each system is handed a function and knows nothing else about the other.
+    regeneration.register(engine, floor, cfg.stat_scaling)
+    respawn.register(engine, floor, save_player=db.save_player,
+                     on_change_floor=None)
     notify_threat = monster_ai.register(engine, floor, monsters_cfg=cfg.monsters)
     break_engagement = combat_system.register(
         engine, floor,

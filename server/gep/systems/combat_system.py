@@ -22,6 +22,7 @@ import random
 
 from gep.combat import resolve_attack
 from gep.floor_state import FloorState
+from gep.actions import MONSTER_STRIKE, PLAYER_DEFEATED
 from gep.hexgrid import facing_toward
 from gep.loot import roll_loot
 from gep.tick import TickEngine
@@ -203,6 +204,44 @@ def register(
 
         return swing(player, monster, eng)
 
+    def handle_monster_strike(payload: dict, eng: TickEngine) -> list[dict]:
+        """A monster's attack, requested by the behaviour system.
+
+        Behaviour asks for this whenever its target is in range; the pacing
+        gate lives here, so a monster cannot swing faster than its configured
+        speed no matter how often it asks.
+        """
+        monster = floor.monsters.get(payload["monster_id"])
+        player = floor.players.get(payload["player_id"])
+        if monster is None or not monster.alive:
+            return []
+        if player is None or not player.alive:
+            return []
+        if eng.tick < monster.weapon_ready_tick:
+            return []   # still on cooldown -- silently drop the request
+
+        template = monsters_cfg.get(monster.template_id, {})
+        damage_type = template.get("combat", {}).get("damage_type", "physical").lower()
+        if damage_type not in ("physical", "arcana", "elemental"):
+            damage_type = "physical"
+
+        # Attacker first, target second: the monster is swinging at the player.
+        result = resolve_attack(monster, player, monster.roll_damage(), damage_type,
+                                combat_constants)
+        events = [result]
+
+        # Cooldown applies to every outcome -- hit, miss and dodge alike.
+        monster.weapon_ready_tick = eng.tick + monster.speed_ticks
+
+        if result["result"] == "hit" and not player.alive:
+            # Defeat handling belongs to the respawn system, not here. Combat
+            # reports the death; what happens to the player is decided there.
+            eng.schedule(0, PLAYER_DEFEATED, {
+                "player_id": player.id,
+                "killer_id": monster.id,
+            })
+        return events
+
     def handle_respawn_monster(payload: dict, eng: TickEngine) -> list[dict]:
         from gep.entities import roll_monster
         monster_id = payload["monster_id"]
@@ -221,6 +260,7 @@ def register(
 
     engine.register_intent_handler("attack", handle_attack)
     engine.register_action_handler("auto-attack", handle_auto_attack)
+    engine.register_action_handler(MONSTER_STRIKE, handle_monster_strike)
     engine.register_action_handler("respawn-monster", handle_respawn_monster)
 
     def break_engagement(player) -> list[dict]:

@@ -6,6 +6,6 @@
   "defense_soft_cap": 500,
   "mana_base": 50,
   "mana_per_mana_attunement": 10,
-  "mana_regen_base": 1,
-  "mana_regen_per_mana_attunement": 0.05
+  "mana_regen_base": 2,
+  "mana_regen_per_mana_attunement": 0.08
 }

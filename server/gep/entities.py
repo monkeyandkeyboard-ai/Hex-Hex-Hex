@@ -83,6 +83,11 @@ class Player:
     # Auto-combat: monster id being attacked every weapon cycle until the
     # target dies or the player issues a movement command. None when idle.
     combat_target: str | None = None
+    # Persistent respawn anchor: where death returns this player to, and
+    # where they log in. Defaults to the tower entrance; the mechanic for
+    # moving it is [OPEN] (compendium §14).
+    spawn_floor: int = 1
+    spawn_tile: tuple[int, int] = (0, 0)
     # Incremented on every new move intent so previously-scheduled move-step
     # actions from the old path can detect they're stale and drop.
     move_seq: int = 0

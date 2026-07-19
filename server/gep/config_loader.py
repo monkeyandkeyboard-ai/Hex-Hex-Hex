@@ -151,6 +151,15 @@ def _validate_monster_stats(monsters: dict[str, dict]) -> None:
                 raise ConfigError(f"monster {monster_id}: combat block missing '{field}'")
         if combat["damage_min"] > combat["damage_max"]:
             raise ConfigError(f"monster {monster_id}: damage_min > damage_max")
+        # How close the monster must be to swing. 1 = adjacent (melee).
+        # Monsters can never share a tile with a player -- is_passable forbids
+        # it and pursuit halts at adjacent -- so a range of 0 would mean the
+        # monster closes the gap and then never attacks.
+        combat.setdefault("attack_range_tiles", 1)
+        if not isinstance(combat["attack_range_tiles"], int) or combat["attack_range_tiles"] < 1:
+            raise ConfigError(
+                f"monster {monster_id}: 'attack_range_tiles' must be an integer >= 1"
+            )
 
 
 class ConfigStore:

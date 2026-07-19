@@ -20,8 +20,9 @@ Cadence for both modes is per-template config, not constants here.
 """
 import random
 
+from gep.actions import CLEAR_THREAT, MONSTER_STRIKE
 from gep.floor_state import FloorState
-from gep.hexgrid import facing_from_delta
+from gep.hexgrid import facing_from_delta, hex_distance
 from gep.pathfinding import find_path, hex_neighbors
 from gep.tick import TickEngine
 
@@ -92,7 +93,11 @@ def register(
             return []
         return step_to(monster, roll.choice(options))
 
-    def pursue(monster) -> list[dict]:
+    def attack_range(monster) -> int:
+        combat = monsters_cfg.get(monster.template_id, {}).get("combat", {})
+        return int(combat.get("attack_range_tiles", 1))
+
+    def pursue(monster, eng: TickEngine) -> list[dict]:
         """One step along the path to the hunted player.
 
         The target's live tile is fed to pathfinding every cycle rather than a
@@ -104,6 +109,17 @@ def register(
             # on the next cycle rather than freezing in place.
             monster.threat_target = None
             return []
+
+        # In range: ask for a strike. This module decides *when* an attack is
+        # wanted and nothing about what it does -- combat owns the "monster-
+        # strike" handler, the cooldown, and the outcome. Scheduling a named
+        # action rather than calling combat keeps the two unable to see each
+        # other (see the module docstring).
+        if hex_distance(monster.tile, target.tile) <= attack_range(monster):
+            eng.schedule(0, MONSTER_STRIKE, {
+                "monster_id": monster.id,
+                "player_id": target.id,
+            })
 
         # find_path treats the goal as reachable even when occupied, so a path
         # to the player always exists if any route does.
@@ -136,7 +152,7 @@ def register(
         if not monster.alive:
             return []
 
-        return pursue(monster) if monster.threat_target else wander(monster)
+        return pursue(monster, eng) if monster.threat_target else wander(monster)
 
     def notify_threat(entity, attacker_id: str) -> None:
         """Combat's one line into this system: damage landed on `entity`.
@@ -151,7 +167,19 @@ def register(
             return
         entity.threat_target = attacker_id
 
+    def handle_clear_threat(payload: dict, eng: TickEngine) -> list[dict]:
+        """Forget a player entirely -- they died, or otherwise stopped being a
+        valid target. Asked for by the respawn system, which knows nothing
+        about how threat is stored; this module knows nothing about why.
+        """
+        player_id = payload.get("player_id")
+        for monster in floor.monsters.values():
+            if monster.threat_target == player_id:
+                monster.threat_target = None
+        return []
+
     engine.register_action_handler(THINK_ACTION, handle_think)
+    engine.register_action_handler(CLEAR_THREAT, handle_clear_threat)
 
     # Stagger the first tick per monster so a floor's worth of them doesn't
     # step in unison on the same tick.

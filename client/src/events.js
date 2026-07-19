@@ -130,15 +130,32 @@ function applyEvent(ev) {
       break;
     }
     case "combat_result": {
+      // Monsters attack now, so the player is not always the attacker.
+      // Reporting an incoming hit as "Hit for 330" reads as though you dealt
+      // it, which is exactly backwards at the moment it matters most.
+      const incoming = ev.target === state.playerId;
       if (ev.result === "hit") {
         const m = state.monsters.get(ev.target);
         if (m) { m.hp = ev.target_hp; m.alive = ev.target_alive; }
-        logEvent(`Hit for ${ev.damage.toFixed(1)} dmg`, "combat");
+        if (incoming) {
+          state.selfHp = ev.target_hp;
+          logEvent(`Took ${ev.damage.toFixed(1)} dmg`, "combat");
+        } else {
+          logEvent(`Hit for ${ev.damage.toFixed(1)} dmg`, "combat");
+        }
+      } else if (incoming) {
+        logEvent(ev.result === "dodge" ? "You dodged!" : "Attack missed you", "combat");
       } else {
         logEvent(ev.result === "dodge" ? "Dodged!" : "Missed", "combat");
       }
       break;
     }
+    case "player_died":
+      if (ev.player_id === state.playerId) {
+        state.selfHp = ev.hp;
+        logEvent(`You died — returned to your anchor`, "combat");
+      }
+      break;
     case "engagement_started":
       if (ev.player_id === state.playerId) logEvent("Engaged", "combat");
       break;
