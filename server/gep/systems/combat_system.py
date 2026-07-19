@@ -88,7 +88,8 @@ def register(
         monster.tile = tile
         floor.monsters[monster_id] = monster
         return [{"type": "monster_spawned", "monster_id": monster_id,
-                 "template_id": template_id, "tile": list(tile)}]
+                 "template_id": template_id, "tile": list(tile),
+                 "visual": monster.visual}]
 
     engine.register_intent_handler("attack", handle_attack)
     engine.register_action_handler("respawn-monster", handle_respawn_monster)

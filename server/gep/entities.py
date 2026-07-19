@@ -118,6 +118,9 @@ class Monster:
     damage_min: float
     damage_max: float
     speed_ticks: int
+    # Placeholder-sprite render modifiers bound from the static template
+    # (config_loader guarantees a complete block).
+    visual: dict = field(default_factory=dict)
     weapon_ready_tick: int = 0
     alive: bool = True
 
@@ -153,4 +156,5 @@ def roll_monster(monster_id: str, template: dict, stat_scaling: dict) -> Monster
         damage_min=combat["damage_min"],
         damage_max=combat["damage_max"],
         speed_ticks=combat["speed_ticks"],
+        visual=dict(template.get("visual", {})),
     )

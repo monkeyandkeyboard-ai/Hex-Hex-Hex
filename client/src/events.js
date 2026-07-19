@@ -143,6 +143,7 @@ function applyEvent(ev) {
         template_id: ev.template_id,
         tile: ev.tile,
         hp: 1, max_hp: 1, alive: true,
+        visual: ev.visual,
       });
       break;
     }

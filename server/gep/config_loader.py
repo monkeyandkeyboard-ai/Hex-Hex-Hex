@@ -85,6 +85,33 @@ def _load_dir(path: Path, required_keys: set[str]) -> dict[str, dict]:
     return entries
 
 
+MONSTER_VISUAL_DEFAULTS: dict = {
+    "sprite": "monster_placeholder",
+    "hue_rotate": 0.0,   # degrees, 0-360
+    "saturate": 1.0,     # multiplier
+    "brightness": 1.0,   # multiplier
+    "scale": 1.0,        # tile-relative size multiplier
+    "tint": "#3a1010",   # tile fill behind the sprite
+}
+
+
+def _normalize_monster_visuals(monsters: dict[str, dict]) -> None:
+    """Fill in any omitted visual keys so every template serializes a complete
+    block. Content uses one placeholder sprite; only these modifiers vary.
+    """
+    for monster_id, data in monsters.items():
+        visual = {**MONSTER_VISUAL_DEFAULTS, **data.get("visual", {})}
+        unknown = visual.keys() - MONSTER_VISUAL_DEFAULTS.keys()
+        if unknown:
+            raise ConfigError(f"monster {monster_id}: unknown visual keys {sorted(unknown)}")
+        for field in ("hue_rotate", "saturate", "brightness", "scale"):
+            if not isinstance(visual[field], (int, float)):
+                raise ConfigError(f"monster {monster_id}: visual '{field}' must be numeric")
+        if visual["scale"] <= 0:
+            raise ConfigError(f"monster {monster_id}: visual 'scale' must be > 0")
+        data["visual"] = visual
+
+
 def _validate_monster_stats(monsters: dict[str, dict]) -> None:
     for monster_id, data in monsters.items():
         missing_skills = set(COMBAT_SKILLS) - data["skills"].keys()
@@ -120,6 +147,7 @@ class ConfigStore:
 
         self.monsters = _load_dir(root / "monsters", _MONSTER_REQUIRED)
         _validate_monster_stats(self.monsters)
+        _normalize_monster_visuals(self.monsters)
 
         self.resources = _load_dir(root / "resources", _RESOURCE_REQUIRED)
         self.weapons = _load_dir(root / "weapons", _WEAPON_REQUIRED)

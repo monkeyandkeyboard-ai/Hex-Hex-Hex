@@ -141,6 +141,7 @@ def floor_snapshot(floor: FloorState, tick: int, tick_duration: float, xp_table:
                 "hp": m.hp,
                 "max_hp": m.max_hp,
                 "alive": m.alive,
+                "visual": m.visual,
             }
             for mid, m in floor.monsters.items()
         },

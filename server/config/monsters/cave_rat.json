@@ -17,6 +17,14 @@
     "damage_max": 8,
     "speed_ticks": 4
   },
+  "visual": {
+    "sprite": "monster_placeholder",
+    "hue_rotate": 25,
+    "saturate": 0.6,
+    "brightness": 0.95,
+    "scale": 0.8,
+    "tint": "#3a2418"
+  },
   "respawn_ticks": 30,
   "xp_reward": { "combat_base": 12 },
   "loot_table": [["nothing", 8], ["copper_ore", 1]]

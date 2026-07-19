@@ -148,12 +148,36 @@ function drawDot(q, r, color, size = 5) {
   ctx.fill();
 }
 
-function drawEmoji(q, r, glyph, size) {
+// --- Placeholder sprite pipeline -----------------------------------------
+// Every monster draws the same placeholder glyph; all visual identity comes
+// from the server-sent `visual` block (config-authored, never client-guessed).
+
+const PLACEHOLDER_SPRITE = "💀";
+
+const VISUAL_FALLBACK = {
+  hue_rotate: 0, saturate: 1, brightness: 1, scale: 1, tint: COLORS.monster,
+};
+
+function drawMonsterSprite(q, r, visual) {
+  const v = visual || VISUAL_FALLBACK;
+  const hue = v.hue_rotate ?? 0;
+  const sat = v.saturate ?? 1;
+  const bri = v.brightness ?? 1;
+  const scale = v.scale ?? 1;
+
   const [cx, cy] = hexToPixel(q, r);
-  ctx.font = `${size}px serif`;
+
+  ctx.save();
+  // Scale about the tile centre so the sprite grows/shrinks in place rather
+  // than drifting toward the canvas origin.
+  ctx.translate(cx, cy);
+  ctx.scale(scale, scale);
+  ctx.filter = `hue-rotate(${hue}deg) saturate(${sat}) brightness(${bri})`;
+  ctx.font = `${tileSize * 1.1}px serif`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText(glyph, cx, cy);
+  ctx.fillText(PLACEHOLDER_SPRITE, 0, 0);
+  ctx.restore();
 }
 
 export function render() {
@@ -240,8 +264,9 @@ export function render() {
   for (const [, m] of state.monsters) {
     if (!m.alive) continue;
     const [q, rv] = m.tile;
-    drawTile(q, rv, COLORS.monster, "#5a2020");
-    drawEmoji(q, rv, "💀", tileSize * 1.1);
+    const visual = m.visual;
+    drawTile(q, rv, (visual && visual.tint) || COLORS.monster, "#5a2020");
+    drawMonsterSprite(q, rv, visual);
   }
 
   // Other players
