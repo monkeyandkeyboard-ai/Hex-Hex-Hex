@@ -191,6 +191,22 @@ def test_runtime_stats_include_implicits(items):
     assert stats["tier"] == 1
 
 
+def test_display_name_is_mad_libs_plus_base_name_and_tier(items):
+    stats = items.runtime_stats(encode_instance("S9", []))
+    words = stats["display_name"].split(" ")
+    assert words[-1] == "T9"
+    assert " ".join(words[-3:-1]) == "Apex Sword"          # base name, verbatim
+    assert words[0] in items.item_names["adjectives"]
+    assert words[1] in items.item_names["nouns"]
+
+
+def test_display_name_is_deterministic_for_the_same_instance(items):
+    """Recomputed fresh from the string on every load (items.md): the name
+    must not change between two independent calls for the same instance."""
+    encoded = encode_instance("S1", [{"affix": PREFIX, "code": "cc1", "value": 1}])
+    assert items.runtime_stats(encoded)["display_name"] == items.runtime_stats(encoded)["display_name"]
+
+
 def test_runtime_stats_sum_implicit_and_modifier(items):
     """A modifier on the same stat as an implicit adds to it rather than
     replacing it."""

@@ -1,0 +1,15 @@
+{
+  "_comment": "Mad-libs word pools for a rolled equipment instance's flavor name: '{adjective} {noun} {base name} T{tier}'. Deterministic per instance -- seeded from the item's own serialized string, so the same roll always shows the same name without persisting anything new.",
+  "adjectives": [
+    "Strong", "Swift", "Grim", "Ancient", "Savage", "Wicked", "Silent",
+    "Brutal", "Fierce", "Iron", "Bloody", "Cursed", "Relentless", "Vicious",
+    "Stalwart", "Feral", "Dread", "Reckless", "Steadfast", "Ruthless",
+    "Hollow", "Radiant", "Sundered", "Warbound", "Forsaken"
+  ],
+  "nouns": [
+    "Slasher", "Render", "Breaker", "Warden", "Reaver", "Cleaver", "Fang",
+    "Talon", "Bane", "Ripper", "Doom", "Wraith", "Hunter", "Piercer",
+    "Crusher", "Stormcaller", "Widow", "Ghost", "Vanguard", "Marauder",
+    "Sentinel", "Harbinger", "Executioner", "Butcher", "Reckoning"
+  ]
+}

@@ -69,7 +69,8 @@ def setup(store, floor, saves=None, cfg_override=ALWAYS):
         engine, floor, weapons=store.weapons, monsters_cfg=cfg_override,
         combat_constants=store.combat_constants, xp_rates=store.xp_rates,
         xp_table=store.xp_table, stat_scaling=store.stat_scaling,
-        rewards=store.rewards,
+        rewards=store.rewards, items=store.items,
+        weapon_classes=store.weapon_classes, power_scaling=store.power_scaling,
         on_threat=notify,
     )
     return engine, notify
@@ -187,7 +188,9 @@ def test_dead_player_is_never_persisted_as_dead(store):
         engine, floor, weapons=store.weapons, monsters_cfg=ALWAYS,
         combat_constants=store.combat_constants, xp_rates=store.xp_rates,
         xp_table=store.xp_table, stat_scaling=store.stat_scaling,
-        rewards=store.rewards, on_threat=notify)
+        rewards=store.rewards, items=store.items,
+        weapon_classes=store.weapon_classes, power_scaling=store.power_scaling,
+        on_threat=notify)
     notify(monster, "p1")
 
     run(engine, 12)

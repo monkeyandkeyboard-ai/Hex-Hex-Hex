@@ -1,0 +1,20 @@
+{
+  "_comment": "Maps an item base's `type` (weapon archetype) to a combat class. power_scaling.json defines what each class does with a character's stats. Only main_hand/two_hand archetypes need an entry -- off-hand types (Shield, Spiked Shield, Orb) never become a player's weapon_id.",
+  "Mace": "melee",
+  "Maul": "melee",
+  "Sword": "melee",
+  "Greatsword": "melee",
+  "Axe": "melee",
+  "Greataxe": "melee",
+  "Dagger": "melee",
+  "Rapier": "melee",
+  "Spear": "melee",
+  "Halberd": "melee",
+  "Shortbow": "ranged",
+  "Longbow": "ranged",
+  "Light Crossbow": "ranged",
+  "Heavy Crossbow": "ranged",
+  "Wand": "magic",
+  "Staff": "magic",
+  "Unarmed": "melee"
+}

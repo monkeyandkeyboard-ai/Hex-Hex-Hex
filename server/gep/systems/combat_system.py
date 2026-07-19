@@ -14,10 +14,19 @@ the `break_engagement` callback handed to the movement system -- movement
 never touches combat state itself, the same way combat never touches the
 monster threat slot (see systems/monster_ai.py).
 
-Swing cadence is the weapon's `cooldown_ticks`, not one swing per tick: the
-weapon config already owns that number and auto-combat must not smuggle in a
+Swing cadence is the weapon's `speed_ticks`, not one swing per tick: the
+weapon base already owns that number and auto-combat must not smuggle in a
 second, faster rate.
+
+Damage model: a player's `power` is a weighted sum of the stats their
+weapon's class draws on (power_scaling.json), the ceiling of their damage
+potential. The weapon's own `damage_min`/`damage_max` is a multiplier on that
+ceiling, not an absolute range -- a 150%-max weapon can outdamage its
+wielder's raw power, a 25%-max one caps well under it. Unarmed is just
+another entry in that shape (0%-20%, speed 1), not a special case.
 """
+import random
+
 from gep.combat import normalize_damage_type, resolve_attack
 from gep.floor_state import FloorState
 from gep.actions import MONSTER_STRIKE, PLAYER_DEFEATED
@@ -37,8 +46,36 @@ def register(
     xp_table: dict,
     stat_scaling: dict,
     rewards,
+    items,
+    weapon_classes: dict,
+    power_scaling: dict,
     on_threat=None,
 ) -> None:
+    def weapon_profile(item_id: str) -> dict | None:
+        """damage_min/max, speed_ticks and archetype for whatever is
+        equipped in main_hand -- a rolled item and the unarmed state resolve
+        through the same shape, items first since that is the real item
+        space and `weapons` holds only the handful of non-item states."""
+        profile = items.combat_profile(item_id)
+        if profile is not None:
+            return profile
+        cfg = weapons.get(item_id)
+        if cfg is None:
+            return None
+        return {
+            "type": cfg["type"],
+            "damage_min": cfg["damage_min"],
+            "damage_max": cfg["damage_max"],
+            "speed_ticks": cfg["speed_ticks"],
+        }
+
+    def compute_power(player, weapon_type: str) -> float:
+        """The ceiling of this swing's damage potential: a weighted sum of
+        whichever stats the weapon's class draws on (melee -> strength,
+        ranged -> dexterity+strength, magic -> arcana), per power_scaling.json."""
+        weapon_class = weapon_classes[weapon_type]
+        scaling = power_scaling[weapon_class]["stats"]
+        return sum(player.combat_stat(stat) * coeff for stat, coeff in scaling.items())
     def face_target(player, monster) -> list[dict]:
         """Turn the attacker to look at what they are hitting.
 
@@ -67,18 +104,23 @@ def register(
 
     def swing(player, monster, eng: TickEngine) -> list[dict]:
         """One resolved attack plus everything that follows from it."""
-        weapon = weapons.get(player.weapon_id)
-        if weapon is None:
+        profile = weapon_profile(player.weapon_id)
+        if profile is None:
             return [{"type": "error", "reason": f"unknown weapon {player.weapon_id!r}"}]
 
         target_id = monster.id
         player_id = player.id
         events = face_target(player, monster)
 
-        # Flat baseline: no per-swing roll. Variance in the outcome comes from
-        # the evasion and hit checks, not from the damage number.
-        weapon_damage = weapon["base_power"]
-        damage_type = normalize_damage_type(weapon.get("damage_type"), combat_constants)
+        # power is the ceiling of this swing's potential; the weapon's own
+        # damage_min/max is a multiplier on it, not an absolute range, so a
+        # 150%-max weapon can outdamage its wielder's raw power and a 25%-max
+        # one caps well under it.
+        weapon_class = weapon_classes[profile["type"]]
+        power = compute_power(player, profile["type"])
+        roll = profile["damage_min"] + random.random() * (profile["damage_max"] - profile["damage_min"])
+        weapon_damage = power * roll
+        damage_type = normalize_damage_type(power_scaling[weapon_class]["damage_type"], combat_constants)
 
         result = resolve_attack(player, monster, weapon_damage, damage_type, combat_constants)
         events.append(result)
@@ -111,12 +153,12 @@ def register(
                 # Nothing left to auto-attack.
                 end_engagement(player)
 
-        player.weapon_ready_tick = eng.tick + weapon["cooldown_ticks"]
+        player.weapon_ready_tick = eng.tick + profile["speed_ticks"]
 
         # Queue the next swing for the moment the weapon comes back up. The
         # seq check in the handler drops this if the engagement ended first.
         if player.combat_target == target_id:
-            eng.schedule(weapon["cooldown_ticks"], "auto-attack", {
+            eng.schedule(profile["speed_ticks"], "auto-attack", {
                 "player_id": player_id,
                 "target_id": target_id,
                 "seq": player.attack_seq,

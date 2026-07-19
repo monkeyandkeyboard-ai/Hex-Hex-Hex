@@ -56,7 +56,8 @@ def setup(store, floor, player, tanky=True):
         weapons=store.weapons, monsters_cfg=store.monsters,
         combat_constants=store.combat_constants, xp_rates=store.xp_rates,
         xp_table=store.xp_table, stat_scaling=store.stat_scaling,
-        rewards=store.rewards,
+        rewards=store.rewards, items=store.items,
+        weapon_classes=store.weapon_classes, power_scaling=store.power_scaling,
     )
     movement.register(engine, floor, on_move=break_engagement)
     return engine, monster
@@ -89,7 +90,7 @@ def test_swings_follow_weapon_speed_not_one_per_tick(store):
     floor = make_floor()
     player = make_player()
     engine, monster = setup(store, floor, player)
-    speed = store.weapons["unarmed"]["cooldown_ticks"]
+    speed = store.weapons["unarmed"]["speed_ticks"]
 
     attack(engine)
     ticks = 40

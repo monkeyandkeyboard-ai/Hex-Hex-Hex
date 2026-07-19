@@ -51,9 +51,11 @@ _RESOURCE_REQUIRED = {
 _WEAPON_REQUIRED = {
     "id",
     "display_name",
-    "base_power",
-    "cooldown_ticks",
     "equipment_slot",
+    "type",
+    "damage_min",
+    "damage_max",
+    "speed_ticks",
 }
 
 _BIOME_REQUIRED = {
@@ -184,33 +186,38 @@ def _validate_monster_stats(monsters: dict[str, dict]) -> None:
             )
 
 
-def _normalize_equipment(weapons: dict) -> None:
+def _normalize_equipment(weapons: dict, weapon_classes: dict) -> None:
     """Fill in the optional half of the equipment schema.
 
     Every entry in the registry gets the same treatment -- the default state
     is not exempt. That is the point: requirement checks and damage typing
     must run down one path, so a future `equip_requirements` gate cannot be
     bypassed by a state that skipped normalization.
+
+    Schema mirrors the item bases' weapon fields (damage_min/max as a
+    multiplier on power, speed_ticks as the swing interval) so combat reads
+    a rolled sword and the unarmed state through the same shape.
     """
     for item_id, data in weapons.items():
-        # base_power is a flat baseline, not a range: per-swing variance is
-        # deliberately gone, so damage is decided by stat multipliers and
-        # mitigation alone.
-        if not isinstance(data["base_power"], (int, float)) or isinstance(data["base_power"], bool):
-            raise ConfigError(f"equipment {item_id}: 'base_power' must be a number")
-        if data["base_power"] < 0:
-            raise ConfigError(f"equipment {item_id}: 'base_power' must be >= 0")
+        for field in ("damage_min", "damage_max"):
+            if not isinstance(data[field], (int, float)) or isinstance(data[field], bool):
+                raise ConfigError(f"equipment {item_id}: {field!r} must be a number")
+            if data[field] < 0:
+                raise ConfigError(f"equipment {item_id}: {field!r} must be >= 0")
+        if data["damage_min"] > data["damage_max"]:
+            raise ConfigError(f"equipment {item_id}: damage_min > damage_max")
 
         # Zero would mean a swing every tick regardless of the weapon, which
         # is the pacing gate failing open rather than a very fast weapon.
-        if not isinstance(data["cooldown_ticks"], int) or isinstance(data["cooldown_ticks"], bool):
-            raise ConfigError(f"equipment {item_id}: 'cooldown_ticks' must be an integer")
-        if data["cooldown_ticks"] < 1:
-            raise ConfigError(f"equipment {item_id}: 'cooldown_ticks' must be >= 1")
+        if not isinstance(data["speed_ticks"], int) or isinstance(data["speed_ticks"], bool):
+            raise ConfigError(f"equipment {item_id}: 'speed_ticks' must be an integer")
+        if data["speed_ticks"] < 1:
+            raise ConfigError(f"equipment {item_id}: 'speed_ticks' must be >= 1")
 
-        data.setdefault("damage_type", "physical")
-        if not isinstance(data["damage_type"], str):
-            raise ConfigError(f"equipment {item_id}: 'damage_type' must be a string")
+        if data.get("type") not in weapon_classes:
+            raise ConfigError(
+                f"equipment {item_id}: type {data.get('type')!r} is not in weapon_classes.json"
+            )
 
         # Empty today. Declared now so the shape is fixed before anything
         # depends on it, and so an entry that omits it is indistinguishable
@@ -225,6 +232,75 @@ def _normalize_equipment(weapons: dict) -> None:
                 raise ConfigError(
                     f"equipment {item_id}: requirement {skill!r} must be a number"
                 )
+
+
+def _validate_weapon_classes(weapon_classes: dict) -> None:
+    if not isinstance(weapon_classes, dict) or not weapon_classes:
+        raise ConfigError("weapon_classes.json: must be a non-empty object")
+    for weapon_type, weapon_class in weapon_classes.items():
+        if weapon_type.startswith("_"):
+            continue  # documentation keys
+        if not isinstance(weapon_class, str) or not weapon_class:
+            raise ConfigError(
+                f"weapon_classes.json: {weapon_type!r} must map to a non-empty string"
+            )
+
+
+def _validate_power_scaling(power_scaling: dict, weapon_classes: dict, combat_constants: dict) -> None:
+    """Every class a weapon type points at must resolve, and its damage_type
+    must be one the mitigation pipeline already knows how to weight."""
+    referenced = {c for t, c in weapon_classes.items() if not t.startswith("_")}
+    missing = referenced - power_scaling.keys()
+    if missing:
+        raise ConfigError(
+            f"power_scaling.json: missing classes referenced by weapon_classes.json: {sorted(missing)}"
+        )
+    weighting = combat_constants.get("damage_type_weighting", {})
+    for weapon_class, data in power_scaling.items():
+        if weapon_class.startswith("_"):
+            continue  # documentation keys
+        if not isinstance(data, dict):
+            raise ConfigError(f"power_scaling.json: {weapon_class!r} must be an object")
+
+        damage_type = data.get("damage_type")
+        if damage_type not in weighting:
+            raise ConfigError(
+                f"power_scaling.json: {weapon_class!r} damage_type {damage_type!r} "
+                f"is not in damage_type_weighting"
+            )
+
+        stats = data.get("stats")
+        if not isinstance(stats, dict) or not stats:
+            raise ConfigError(f"power_scaling.json: {weapon_class!r} 'stats' must be a non-empty object")
+        for stat, coeff in stats.items():
+            if stat not in COMBAT_SKILLS:
+                raise ConfigError(f"power_scaling.json: {weapon_class!r} unknown stat {stat!r}")
+            if not isinstance(coeff, (int, float)) or isinstance(coeff, bool) or coeff < 0:
+                raise ConfigError(
+                    f"power_scaling.json: {weapon_class!r} stat {stat!r} coefficient must be a number >= 0"
+                )
+
+
+def _validate_item_names(item_names: dict) -> None:
+    for key in ("adjectives", "nouns"):
+        words = item_names.get(key)
+        if not isinstance(words, list) or not words:
+            raise ConfigError(f"item_names.json: {key!r} must be a non-empty list")
+        for word in words:
+            if not isinstance(word, str) or not word:
+                raise ConfigError(f"item_names.json: {key!r} entries must be non-empty strings")
+
+
+def _validate_weapon_types(bases: dict, weapon_classes: dict) -> None:
+    """Every main_hand/two_hand base's archetype must resolve to a combat
+    class -- those are the only bases that can end up as a player's
+    weapon_id, so an unmapped type would only surface the moment one dropped
+    and got equipped."""
+    for code, base in bases.items():
+        if base["equipment_slot"] in ("main_hand", "two_hand") and base["type"] not in weapon_classes:
+            raise ConfigError(
+                f"item base {code}: type {base['type']!r} is not in weapon_classes.json"
+            )
 
 
 def _load_item_bases(path: Path) -> dict[str, dict]:
@@ -341,14 +417,22 @@ class ConfigStore:
         self.xp_table = _load_json(root / "xp_table.json")
         self.modifiers = _load_json(root / "modifiers.json")
 
+        self.weapon_classes = _load_json(root / "weapon_classes.json")
+        self.power_scaling = _load_json(root / "power_scaling.json")
+        _validate_weapon_classes(self.weapon_classes)
+        _validate_power_scaling(self.power_scaling, self.weapon_classes, self.combat_constants)
+
         self.loot_tables = _load_json(root / "loot" / "tables.json")
         self.reward_profiles = _load_json(root / "loot" / "rewards.json")
         self.item_generation = _load_json(root / "item_generation.json")
+        self.item_names = _load_json(root / "item_names.json")
+        _validate_item_names(self.item_names)
         self.item_bases = _load_item_bases(root / "items")
         _validate_item_bases(self.item_bases)
+        _validate_weapon_types(self.item_bases, self.weapon_classes)
         _validate_modifiers(self.modifiers)
         self.items = ItemRegistry(
-            self.item_bases, self.modifiers, self.item_generation, ITEM_STATS
+            self.item_bases, self.modifiers, self.item_generation, ITEM_STATS, self.item_names
         )
         self._validate_item_generation()
         # One service, built once, handed to every payout site.
@@ -364,7 +448,7 @@ class ConfigStore:
         # id is what the registry and every reference use.
         self.weapons = _load_dir(root / "weapons", _WEAPON_REQUIRED,
                                  id_matches_filename=False)
-        _normalize_equipment(self.weapons)
+        _normalize_equipment(self.weapons, self.weapon_classes)
         self.default_equipment_state = self._resolve_default_equipment_state()
 
         self.biomes = _load_dir(root / "biomes", _BIOME_REQUIRED)

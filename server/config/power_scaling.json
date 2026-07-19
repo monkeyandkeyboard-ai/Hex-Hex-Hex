@@ -1,0 +1,15 @@
+{
+  "_comment": "power = sum(stat_level * coefficient) over each class's 'stats'. Weapon_damage on a swing = power * random(damage_min, damage_max) from the equipped weapon's base. Tune freely -- melee leans on strength alone, ranged splits between dexterity and strength, magic runs on arcana.",
+  "melee": {
+    "damage_type": "physical",
+    "stats": { "strength": 1.0 }
+  },
+  "ranged": {
+    "damage_type": "physical",
+    "stats": { "dexterity": 0.7, "strength": 0.3 }
+  },
+  "magic": {
+    "damage_type": "magical",
+    "stats": { "arcana": 1.0 }
+  }
+}

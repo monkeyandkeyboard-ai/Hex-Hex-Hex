@@ -64,12 +64,13 @@ def test_unequipping_lands_in_the_configured_default_not_a_literal(store):
 
 
 def test_default_state_is_resolvable_by_combat_like_any_other_entry(store):
-    """The combat pipeline does weapons.get(player.weapon_id) with no special
-    case, so the default state must be present in the registry with every
-    parameter combat reads."""
+    """The combat pipeline resolves weapon_profile(player.weapon_id) with no
+    special case, so the default state must supply every field combat reads,
+    the same shape a rolled item base does."""
     entry = store.weapons[store.default_equipment_state]
-    for field in ("base_power", "cooldown_ticks", "damage_type"):
+    for field in ("damage_min", "damage_max", "speed_ticks", "type"):
         assert field in entry, f"default state cannot supply {field} to combat"
+    assert entry["type"] in store.weapon_classes
 
 
 def test_no_hardcoded_default_equipment_id_in_the_engine():
@@ -85,63 +86,36 @@ def test_no_hardcoded_default_equipment_id_in_the_engine():
     assert not offenders, f"hardcoded equipment id in engine: {offenders}"
 
 
-def test_identical_swings_deal_identical_damage(store):
-    """base_power is a flat baseline: with the evasion and hit rolls forced to
-    land, repeated swings must produce the exact same number. This is the
-    property that replaces the old damage_min..damage_max roll."""
-    import gep.combat as combat_mod
-    from gep.combat import resolve_attack
-    from gep.entities import roll_monster
-
+def test_unarmed_is_a_weak_weapon_not_a_special_case(store):
+    """Confirmed spec: unarmed is a 0%-20% max, speed-1 weapon like any other
+    -- see test_weapon_power.py for how that multiplier is actually applied."""
     entry = store.weapons[store.default_equipment_state]
-    attacker = make_player(store)
-    attacker.skills.combat.update({"strength": 50, "precision": 400})
-
-    # One fixed target: roll_monster randomizes constitution, and a different
-    # mitigation value per iteration would mask what this is checking.
-    target = roll_monster("m", store.monsters["cave_rat"], store.stat_scaling)
-    target.hp = target.max_hp = 10_000_000
-
-    damages = []
-    for _ in range(5):
-        # Force past evasion (high roll) and into a hit (low roll), isolating
-        # the damage number from the two checks that are still random.
-        original = combat_mod.random.random
-        rolls = iter([0.99, 0.0])
-        combat_mod.random.random = lambda: next(rolls)
-        try:
-            result = resolve_attack(attacker, target, entry["base_power"],
-                                    entry["damage_type"], store.combat_constants)
-        finally:
-            combat_mod.random.random = original
-        assert result["result"] == "hit"
-        damages.append(result["damage"])
-
-    assert len(set(damages)) == 1, f"damage varied across swings: {damages}"
+    assert (entry["damage_min"], entry["damage_max"], entry["speed_ticks"]) == (0.0, 0.20, 1)
+    assert entry["type"] in store.weapon_classes
 
 
-def test_deprecated_range_fields_are_gone_from_equipment(store):
-    """A leftover damage_min/damage_max would be silently ignored by the
-    pipeline and misleading to anyone tuning the config."""
+def test_weapon_fields_are_present_on_every_equipment_entry(store):
+    """The new schema's fields must actually be there, not silently defaulted
+    -- a missing one would surface as a config load error, not a weak weapon."""
     for item_id, data in store.weapons.items():
-        for dead in ("damage_min", "damage_max", "speed_ticks", "type"):
-            assert dead not in data, f"{item_id} still carries {dead}"
+        for field in ("damage_min", "damage_max", "speed_ticks", "type"):
+            assert field in data, f"{item_id} missing {field}"
 
 
-def test_loader_rejects_a_non_numeric_base_power(tmp_path):
+def test_loader_rejects_a_non_numeric_damage_min(tmp_path):
     import json
     import shutil
     from gep.config_loader import ConfigError
     shutil.copytree(CONFIG_DIR, tmp_path / "config")
     entry = tmp_path / "config" / "weapons" / "equipment_handler.json"
     data = json.loads(entry.read_text())
-    data["base_power"] = "hard"
+    data["damage_min"] = "hard"
     entry.write_text(json.dumps(data))
-    with pytest.raises(ConfigError, match="base_power"):
+    with pytest.raises(ConfigError, match="damage_min"):
         ConfigStore(tmp_path / "config")
 
 
-def test_loader_rejects_a_zero_cooldown(tmp_path):
+def test_loader_rejects_a_zero_speed(tmp_path):
     """Zero would swing every tick regardless of the equipment -- the pacing
     gate failing open, not a very fast weapon."""
     import json
@@ -150,7 +124,7 @@ def test_loader_rejects_a_zero_cooldown(tmp_path):
     shutil.copytree(CONFIG_DIR, tmp_path / "config")
     entry = tmp_path / "config" / "weapons" / "equipment_handler.json"
     data = json.loads(entry.read_text())
-    data["cooldown_ticks"] = 0
+    data["speed_ticks"] = 0
     entry.write_text(json.dumps(data))
-    with pytest.raises(ConfigError, match="cooldown_ticks"):
+    with pytest.raises(ConfigError, match="speed_ticks"):
         ConfigStore(tmp_path / "config")

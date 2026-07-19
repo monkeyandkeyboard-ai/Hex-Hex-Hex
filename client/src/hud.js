@@ -15,11 +15,18 @@ const EQUIP_SLOTS = [
 ];
 
 let hpFill, hpText, tickInfo, floorLabel;
-let skillsPane, inventoryPane, equipmentPane;
+let skillsPane, inventoryPane, equipmentPane, tooltip;
 let sendIntent = () => {};
 
 // Signature strings of the last render, to skip DOM churn when unchanged
 let lastSkillsSig = "", lastInvSig = "", lastEquipSig = "";
+
+// Resolved item objects for whatever is currently on screen, keyed by the
+// same dataset value the DOM element carries -- inv slot index or equip slot
+// name. Rebuilt on every render; the hover handler just looks a key up here
+// rather than re-deriving anything from the DOM.
+let invItemsByKey = {};
+let equipItemsByKey = {};
 
 export function setIntentSender(fn) {
   sendIntent = fn;
@@ -33,6 +40,7 @@ export function initHud() {
   skillsPane    = document.getElementById("tab-skills");
   inventoryPane = document.getElementById("tab-inventory");
   equipmentPane = document.getElementById("tab-equipment");
+  tooltip       = document.getElementById("item-tooltip");
 
   for (const btn of document.querySelectorAll(".tab-btn")) {
     btn.addEventListener("click", () => {
@@ -56,6 +64,99 @@ export function initHud() {
       sendIntent({ intent_type: "unequip-item", equip_slot: cell.dataset.slot });
     }
   });
+
+  inventoryPane.addEventListener("mouseover", (e) => {
+    const cell = e.target.closest(".inv-slot");
+    if (cell && cell.dataset.filled === "1") showTooltip(invItemsByKey[cell.dataset.slot]);
+  });
+  inventoryPane.addEventListener("mouseout", (e) => {
+    if (e.target.closest(".inv-slot")) hideTooltip();
+  });
+  inventoryPane.addEventListener("mousemove", moveTooltip);
+
+  equipmentPane.addEventListener("mouseover", (e) => {
+    const cell = e.target.closest(".equip-slot");
+    if (cell && cell.dataset.filled === "1") showTooltip(equipItemsByKey[cell.dataset.slot]);
+  });
+  equipmentPane.addEventListener("mouseout", (e) => {
+    if (e.target.closest(".equip-slot")) hideTooltip();
+  });
+  equipmentPane.addEventListener("mousemove", moveTooltip);
+}
+
+function moveTooltip(e) {
+  if (tooltip.style.display !== "block") return;
+  const pad = 14;
+  let x = e.clientX + pad, y = e.clientY + pad;
+  const maxX = window.innerWidth - tooltip.offsetWidth - 8;
+  const maxY = window.innerHeight - tooltip.offsetHeight - 8;
+  if (x > maxX) x = e.clientX - tooltip.offsetWidth - pad;
+  if (y > maxY) y = Math.max(8, maxY);
+  tooltip.style.left = x + "px";
+  tooltip.style.top = y + "px";
+}
+
+function hideTooltip() {
+  tooltip.style.display = "none";
+}
+
+const STAT_LABELS = {
+  strength: "Strength", dexterity: "Dexterity", precision: "Precision",
+  arcana: "Arcana", mana_attunement: "Mana Attunement", constitution: "Constitution",
+  critical_strike_chance: "Crit Chance",
+};
+
+function statLabel(stat) {
+  if (stat.endsWith("_percent")) {
+    const root = stat.slice(0, -"_percent".length);
+    return (STAT_LABELS[root] || root.replace(/_/g, " ")) + " %";
+  }
+  return STAT_LABELS[stat] || stat.replace(/_/g, " ");
+}
+
+function pct(n) {
+  return `${Math.round(n * 100)}%`;
+}
+
+function showTooltip(item) {
+  if (!item) return;
+
+  // Materials only carry an item_id + display_name -- nothing else to show.
+  if (item.type === undefined) {
+    tooltip.innerHTML = `<div class="tt-name">${item.display_name}</div>`;
+    tooltip.style.display = "block";
+    return;
+  }
+
+  const rows = [];
+  rows.push(`<div class="tt-row"><span class="k">Type</span><span class="v">${item.type}</span></div>`);
+  if (item.damage_max > 0) {
+    rows.push(`<div class="tt-row"><span class="k">Damage</span><span class="v">${pct(item.damage_min)}–${pct(item.damage_max)} of power</span></div>`);
+    rows.push(`<div class="tt-row"><span class="k">Speed</span><span class="v">${item.speed_ticks} ticks</span></div>`);
+  }
+  if (item.armor > 0) {
+    rows.push(`<div class="tt-row"><span class="k">Armor</span><span class="v">${item.armor}</span></div>`);
+  }
+
+  const statRows = Object.entries(item.stats || {}).map(([stat, value]) => {
+    const shown = stat.endsWith("_percent") ? pct(value) : `+${value}`;
+    return `<div class="tt-row"><span class="k">${statLabel(stat)}</span><span class="v">${shown}</span></div>`;
+  });
+
+  const modRows = (item.mods || []).map((m) => {
+    const cls = m.affix === "P" ? "prefix" : "suffix";
+    const shown = m.stat.endsWith("_percent") ? pct(m.value) : `+${m.value}`;
+    return `<div class="tt-mod ${cls}">${m.affix === "P" ? "Prefix" : "Suffix"}: ${statLabel(m.stat)} ${shown} (T${m.tier})</div>`;
+  });
+
+  tooltip.innerHTML = `
+    <div class="tt-name">${item.display_name}</div>
+    <div class="tt-sub">Tier ${item.tier} — ${item.equipment_slot.replace(/_/g, " ")}</div>
+    ${rows.join("")}
+    ${statRows.length ? `<div class="tt-divider"></div>${statRows.join("")}` : ""}
+    ${modRows.length ? `<div class="tt-divider"></div>${modRows.join("")}` : ""}
+  `;
+  tooltip.style.display = "block";
 }
 
 function fmt(n) {
@@ -91,13 +192,15 @@ function renderInventory() {
   if (sig === lastInvSig) return;
   lastInvSig = sig;
 
+  invItemsByKey = {};
   const cells = [];
   for (let i = 0; i < 28; i++) {
-    const item = inv[i];
-    if (item) {
-      cells.push(`<div class="inv-slot" data-slot="${i}" data-filled="1" title="${item.item_id}">
-        <span class="inv-item">${item.item_id.replace(/_/g, " ")}</span>
-        <span class="inv-qty">${item.quantity}</span>
+    const slot = inv[i];
+    if (slot) {
+      invItemsByKey[i] = slot.item;
+      cells.push(`<div class="inv-slot" data-slot="${i}" data-filled="1">
+        <span class="inv-item">${slot.item.display_name}</span>
+        <span class="inv-qty">${slot.quantity}</span>
       </div>`);
     } else {
       cells.push(`<div class="inv-slot empty" data-slot="${i}" data-filled="0"></div>`);
@@ -113,11 +216,13 @@ function renderEquipment() {
   if (sig === lastEquipSig) return;
   lastEquipSig = sig;
 
+  equipItemsByKey = {};
   equipmentPane.innerHTML = EQUIP_SLOTS.map(([slot, label]) => {
     const item = eq[slot];
+    if (item) equipItemsByKey[slot] = item;
     return `<div class="equip-slot ${item ? "" : "empty"}" data-slot="${slot}" data-filled="${item ? 1 : 0}">
       <span class="equip-label">${label}</span>
-      <span class="equip-item">${item ? item.replace(/_/g, " ") : "—"}</span>
+      <span class="equip-item">${item ? item.display_name : "—"}</span>
     </div>`;
   }).join("") + `<div class="pane-hint">Click a filled slot to unequip</div>`;
 }

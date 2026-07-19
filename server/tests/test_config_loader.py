@@ -146,17 +146,18 @@ def test_every_equipment_entry_carries_the_full_schema():
     store = ConfigStore(CONFIG_DIR)
     for item_id, data in store.weapons.items():
         assert isinstance(data["equip_requirements"], dict), item_id
-        assert isinstance(data["damage_type"], str), item_id
-        for field in ("base_power", "cooldown_ticks", "equipment_slot"):
+        for field in ("damage_min", "damage_max", "speed_ticks", "type", "equipment_slot"):
             assert field in data, f"{item_id} missing {field}"
 
 
-def test_default_state_declares_physical_not_a_flavour_word():
-    """'Unarmed' used to sit in the damage-type field and fall through to the
-    default weighting. It is a real type now."""
+def test_default_state_resolves_to_a_real_weapon_class():
+    """damage_type is derived from the weapon's type via weapon_classes.json
+    and power_scaling.json, not stored on the entry itself -- one source of
+    truth for what a class deals, same as a rolled item base."""
     store = ConfigStore(CONFIG_DIR)
-    assert store.weapons["unarmed"]["damage_type"] == "physical"
-    assert store.weapons["unarmed"]["damage_type"] in store.combat_constants["damage_type_weighting"]
+    weapon_class = store.weapon_classes[store.weapons["unarmed"]["type"]]
+    damage_type = store.power_scaling[weapon_class]["damage_type"]
+    assert damage_type in store.combat_constants["damage_type_weighting"]
 
 
 def test_bad_equip_requirements_shape_is_rejected(tmp_path):

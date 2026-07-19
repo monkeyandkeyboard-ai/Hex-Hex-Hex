@@ -24,6 +24,7 @@ import websockets
 from gep import db
 from gep.config_loader import ConfigStore
 from gep.entities import Equipment, Player, Skills, roll_monster
+from gep.items import is_instance
 from gep.floorgen import generate_floor, pack_biome_map, pack_unit_field
 from gep.floor_state import FloorState
 from gep.floor_manager import FloorManager
@@ -202,6 +203,9 @@ def build_floor_state(floor_number: int, cfg: ConfigStore, on_change_floor) -> t
         xp_table=cfg.xp_table,
         rewards=cfg.rewards,
         stat_scaling=cfg.stat_scaling,
+        items=cfg.items,
+        weapon_classes=cfg.weapon_classes,
+        power_scaling=cfg.power_scaling,
         on_threat=notify_threat,
     )
     movement.register(engine, floor, on_move=break_engagement)
@@ -212,7 +216,62 @@ def build_floor_state(floor_number: int, cfg: ConfigStore, on_change_floor) -> t
     return floor, engine
 
 
-def floor_snapshot(floor: FloorState, tick: int, tick_duration: float, xp_table: dict, biomes: dict) -> dict:
+def resolve_item(item_id: str, items, resources: dict) -> dict:
+    """Client-facing description of an item -- rolled name, type, tier and
+    stats for equipment; just a display name for a stackable material.
+    Resolved once at the server boundary so the client never has to parse an
+    instance string itself (gep/items.py stays the only thing that does).
+    """
+    if is_instance(item_id):
+        stats = items.runtime_stats(item_id)
+        return {
+            "item_id": item_id,
+            "display_name": stats["display_name"],
+            "type": stats["type"],
+            "tier": stats["tier"],
+            "equipment_slot": stats["equipment_slot"],
+            "damage_min": stats["damage_min"],
+            "damage_max": stats["damage_max"],
+            "speed_ticks": stats["speed_ticks"],
+            "armor": stats["armor"],
+            "stats": stats["stats"],
+            "mods": stats["mods"],
+        }
+    resource = resources.get(item_id)
+    display_name = resource["display_name"] if resource else item_id.replace("_", " ")
+    return {"item_id": item_id, "display_name": display_name}
+
+
+def resolve_inventory(snapshot: list, items, resources: dict) -> list:
+    return [
+        None if slot is None else
+        {"item": resolve_item(slot["item_id"], items, resources), "quantity": slot["quantity"]}
+        for slot in snapshot
+    ]
+
+
+def resolve_equipment(equipment: dict, items, resources: dict) -> dict:
+    return {
+        slot: (resolve_item(item_id, items, resources) if item_id else None)
+        for slot, item_id in equipment.items()
+    }
+
+
+def resolve_event_items(event: dict, items, resources: dict) -> dict:
+    """Rewrite an event's raw `inventory`/`equipment` payloads (built by
+    systems that only know item ids) into client-facing resolved form. One
+    boundary transform rather than every system re-deriving it."""
+    if isinstance(event.get("inventory"), list):
+        event["inventory"] = resolve_inventory(event["inventory"], items, resources)
+    if isinstance(event.get("equipment"), dict):
+        event["equipment"] = resolve_equipment(event["equipment"], items, resources)
+    return event
+
+
+def floor_snapshot(
+    floor: FloorState, tick: int, tick_duration: float, xp_table: dict, biomes: dict,
+    items, resources: dict,
+) -> dict:
     layout = floor.layout
     return {
         "type": "floor_snapshot",
@@ -261,8 +320,8 @@ def floor_snapshot(floor: FloorState, tick: int, tick_duration: float, xp_table:
                 "hp": p.hp,
                 "max_hp": p.max_hp,
                 "skills": _skills_payload(p, xp_table),
-                "inventory": p.inventory_snapshot(),
-                "equipment": p.equipment.to_dict(),
+                "inventory": resolve_inventory(p.inventory_snapshot(), items, resources),
+                "equipment": resolve_equipment(p.equipment.to_dict(), items, resources),
             }
             for pid, p in floor.players.items()
         },
@@ -367,7 +426,10 @@ async def run_server():
         log.info("Player %s (%s) connected", username, player_id[:8])
 
         try:
-            await ws.send(json.dumps(floor_snapshot(floor, engine.tick, engine.tick_duration, cfg.xp_table, cfg.biomes)))
+            await ws.send(json.dumps(floor_snapshot(
+                floor, engine.tick, engine.tick_duration, cfg.xp_table, cfg.biomes,
+                cfg.items, cfg.resources,
+            )))
 
             async for raw in ws:
                 try:
@@ -445,9 +507,10 @@ async def run_server():
                     if ws and fl in floors:
                         fs, fe = floors[fl]
                         try:
-                            await ws.send(json.dumps(
-                                floor_snapshot(fs, fe.tick, fe.tick_duration, cfg.xp_table, cfg.biomes)
-                            ))
+                            await ws.send(json.dumps(floor_snapshot(
+                                fs, fe.tick, fe.tick_duration, cfg.xp_table, cfg.biomes,
+                                cfg.items, cfg.resources,
+                            )))
                         except websockets.exceptions.ConnectionClosed:
                             pass
                 pending_snapshots.clear()
@@ -458,6 +521,10 @@ async def run_server():
                 if not recipients:
                     continue
                 result = results[fl_num]
+                # Systems that emit inventory/equipment only know item ids;
+                # resolve them into client-facing form once here rather than
+                # teaching every system about the item registry and resources.
+                result.events = [resolve_event_items(e, cfg.items, cfg.resources) for e in result.events]
                 for pid in recipients:
                     p = floor_state.players.get(pid)
                     if p:
@@ -467,8 +534,8 @@ async def run_server():
                             "hp": p.hp,
                             "max_hp": p.max_hp,
                             "skills": _skills_payload(p, cfg.xp_table),
-                            "inventory": p.inventory_snapshot(),
-                            "equipment": p.equipment.to_dict(),
+                            "inventory": resolve_inventory(p.inventory_snapshot(), cfg.items, cfg.resources),
+                            "equipment": resolve_equipment(p.equipment.to_dict(), cfg.items, cfg.resources),
                         })
                 broadcast = json.dumps({
                     "tick": result.tick,

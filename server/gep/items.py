@@ -189,11 +189,15 @@ class ItemRegistry:
     nothing, months later.
     """
 
-    def __init__(self, bases: dict, modifiers: list, generation: dict, known_stats: set[str]):
+    def __init__(
+        self, bases: dict, modifiers: list, generation: dict, known_stats: set[str],
+        item_names: dict | None = None,
+    ):
         self.bases = bases
         self.modifiers = modifiers
         self.generation = generation
         self.known_stats = known_stats
+        self.item_names = item_names or {}
 
         self.modifier_index = {m["modifier_code"]: m for m in modifiers}
 
@@ -312,6 +316,33 @@ class ItemRegistry:
         base = self.base_of(item_id)
         return base["equipment_slot"] if base else None
 
+    def _flavor_name(self, serialized: str, base_name: str, tier: int) -> str:
+        """'{adjective} {noun} {base name} T{tier}'. Seeded from the item's
+        own serialized string rather than the ambient RNG: runtime_stats() is
+        recomputed from that string on every load and never persists
+        anything of its own, so the name must be a pure function of the
+        string or it would change every time the item was looked at."""
+        adjectives = self.item_names.get("adjectives") or ["Unnamed"]
+        nouns = self.item_names.get("nouns") or ["Item"]
+        rng = random.Random(serialized)
+        return f"{rng.choice(adjectives)} {rng.choice(nouns)} {base_name} T{tier}"
+
+    def combat_profile(self, item_id: str) -> dict | None:
+        """The base fields combat needs to swing: weapon archetype, and the
+        damage_min/max multiplier and speed_ticks it carries. Deliberately
+        not runtime_stats() -- that requires a rolled instance string, and a
+        bare base code (or a non-item equipment id) must resolve here too.
+        """
+        base = self.base_of(item_id)
+        if base is None:
+            return None
+        return {
+            "type": base["type"],
+            "damage_min": base["damage_min"],
+            "damage_max": base["damage_max"],
+            "speed_ticks": base["speed_ticks"],
+        }
+
     def runtime_stats(self, serialized: str) -> dict:
         """Fully resolved, transient stats for an instance (items.md §3.A.5).
 
@@ -342,12 +373,14 @@ class ItemRegistry:
                 "value": mod["value"],
             })
 
+        tier = int(base["Tier"])
         return {
             "base_code": parsed["base_code"],
             "name": base["name"],
+            "display_name": self._flavor_name(serialized, base["name"], tier),
             "equipment_slot": base["equipment_slot"],
             "type": base["type"],
-            "tier": int(base["Tier"]),
+            "tier": tier,
             "damage_min": base["damage_min"],
             "damage_max": base["damage_max"],
             "speed_ticks": base["speed_ticks"],
