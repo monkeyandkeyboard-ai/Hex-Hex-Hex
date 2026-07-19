@@ -47,10 +47,16 @@ def register(engine: TickEngine, floor: FloorState) -> None:
         if not remaining:
             return []
 
+        # Bump the sequence number so any move-step already queued from a
+        # prior intent (e.g. player was mid-walk when they clicked again)
+        # sees it doesn't match and drops. This lets a new click override
+        # the next tick's movement instead of fighting the old path.
+        player.move_seq += 1
         eng.schedule(1, "move-step", {
             "player_id": player_id,
             "remaining": remaining,
             "speed": getattr(player, "move_speed", 1),
+            "seq": player.move_seq,
         })
         return [{"type": "move_started", "player_id": player_id, "path": path}]
 
@@ -58,6 +64,10 @@ def register(engine: TickEngine, floor: FloorState) -> None:
         player_id = payload["player_id"]
         player = floor.players.get(player_id)
         if player is None or not player.alive:
+            return []
+
+        # Stale steps from a superseded move intent -- ignore.
+        if payload.get("seq", 0) != player.move_seq:
             return []
 
         remaining: list[Tile] = [tuple(t) for t in payload["remaining"]]
@@ -84,6 +94,7 @@ def register(engine: TickEngine, floor: FloorState) -> None:
                 "player_id": player_id,
                 "remaining": remaining,
                 "speed": speed,
+                "seq": payload["seq"],
             })
 
         return events

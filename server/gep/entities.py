@@ -77,6 +77,9 @@ class Player:
     bag_slots: list[str | None] = field(default_factory=lambda: [None] * BAG_SLOTS)
     weapon_ready_tick: int = 0
     alive: bool = True
+    # Incremented on every new move intent so previously-scheduled move-step
+    # actions from the old path can detect they're stale and drop.
+    move_seq: int = 0
 
     def combat_stat(self, skill: str) -> float:
         return self.skills.combat.get(skill, 1)

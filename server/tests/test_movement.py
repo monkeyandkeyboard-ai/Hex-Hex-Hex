@@ -114,6 +114,38 @@ def test_move_off_floor_returns_error():
     assert player.tile == (0, 0)
 
 
+def test_new_move_intent_supersedes_previously_queued_step():
+    """If a player clicks a new destination while mid-walk, the next tick
+    must follow the new path -- the old scheduled move-step must drop.
+    """
+    floor = make_floor()
+    player = make_player(tile=(0, 0))
+    floor.players["p1"] = player
+    engine = setup_engine(floor)
+
+    # Start walking east toward (0, 4).
+    engine.step([{"intent_type": "move-to-tile", "player_id": "p1", "target_q": 0, "target_r": 4}])
+    engine.step([])  # tick 1 of the walk: now at (0, 1)
+    assert player.tile == (0, 1)
+
+    # Now redirect west toward (-3, 0) BEFORE the next scheduled step fires.
+    # Two move-steps are now queued for the same tick: the stale one from
+    # the old path, and the fresh one. Only the fresh one should apply.
+    result = engine.step([
+        {"intent_type": "move-to-tile", "player_id": "p1", "target_q": -3, "target_r": 1}
+    ])
+    # move_started for the new path fired this tick.
+    assert any(e["type"] == "move_started" for e in result.events)
+
+    result2 = engine.step([])
+    positions = [tuple(e["tile"]) for e in result2.events if e["type"] == "position_update"]
+    # Exactly one step advanced (speed 1) and it went toward the NEW target,
+    # not back along the old (0,1) -> (0,2) path.
+    assert len(positions) == 1
+    assert positions[0] == (-1, 1)  # first hex toward (-3, 1)
+    assert player.tile == (-1, 1)
+
+
 def test_each_intermediate_tile_emitted_as_separate_position_update():
     floor = make_floor()
     player = make_player(tile=(0, 0))
