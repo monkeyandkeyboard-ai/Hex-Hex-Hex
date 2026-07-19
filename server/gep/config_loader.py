@@ -42,9 +42,8 @@ _RESOURCE_REQUIRED = {
 _WEAPON_REQUIRED = {
     "id",
     "display_name",
-    "damage_min",
-    "damage_max",
-    "speed_ticks",
+    "base_power",
+    "cooldown_ticks",
     "equipment_slot",
 }
 
@@ -68,7 +67,19 @@ def _load_json(path: Path) -> dict:
         return json.load(f)
 
 
-def _load_dir(path: Path, required_keys: set[str]) -> dict[str, dict]:
+def _load_dir(
+    path: Path,
+    required_keys: set[str],
+    id_matches_filename: bool = True,
+) -> dict[str, dict]:
+    """Load every .json in a content directory, keyed by its `id` field.
+
+    `id_matches_filename` is on everywhere except equipment, where filenames
+    are organizational rather than identifying. It is worth keeping on by
+    default: it catches a file copied from another and never re-`id`'d, which
+    would otherwise silently overwrite the entry it was copied from. Where it
+    is off, a duplicate id is caught explicitly below instead.
+    """
     entries: dict[str, dict] = {}
     if not path.is_dir():
         raise ConfigError(f"missing config directory: {path}")
@@ -77,10 +88,12 @@ def _load_dir(path: Path, required_keys: set[str]) -> dict[str, dict]:
         missing = required_keys - data.keys()
         if missing:
             raise ConfigError(f"{file}: missing required keys {sorted(missing)}")
-        if data["id"] != file.stem:
+        if id_matches_filename and data["id"] != file.stem:
             raise ConfigError(
                 f"{file}: 'id' field ({data['id']!r}) must match filename ({file.stem!r})"
             )
+        if data["id"] in entries:
+            raise ConfigError(f"{file}: duplicate id {data['id']!r}")
         entries[data["id"]] = data
     return entries
 
@@ -162,6 +175,49 @@ def _validate_monster_stats(monsters: dict[str, dict]) -> None:
             )
 
 
+def _normalize_equipment(weapons: dict) -> None:
+    """Fill in the optional half of the equipment schema.
+
+    Every entry in the registry gets the same treatment -- the default state
+    is not exempt. That is the point: requirement checks and damage typing
+    must run down one path, so a future `equip_requirements` gate cannot be
+    bypassed by a state that skipped normalization.
+    """
+    for item_id, data in weapons.items():
+        # base_power is a flat baseline, not a range: per-swing variance is
+        # deliberately gone, so damage is decided by stat multipliers and
+        # mitigation alone.
+        if not isinstance(data["base_power"], (int, float)) or isinstance(data["base_power"], bool):
+            raise ConfigError(f"equipment {item_id}: 'base_power' must be a number")
+        if data["base_power"] < 0:
+            raise ConfigError(f"equipment {item_id}: 'base_power' must be >= 0")
+
+        # Zero would mean a swing every tick regardless of the weapon, which
+        # is the pacing gate failing open rather than a very fast weapon.
+        if not isinstance(data["cooldown_ticks"], int) or isinstance(data["cooldown_ticks"], bool):
+            raise ConfigError(f"equipment {item_id}: 'cooldown_ticks' must be an integer")
+        if data["cooldown_ticks"] < 1:
+            raise ConfigError(f"equipment {item_id}: 'cooldown_ticks' must be >= 1")
+
+        data.setdefault("damage_type", "physical")
+        if not isinstance(data["damage_type"], str):
+            raise ConfigError(f"equipment {item_id}: 'damage_type' must be a string")
+
+        # Empty today. Declared now so the shape is fixed before anything
+        # depends on it, and so an entry that omits it is indistinguishable
+        # from one that requires nothing.
+        data.setdefault("equip_requirements", {})
+        if not isinstance(data["equip_requirements"], dict):
+            raise ConfigError(
+                f"equipment {item_id}: 'equip_requirements' must be an object"
+            )
+        for skill, minimum in data["equip_requirements"].items():
+            if not isinstance(minimum, (int, float)):
+                raise ConfigError(
+                    f"equipment {item_id}: requirement {skill!r} must be a number"
+                )
+
+
 class ConfigStore:
     def __init__(self, config_dir: str | Path):
         root = Path(config_dir)
@@ -182,12 +238,34 @@ class ConfigStore:
         _normalize_monster_movement(self.monsters)
 
         self.resources = _load_dir(root / "resources", _RESOURCE_REQUIRED)
-        self.weapons = _load_dir(root / "weapons", _WEAPON_REQUIRED)
+        # Equipment filenames are organizational, not identifying: the entry
+        # id is what the registry and every reference use.
+        self.weapons = _load_dir(root / "weapons", _WEAPON_REQUIRED,
+                                 id_matches_filename=False)
+        _normalize_equipment(self.weapons)
+        self.default_equipment_state = self._resolve_default_equipment_state()
 
         self.biomes = _load_dir(root / "biomes", _BIOME_REQUIRED)
         self._validate_biomes()
         self._validate_archetypes()
         self._validate_loot_tables()
+
+    def _resolve_default_equipment_state(self) -> str:
+        """The equipment id a player holds when main_hand is empty.
+
+        Validated against the registry at load, so "nothing equipped" can
+        never resolve to a state that does not exist. A missing or unknown
+        value is a hard error rather than a silent fall back to a built-in
+        default -- that fall back is exactly the special case this replaces.
+        """
+        state = self.world.get("default_equipment_state")
+        if not state:
+            raise ConfigError("world.json: 'default_equipment_state' is required")
+        if state not in self.weapons:
+            raise ConfigError(
+                f"world.json: default_equipment_state {state!r} is not in config/weapons/"
+            )
+        return state
 
     def _validate_loot_tables(self) -> None:
         """Loot entries must name something that exists. Runs after resources

@@ -86,7 +86,10 @@ def build_player(player_id: str, username: str, saved: dict | None, cfg) -> Play
         max_hp=max_hp,
         mana=mana,
         max_mana=max_mana,
-        weapon_id=equipment.main_hand or "fists",
+        # An empty main_hand is a state, not an absence: it resolves to the
+        # configured default equipment id and goes down the same registry
+        # lookup as a sword would.
+        weapon_id=equipment.main_hand or cfg.default_equipment_state,
         skills=skills,
         equipment=equipment,
         inventory=inventory,
@@ -202,7 +205,7 @@ def build_floor_state(floor_number: int, cfg: ConfigStore, on_change_floor) -> t
     )
     movement.register(engine, floor, on_move=break_engagement)
     floor_exits.register(engine, floor, on_change_floor)
-    inventory_system.register(engine, floor, cfg.weapons)
+    inventory_system.register(engine, floor, cfg.weapons, cfg.default_equipment_state)
 
     return floor, engine
 

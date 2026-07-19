@@ -20,7 +20,7 @@ def make_player(**stat_overrides):
     skills.combat.update(stat_overrides)
     return Player(
         id="p1", name="Hero", tower_id="tower-a", floor_number=1, tile=(0, 0),
-        hp=1000, max_hp=1000, mana=50, max_mana=50, weapon_id="fists", skills=skills,
+        hp=1000, max_hp=1000, mana=50, max_mana=50, weapon_id="unarmed", skills=skills,
     )
 
 

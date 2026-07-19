@@ -1,0 +1,11 @@
+{
+  "id": "unarmed",
+  "display_name": "Unarmed",
+  "base_power": 2,
+  "cooldown_ticks": 2,
+  "damage_type": "physical",
+  "equipment_slot": "main_hand",
+  "equip_requirements": {},
+  "Tier": 0,
+  "max_stack": 1
+}

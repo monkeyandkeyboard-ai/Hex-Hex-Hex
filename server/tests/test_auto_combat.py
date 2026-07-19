@@ -33,7 +33,7 @@ def make_floor():
 def make_player(tile=(0, 0)):
     player = Player(
         id="p1", name="Hero", tower_id="tower-a", floor_number=5, tile=tile,
-        hp=10_000, max_hp=10_000, mana=0, max_mana=0, weapon_id="fists", skills=Skills(),
+        hp=10_000, max_hp=10_000, mana=0, max_mana=0, weapon_id="unarmed", skills=Skills(),
     )
     # Hit hard and often so swings land and the loop is observable.
     player.skills.combat.update({"strength": 400, "precision": 400, "dexterity": 400})
@@ -88,7 +88,7 @@ def test_swings_follow_weapon_speed_not_one_per_tick(store):
     floor = make_floor()
     player = make_player()
     engine, monster = setup(store, floor, player)
-    speed = store.weapons["fists"]["speed_ticks"]
+    speed = store.weapons["unarmed"]["cooldown_ticks"]
 
     attack(engine)
     ticks = 40

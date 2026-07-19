@@ -13,7 +13,7 @@ def test_loads_real_config_dir():
     assert "goblin_skirmisher" in store.monsters
     assert "iron_ore" in store.resources
     assert "copper_ore" in store.resources
-    assert "fists" in store.weapons
+    assert "unarmed" in store.weapons
     assert len(store.skills["non_combat_skills"]) == 8
     assert isinstance(store.xp_table, dict)
     assert str(1) in store.xp_table
@@ -95,3 +95,84 @@ def test_rejects_minrandom_greater_than_maxrandom(tmp_path):
 def _mirror_config(tmp_path: pathlib.Path) -> None:
     import shutil
     shutil.copytree(CONFIG_DIR, tmp_path, dirs_exist_ok=True)
+
+
+def test_default_equipment_state_resolves_to_a_real_registry_entry():
+    """"Nothing equipped" is an id, not an absence -- and the id has to exist.
+    Validated at load so a typo cannot surface as an unarmed player who
+    silently deals no damage."""
+    store = ConfigStore(CONFIG_DIR)
+    assert store.default_equipment_state == "unarmed"
+    assert store.default_equipment_state in store.weapons
+
+
+def test_unknown_default_equipment_state_is_rejected(tmp_path):
+    import json
+    import shutil
+    shutil.copytree(CONFIG_DIR, tmp_path / "config")
+    world = tmp_path / "config" / "world.json"
+    data = json.loads(world.read_text())
+    data["default_equipment_state"] = "nonexistent_state"
+    world.write_text(json.dumps(data))
+
+    with pytest.raises(ConfigError, match="not in config/weapons"):
+        ConfigStore(tmp_path / "config")
+
+
+def test_missing_default_equipment_state_is_rejected(tmp_path):
+    import json
+    import shutil
+    shutil.copytree(CONFIG_DIR, tmp_path / "config")
+    world = tmp_path / "config" / "world.json"
+    data = json.loads(world.read_text())
+    del data["default_equipment_state"]
+    world.write_text(json.dumps(data))
+
+    with pytest.raises(ConfigError, match="default_equipment_state"):
+        ConfigStore(tmp_path / "config")
+
+
+def test_every_equipment_entry_carries_the_full_schema():
+    """The default state is not exempt from normalization -- that is the point
+    of routing it through the registry rather than a fallback branch."""
+    store = ConfigStore(CONFIG_DIR)
+    for item_id, data in store.weapons.items():
+        assert isinstance(data["equip_requirements"], dict), item_id
+        assert isinstance(data["damage_type"], str), item_id
+        for field in ("base_power", "cooldown_ticks", "equipment_slot"):
+            assert field in data, f"{item_id} missing {field}"
+
+
+def test_default_state_declares_physical_not_a_flavour_word():
+    """'Unarmed' used to sit in the damage-type field and fall through to the
+    default weighting. It is a real type now."""
+    store = ConfigStore(CONFIG_DIR)
+    assert store.weapons["unarmed"]["damage_type"] == "physical"
+    assert store.weapons["unarmed"]["damage_type"] in store.combat_constants["damage_type_weighting"]
+
+
+def test_bad_equip_requirements_shape_is_rejected(tmp_path):
+    import json
+    import shutil
+    shutil.copytree(CONFIG_DIR, tmp_path / "config")
+    entry = tmp_path / "config" / "weapons" / "equipment_handler.json"
+    data = json.loads(entry.read_text())
+    data["equip_requirements"] = {"strength": "not a number"}
+    entry.write_text(json.dumps(data))
+
+    with pytest.raises(ConfigError, match="must be a number"):
+        ConfigStore(tmp_path / "config")
+
+
+def test_duplicate_equipment_ids_are_caught_without_the_filename_rule(tmp_path):
+    """Equipment filenames no longer have to match ids, so the filename rule
+    can't catch a copy-pasted entry. The explicit duplicate check must."""
+    import json
+    import shutil
+    shutil.copytree(CONFIG_DIR, tmp_path / "config")
+    weapons = tmp_path / "config" / "weapons"
+    clone = json.loads((weapons / "equipment_handler.json").read_text())
+    (weapons / "some_other_file.json").write_text(json.dumps(clone))
+
+    with pytest.raises(ConfigError, match="duplicate id"):
+        ConfigStore(tmp_path / "config")

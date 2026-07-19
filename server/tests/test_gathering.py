@@ -36,7 +36,7 @@ def make_floor_with_node(node_tile=NODE_TILE, resource_id=RESOURCE_ID):
 def make_player(pid="p1", tile=NODE_TILE):
     return Player(
         id=pid, name="Hero", tower_id="tower-a", floor_number=5, tile=tile,
-        hp=1000, max_hp=1000, mana=50, max_mana=50, weapon_id="fists",
+        hp=1000, max_hp=1000, mana=50, max_mana=50, weapon_id="unarmed",
         skills=Skills(),
     )
 

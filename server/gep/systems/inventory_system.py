@@ -9,7 +9,12 @@ from gep.floor_state import FloorState
 from gep.tick import TickEngine
 
 
-def register(engine: TickEngine, floor: FloorState, weapons: dict) -> None:
+def register(
+    engine: TickEngine,
+    floor: FloorState,
+    weapons: dict,
+    default_equipment_state: str,
+) -> None:
 
     def handle_equip(intent: dict, eng: TickEngine) -> list[dict]:
         player_id = intent.get("player_id")
@@ -78,7 +83,10 @@ def register(engine: TickEngine, floor: FloorState, weapons: dict) -> None:
 
         setattr(player.equipment, equip_slot, None)
         if equip_slot == "main_hand":
-            player.weapon_id = "fists"
+            # Emptying the slot moves the player into the default equipment
+            # state rather than into "no weapon" -- combat resolves it through
+            # the registry like any other, so there is no unarmed branch.
+            player.weapon_id = default_equipment_state
 
         return [{
             "type": "equipment_update",

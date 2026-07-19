@@ -50,7 +50,7 @@ def add_monster(floor, tile=(0, 0), mid="m1"):
 def add_player(floor, tile=(0, 5), pid="p1"):
     player = Player(
         id=pid, name="Hero", tower_id="tower-a", floor_number=5, tile=tile,
-        hp=100, max_hp=100, mana=0, max_mana=0, weapon_id="fists", skills=Skills(),
+        hp=100, max_hp=100, mana=0, max_mana=0, weapon_id="unarmed", skills=Skills(),
     )
     floor.players[pid] = player
     return player

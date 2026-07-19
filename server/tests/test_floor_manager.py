@@ -17,7 +17,7 @@ def _manager():
 def _player(pid="p1"):
     return Player(
         id=pid, name=pid, tower_id="tower-a", floor_number=1, tile=(0, 0),
-        hp=100, max_hp=100, mana=10, max_mana=10, weapon_id="fists", skills=Skills(),
+        hp=100, max_hp=100, mana=10, max_mana=10, weapon_id="unarmed", skills=Skills(),
     )
 
 

@@ -28,7 +28,7 @@ def make_floor():
 def make_player(pid="p1", tile=(0, 0)):
     return Player(
         id=pid, name="Hero", tower_id="tower-a", floor_number=5, tile=tile,
-        hp=1000, max_hp=1000, mana=50, max_mana=50, weapon_id="fists",
+        hp=1000, max_hp=1000, mana=50, max_mana=50, weapon_id="unarmed",
         skills=Skills(),
     )
 

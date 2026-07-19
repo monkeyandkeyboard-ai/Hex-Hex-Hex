@@ -88,7 +88,7 @@ def test_monsters_never_share_a_tile_with_a_player_or_each_other():
     player_tile = (1, 1)
     floor.players["p1"] = Player(
         id="p1", name="Hero", tower_id="tower-a", floor_number=5, tile=player_tile,
-        hp=10, max_hp=10, mana=0, max_mana=0, weapon_id="fists", skills=Skills(),
+        hp=10, max_hp=10, mana=0, max_mana=0, weapon_id="unarmed", skills=Skills(),
     )
 
     engine = TickEngine()

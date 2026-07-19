@@ -31,7 +31,7 @@ def temp_db(tmp_path, monkeypatch):
 def make_player(pid="p1", name="Hero"):
     return Player(
         id=pid, name=name, tower_id="tower-a", floor_number=1, tile=(0, 0),
-        hp=100, max_hp=100, mana=10, max_mana=10, weapon_id="fists",
+        hp=100, max_hp=100, mana=10, max_mana=10, weapon_id="unarmed",
         skills=Skills(),
     )
 
@@ -68,14 +68,14 @@ def test_inventory_and_equipment_survive_a_round_trip(temp_db):
     player = make_player()
     player.add_item("copper_ore", 7)
     player.add_item("iron_ore", 3)
-    player.equipment.main_hand = "fists"
+    player.equipment.main_hand = "unarmed"
 
     temp_db.save_player(player)
     loaded = temp_db.load_player("p1")
 
     stacks = {v["item_id"]: v["quantity"] for v in loaded["inventory"].values() if v}
     assert stacks == {"copper_ore": 7, "iron_ore": 3}
-    assert loaded["equipment"]["main_hand"] == "fists"
+    assert loaded["equipment"]["main_hand"] == "unarmed"
 
 
 def test_saving_twice_updates_rather_than_duplicating(temp_db):

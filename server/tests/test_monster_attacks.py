@@ -42,7 +42,7 @@ def make_floor():
 def make_player(tile=(0, 0), hp=500.0):
     player = Player(
         id="p1", name="Hero", tower_id="tower-a", floor_number=5, tile=tile,
-        hp=hp, max_hp=500.0, mana=0.0, max_mana=50.0, weapon_id="fists",
+        hp=hp, max_hp=500.0, mana=0.0, max_mana=50.0, weapon_id="unarmed",
         skills=Skills(),
     )
     player.skills.combat["dexterity"] = 0     # never dodge, so hits land

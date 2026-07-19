@@ -35,7 +35,7 @@ def make_player(hp=100.0, mana=10.0, max_hp=500.0, max_mana=50.0):
     return Player(
         id="p1", name="Hero", tower_id="tower-a", floor_number=5, tile=(0, 0),
         hp=hp, max_hp=max_hp, mana=mana, max_mana=max_mana,
-        weapon_id="fists", skills=Skills(),
+        weapon_id="unarmed", skills=Skills(),
     )
 
 

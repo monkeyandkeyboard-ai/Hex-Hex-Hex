@@ -14,12 +14,10 @@ the `break_engagement` callback handed to the movement system -- movement
 never touches combat state itself, the same way combat never touches the
 monster threat slot (see systems/monster_ai.py).
 
-Swing cadence is the weapon's `speed_ticks`, not one swing per tick: the
+Swing cadence is the weapon's `cooldown_ticks`, not one swing per tick: the
 weapon config already owns that number and auto-combat must not smuggle in a
 second, faster rate.
 """
-import random
-
 from gep.combat import normalize_damage_type, resolve_attack
 from gep.floor_state import FloorState
 from gep.actions import MONSTER_STRIKE, PLAYER_DEFEATED
@@ -97,8 +95,10 @@ def register(
         player_id = player.id
         events = face_target(player, monster)
 
-        weapon_damage = weapon["damage_min"] + random.random() * (weapon["damage_max"] - weapon["damage_min"])
-        damage_type = normalize_damage_type(weapon.get("type"), combat_constants)
+        # Flat baseline: no per-swing roll. Variance in the outcome comes from
+        # the evasion and hit checks, not from the damage number.
+        weapon_damage = weapon["base_power"]
+        damage_type = normalize_damage_type(weapon.get("damage_type"), combat_constants)
 
         result = resolve_attack(player, monster, weapon_damage, damage_type, combat_constants)
         events.append(result)
@@ -131,12 +131,12 @@ def register(
                 # Nothing left to auto-attack.
                 end_engagement(player)
 
-        player.weapon_ready_tick = eng.tick + weapon["speed_ticks"]
+        player.weapon_ready_tick = eng.tick + weapon["cooldown_ticks"]
 
         # Queue the next swing for the moment the weapon comes back up. The
         # seq check in the handler drops this if the engagement ended first.
         if player.combat_target == target_id:
-            eng.schedule(weapon["speed_ticks"], "auto-attack", {
+            eng.schedule(weapon["cooldown_ticks"], "auto-attack", {
                 "player_id": player_id,
                 "target_id": target_id,
                 "seq": player.attack_seq,
