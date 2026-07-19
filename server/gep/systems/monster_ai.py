@@ -1,22 +1,31 @@
-"""Monster wander AI. Registers a per-monster recurring action on the tick
-engine that steps the monster to a random adjacent tile and updates its
-facing.
+"""Monster behaviour: wandering, threat acquisition, and pursuit.
 
-Deliberately dumb for now -- no aggro, no pursuit, no leashing. Its job is to
-exercise the facing/movement plumbing end to end (server state -> event ->
-client spritesheet frame) so those paths are proven before real AI lands.
+This module owns every decision about *where a monster goes* and nothing
+about damage. Combat never imports it and it never imports combat. The only
+channel between them is the `notify_threat` callback returned by register():
+combat calls it to report "this entity was attacked by that player", and
+what the monster does about it is decided entirely here.
 
-Cadence and restlessness are per-template config (`movement` block), not
-constants here, so tuning stays in the config layer.
+That seam is the point. Retuning damage scaling touches combat.py and its
+constants; retuning pursuit touches this file and the `movement` config
+block. Neither can break the other, because neither can see the other.
+
+Behaviour model, evaluated on one recurring per-monster action:
+
+    threat slot empty  -> wander to a random free neighbour
+    threat slot filled -> path toward the target and take one step,
+                          stopping when adjacent (never onto the player)
+
+Cadence for both modes is per-template config, not constants here.
 """
 import random
 
 from gep.floor_state import FloorState
 from gep.hexgrid import facing_from_delta
-from gep.pathfinding import hex_neighbors
+from gep.pathfinding import find_path, hex_neighbors
 from gep.tick import TickEngine
 
-WANDER_ACTION = "monster-wander"
+THINK_ACTION = "monster-think"
 
 
 def register(
@@ -24,30 +33,50 @@ def register(
     floor: FloorState,
     monsters_cfg: dict,
     rng: random.Random | None = None,
-) -> None:
+):
+    """Returns `notify_threat(entity, attacker_id)` for combat to call."""
     roll = rng or random
 
     def movement_cfg(template_id: str) -> dict:
         return monsters_cfg.get(template_id, {}).get("movement", {})
 
-    def interval_for(template_id: str) -> int:
-        return max(1, int(movement_cfg(template_id).get("wander_interval_ticks", 6)))
+    def interval_for(monster) -> int:
+        cfg = movement_cfg(monster.template_id)
+        key = "pursue_interval_ticks" if monster.threat_target else "wander_interval_ticks"
+        default = 2 if monster.threat_target else 6
+        return max(1, int(cfg.get(key, default)))
 
-    def handle_wander(payload: dict, eng: TickEngine) -> list[dict]:
-        monster_id = payload["monster_id"]
-        monster = floor.monsters.get(monster_id)
-        if monster is None:
-            return []  # despawned for good; let the timer die with it
+    def face_toward(monster, tile) -> list[dict]:
+        """Turn to look at a tile without moving (used when already adjacent).
 
-        interval = interval_for(monster.template_id)
-        # Always re-arm, even while dead: the monster respawns under the same
-        # id, and rescheduling here keeps combat_system from having to know
-        # anything about the wander timer.
-        eng.schedule(interval, WANDER_ACTION, {"monster_id": monster_id})
-
-        if not monster.alive:
+        Emits on change: a turn-in-place is still a state change the client
+        has to hear about, or the server and client disagree about which
+        sprite frame to draw until the monster happens to move again.
+        """
+        facing = facing_from_delta(monster.tile, tile)
+        if facing is None or facing == monster.facing:
             return []
+        monster.facing = facing
+        return [{
+            "type": "monster_moved",
+            "monster_id": monster.id,
+            "tile": list(monster.tile),   # unchanged -- the client won't glide
+            "facing": monster.facing,
+        }]
 
+    def step_to(monster, target_tile) -> list[dict]:
+        facing = facing_from_delta(monster.tile, target_tile)
+        monster.tile = target_tile
+        if facing is not None:
+            monster.facing = facing
+        return [{
+            "type": "monster_moved",
+            "monster_id": monster.id,
+            "tile": list(target_tile),
+            "facing": monster.facing,
+        }]
+
+    def wander(monster) -> list[dict]:
         cfg = movement_cfg(monster.template_id)
         if roll.random() >= float(cfg.get("wander_chance", 0.5)):
             return []  # idle this cycle, so monsters don't march in lockstep
@@ -61,24 +90,73 @@ def register(
         ]
         if not options:
             return []
+        return step_to(monster, roll.choice(options))
 
-        target = roll.choice(options)
-        facing = facing_from_delta(monster.tile, target)
-        monster.tile = target
-        if facing is not None:
-            monster.facing = facing
+    def pursue(monster) -> list[dict]:
+        """One step along the path to the hunted player.
 
-        return [{
-            "type": "monster_moved",
-            "monster_id": monster_id,
-            "tile": list(target),
-            "facing": monster.facing,
-        }]
+        The target's live tile is fed to pathfinding every cycle rather than a
+        path being cached, so the monster re-routes as the player moves.
+        """
+        target = floor.players.get(monster.threat_target)
+        if target is None or not target.alive:
+            # Target left the floor or died -- drop threat and resume wandering
+            # on the next cycle rather than freezing in place.
+            monster.threat_target = None
+            return []
 
-    engine.register_action_handler(WANDER_ACTION, handle_wander)
+        # find_path treats the goal as reachable even when occupied, so a path
+        # to the player always exists if any route does.
+        path = find_path(monster.tile, target.tile, floor.is_passable)
+        if path is None:
+            return []  # walled off for now; keep the threat and retry next cycle
+
+        # path[0] is the current tile, path[-1] is the player's tile. Anything
+        # shorter than 3 means we're already adjacent: hold position and turn
+        # to face them instead of stepping onto them.
+        if len(path) < 3:
+            return face_toward(monster, target.tile)
+
+        next_tile = path[1]
+        if not floor.is_passable(next_tile) or floor.player_at(next_tile) is not None:
+            return []  # another entity took the tile since the path was built
+        return step_to(monster, next_tile)
+
+    def handle_think(payload: dict, eng: TickEngine) -> list[dict]:
+        monster_id = payload["monster_id"]
+        monster = floor.monsters.get(monster_id)
+        if monster is None:
+            return []  # despawned for good; let the timer die with it
+
+        # Always re-arm, even while dead: the monster respawns under the same
+        # id, and rescheduling here keeps combat_system from having to know
+        # anything about this timer.
+        eng.schedule(interval_for(monster), THINK_ACTION, {"monster_id": monster_id})
+
+        if not monster.alive:
+            return []
+
+        return pursue(monster) if monster.threat_target else wander(monster)
+
+    def notify_threat(entity, attacker_id: str) -> None:
+        """Combat's one line into this system: damage landed on `entity`.
+
+        Deliberately tolerant -- it takes any entity and ignores anything
+        without a threat slot, so combat needs no knowledge of which entity
+        kinds have behaviour attached.
+        """
+        if attacker_id is None:
+            return
+        if getattr(entity, "threat_target", "missing") == "missing":
+            return
+        entity.threat_target = attacker_id
+
+    engine.register_action_handler(THINK_ACTION, handle_think)
 
     # Stagger the first tick per monster so a floor's worth of them doesn't
     # step in unison on the same tick.
     for monster_id, monster in floor.monsters.items():
-        interval = interval_for(monster.template_id)
-        engine.schedule(roll.randint(1, interval), WANDER_ACTION, {"monster_id": monster_id})
+        engine.schedule(roll.randint(1, interval_for(monster)), THINK_ACTION,
+                        {"monster_id": monster_id})
+
+    return notify_threat

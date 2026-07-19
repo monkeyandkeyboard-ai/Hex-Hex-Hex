@@ -89,9 +89,14 @@ def build_floor_state(floor_number: int, cfg: ConfigStore, on_change_floor) -> t
 
     engine = TickEngine(tick_duration=1.0 / TICK_HZ)
 
-    movement.register(engine, floor)
     gathering.register(engine, floor, cfg.resources, cfg.xp_table)
-    combat_system.register(
+
+    # Registration order follows the callback seams, not preference:
+    #   monster_ai -> combat  (combat reports damage, behaviour reacts)
+    #   combat -> movement    (movement reports a move, combat disengages)
+    # Each system is handed a function and knows nothing else about the other.
+    notify_threat = monster_ai.register(engine, floor, monsters_cfg=cfg.monsters)
+    break_engagement = combat_system.register(
         engine, floor,
         weapons=cfg.weapons,
         monsters_cfg=cfg.monsters,
@@ -99,8 +104,9 @@ def build_floor_state(floor_number: int, cfg: ConfigStore, on_change_floor) -> t
         xp_rates=cfg.xp_rates,
         xp_table=cfg.xp_table,
         stat_scaling=cfg.stat_scaling,
+        on_threat=notify_threat,
     )
-    monster_ai.register(engine, floor, monsters_cfg=cfg.monsters)
+    movement.register(engine, floor, on_move=break_engagement)
     floor_exits.register(engine, floor, on_change_floor)
     inventory_system.register(engine, floor, cfg.weapons)
 

@@ -136,6 +136,12 @@ function applyEvent(ev) {
       }
       break;
     }
+    case "engagement_started":
+      if (ev.player_id === state.playerId) logEvent("Engaged", "combat");
+      break;
+    case "engagement_ended":
+      if (ev.player_id === state.playerId) logEvent(`Disengaged (${ev.reason})`, "combat");
+      break;
     case "monster_moved": {
       const m = state.monsters.get(ev.monster_id);
       if (m) { m.tile = ev.tile; m.facing = ev.facing; }
@@ -163,6 +169,11 @@ function applyEvent(ev) {
         state.selfInventory = ev.inventory;
       }
       logEvent(`+${ev.quantity}x ${ev.item_id}`, "gather");
+      break;
+    case "item_dropped_inventory_full":
+      // The drop was rolled and lost. Tell the player -- silently voiding
+      // loot is worse than not rolling it.
+      logEvent(`Inventory full — lost ${ev.item_id}`, "combat");
       break;
     case "node_depleted":
       state.resourceNodes.delete(`${ev.tile[0]},${ev.tile[1]}`);

@@ -98,6 +98,7 @@ MONSTER_VISUAL_DEFAULTS: dict = {
 MONSTER_MOVEMENT_DEFAULTS: dict = {
     "wander_interval_ticks": 6,   # ticks between wander attempts
     "wander_chance": 0.5,         # probability of stepping on each attempt
+    "pursue_interval_ticks": 2,   # ticks between steps while hunting a player
 }
 
 
@@ -108,10 +109,9 @@ def _normalize_monster_movement(monsters: dict[str, dict]) -> None:
         unknown = move.keys() - MONSTER_MOVEMENT_DEFAULTS.keys()
         if unknown:
             raise ConfigError(f"monster {monster_id}: unknown movement keys {sorted(unknown)}")
-        if not isinstance(move["wander_interval_ticks"], int) or move["wander_interval_ticks"] < 1:
-            raise ConfigError(
-                f"monster {monster_id}: 'wander_interval_ticks' must be an integer >= 1"
-            )
+        for field in ("wander_interval_ticks", "pursue_interval_ticks"):
+            if not isinstance(move[field], int) or move[field] < 1:
+                raise ConfigError(f"monster {monster_id}: {field!r} must be an integer >= 1")
         if not 0 <= move["wander_chance"] <= 1:
             raise ConfigError(f"monster {monster_id}: 'wander_chance' must be within 0..1")
         data["movement"] = move
@@ -178,6 +178,25 @@ class ConfigStore:
         self.biomes = _load_dir(root / "biomes", _BIOME_REQUIRED)
         self._validate_biomes()
         self._validate_archetypes()
+        self._validate_loot_tables()
+
+    def _validate_loot_tables(self) -> None:
+        """Loot entries must name something that exists. Runs after resources
+        and weapons are loaded, since a drop may be either. Without this a
+        typo'd item id stays silent until the moment something dies.
+        """
+        from gep.loot import NOTHING
+
+        for monster_id, data in self.monsters.items():
+            for pair in data.get("loot_table") or []:
+                item_id, weight = pair[0], pair[1]
+                if item_id != NOTHING and item_id not in self.resources and item_id not in self.weapons:
+                    raise ConfigError(f"monster {monster_id}: unknown loot item {item_id!r}")
+                if weight < 0:
+                    raise ConfigError(f"monster {monster_id}: negative loot weight for {item_id!r}")
+            rolls = data.get("loot_rolls", 1)
+            if not isinstance(rolls, int) or rolls < 0:
+                raise ConfigError(f"monster {monster_id}: 'loot_rolls' must be an integer >= 0")
 
     def _validate_biomes(self) -> None:
         for biome_id, data in self.biomes.items():

@@ -77,11 +77,19 @@ class Player:
     bag_slots: list[str | None] = field(default_factory=lambda: [None] * BAG_SLOTS)
     weapon_ready_tick: int = 0
     alive: bool = True
-    # Which spritesheet column the client draws, updated as the player walks.
+    # Which spritesheet column the client draws, updated as the player walks
+    # and whenever they turn to face something they are attacking.
     facing: str = "down"
+    # Auto-combat: monster id being attacked every weapon cycle until the
+    # target dies or the player issues a movement command. None when idle.
+    combat_target: str | None = None
     # Incremented on every new move intent so previously-scheduled move-step
     # actions from the old path can detect they're stale and drop.
     move_seq: int = 0
+    # Same staleness trick for auto-attack: bumped whenever an engagement
+    # starts or ends, so a swing queued by a previous engagement drops
+    # instead of landing on the new target.
+    attack_seq: int = 0
 
     def combat_stat(self, skill: str) -> float:
         return self.skills.combat.get(skill, 1)
@@ -123,9 +131,12 @@ class Monster:
     # Placeholder-sprite render modifiers bound from the static template
     # (config_loader guarantees a complete block).
     visual: dict = field(default_factory=dict)
-    # Which spritesheet row/column the client should draw. Monsters are
-    # stationary today, so this stays "down" until an AI system turns them.
+    # Which spritesheet row/column the client should draw.
     facing: str = "down"
+    # Aggro anchor: player id this monster is hunting, or None when passive.
+    # Written only by the behaviour system (systems/monster_ai.py) -- combat
+    # never reaches in here, it just reports that damage landed.
+    threat_target: str | None = None
     weapon_ready_tick: int = 0
     alive: bool = True
 

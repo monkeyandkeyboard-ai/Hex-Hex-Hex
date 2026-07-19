@@ -23,7 +23,13 @@ def _tile_from_intent(intent: dict, q_key: str = "target_q", r_key: str = "targe
     return (int(intent[q_key]), int(intent[r_key]))
 
 
-def register(engine: TickEngine, floor: FloorState) -> None:
+def register(engine: TickEngine, floor: FloorState, on_move=None) -> None:
+    """`on_move(player) -> events` is called when a move intent is accepted.
+
+    It exists so that issuing a movement command can break auto-combat
+    without this module knowing what combat is. Movement decides "the player
+    chose to move"; whatever else cares about that decides what it means.
+    """
     def handle_move_intent(intent: dict, eng: TickEngine) -> list[dict]:
         player_id = intent.get("player_id")
         player = floor.players.get(player_id)
@@ -65,7 +71,12 @@ def register(engine: TickEngine, floor: FloorState) -> None:
             "speed": getattr(player, "move_speed", 1),
             "seq": player.move_seq,
         })
-        return [{"type": "move_started", "player_id": player_id, "path": path}]
+
+        events = [{"type": "move_started", "player_id": player_id, "path": path}]
+        # Deciding to move is deciding to stop whatever you were doing.
+        if on_move is not None:
+            events.extend(on_move(player) or [])
+        return events
 
     def handle_move_step(payload: dict, eng: TickEngine) -> list[dict]:
         player_id = payload["player_id"]

@@ -27,8 +27,10 @@
   },
   "movement": {
     "wander_interval_ticks": 6,
-    "wander_chance": 0.5
+    "wander_chance": 0.5,
+    "pursue_interval_ticks": 2
   },
+  "loot_rolls": 2,
   "respawn_ticks": 45,
   "xp_reward": { "combat_base": 28 },
   "loot_table": [["nothing", 5], ["iron_ore", 1], ["copper_ore", 2]]
