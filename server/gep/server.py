@@ -200,12 +200,14 @@ def build_floor_state(floor_number: int, cfg: ConfigStore, on_change_floor) -> t
         combat_constants=cfg.combat_constants,
         xp_rates=cfg.xp_rates,
         xp_table=cfg.xp_table,
+        rewards=cfg.rewards,
         stat_scaling=cfg.stat_scaling,
         on_threat=notify_threat,
     )
     movement.register(engine, floor, on_move=break_engagement)
     floor_exits.register(engine, floor, on_change_floor)
-    inventory_system.register(engine, floor, cfg.weapons, cfg.default_equipment_state)
+    inventory_system.register(engine, floor, cfg.weapons,
+                              cfg.default_equipment_state, cfg.items)
 
     return floor, engine
 

@@ -1,0 +1,258 @@
+import pathlib
+import random
+
+import pytest
+
+from gep.config_loader import ConfigStore
+from gep.items import (
+    MAX_MOD_VALUE,
+    PREFIX,
+    SUFFIX,
+    ItemError,
+    encode_instance,
+    is_instance,
+    parse_instance,
+)
+
+CONFIG_DIR = pathlib.Path(__file__).resolve().parents[1] / "config"
+
+
+@pytest.fixture(scope="module")
+def store():
+    return ConfigStore(CONFIG_DIR)
+
+
+@pytest.fixture(scope="module")
+def items(store):
+    return store.items
+
+
+# --- codec -----------------------------------------------------------------
+
+def test_encode_parse_round_trip():
+    mods = [
+        {"affix": PREFIX, "code": "st1", "value": 2},
+        {"affix": PREFIX, "code": "cn3", "value": 5},
+        {"affix": SUFFIX, "code": "dx2", "value": 4},
+    ]
+    encoded = encode_instance("M1", mods)
+    assert encoded == "M1:2P1S:Pst1002Pcn3005Sdx2004"
+
+    parsed = parse_instance(encoded)
+    assert parsed["base_code"] == "M1"
+    assert parsed["mods"] == mods
+
+
+def test_encode_zero_pads_values():
+    encoded = encode_instance("D9", [{"affix": PREFIX, "code": "cc1", "value": 7}])
+    assert encoded.endswith("Pcc1007")
+
+
+def test_round_trip_handles_no_modifiers():
+    encoded = encode_instance("CF1", [])
+    assert encoded == "CF1:0P0S:"
+    assert parse_instance(encoded) == {"base_code": "CF1", "mods": []}
+
+
+def test_variable_length_base_codes_round_trip():
+    """Base codes are 2 or 3 characters; the codec must not assume a width."""
+    for code in ("M1", "CF1", "PG9", "CK5"):
+        mods = [{"affix": SUFFIX, "code": "ar4", "value": 11}]
+        assert parse_instance(encode_instance(code, mods))["base_code"] == code
+
+
+def test_value_out_of_range_is_rejected():
+    with pytest.raises(ItemError, match="out of range"):
+        encode_instance("M1", [{"affix": PREFIX, "code": "st1", "value": MAX_MOD_VALUE + 1}])
+
+
+def test_unknown_affix_marker_is_rejected():
+    with pytest.raises(ItemError, match="unknown affix"):
+        encode_instance("M1", [{"affix": "X", "code": "st1", "value": 1}])
+
+
+@pytest.mark.parametrize("bad", [
+    "",
+    "M1",                          # no field separators
+    "M1:2P1S",                     # missing modifier field
+    "M1:banana:Pst1002",           # malformed counts
+    "M1:1P0S:Pst100",              # chunk truncated mid-value
+    "M1:1P0S:Xst1002",             # unknown affix marker
+    "M1:1P0S:Pst1abc",             # non-numeric value
+])
+def test_malformed_strings_are_rejected(bad):
+    with pytest.raises(ItemError):
+        parse_instance(bad)
+
+
+def test_declared_counts_must_match_chunks():
+    """A truncation that lands on a chunk boundary is only catchable by
+    checking the declared counts, which is why they are encoded at all."""
+    with pytest.raises(ItemError, match="disagree"):
+        parse_instance("M1:2P1S:Pst1002Sdx2004")
+
+
+def test_is_instance_distinguishes_ids():
+    assert is_instance("M1:1P0S:Pst1002")
+    assert not is_instance("copper_ore")
+    assert not is_instance("M1")
+
+
+# --- rolling ---------------------------------------------------------------
+
+TIER_SLOTS = {
+    1: (1, 0), 2: (1, 1), 3: (2, 1),
+    4: (2, 2), 5: (3, 2), 6: (3, 3),
+    7: (3, 3), 8: (3, 3), 9: (3, 3),
+}
+
+
+def test_tier_determines_mod_slot_counts(items):
+    """The confirmed power curve: every tier 1-6 adds a slot, 6 is the
+    ceiling, and 7-9 hold it."""
+    rng = random.Random(100)
+    by_tier = {}
+    for code, base in items.bases.items():
+        by_tier.setdefault(int(base["Tier"]), code)
+
+    for tier, base_code in sorted(by_tier.items()):
+        parsed = parse_instance(items.roll_instance(base_code, rng))
+        prefixes = sum(1 for m in parsed["mods"] if m["affix"] == PREFIX)
+        suffixes = sum(1 for m in parsed["mods"] if m["affix"] == SUFFIX)
+        assert (prefixes, suffixes) == TIER_SLOTS[tier], (
+            f"tier {tier} base {base_code} rolled {prefixes}P{suffixes}S"
+        )
+
+
+def test_mod_count_never_exceeds_six(items):
+    rng = random.Random(101)
+    for code in items.bases:
+        mods = parse_instance(items.roll_instance(code, rng))["mods"]
+        assert len(mods) <= 6
+
+
+def test_stats_are_distinct_within_an_item(items):
+    rng = random.Random(102)
+    for code in list(items.bases)[:60]:
+        stats = [m["stat"] for m in items.runtime_stats(items.roll_instance(code, rng))["mods"]]
+        assert len(stats) == len(set(stats)), f"{code} rolled a duplicate stat: {stats}"
+
+
+def test_modifier_tier_never_exceeds_item_tier(items):
+    """Default policy is modifier_tier_cap = item_tier: a Crude base must not
+    be able to roll an Apex-magnitude stat."""
+    rng = random.Random(103)
+    for code, base in items.bases.items():
+        item_tier = int(base["Tier"])
+        for _ in range(4):
+            for mod in items.runtime_stats(items.roll_instance(code, rng))["mods"]:
+                assert mod["tier"] <= item_tier, (
+                    f"{code} (tier {item_tier}) rolled a tier {mod['tier']} modifier"
+                )
+
+
+def test_modifier_values_stay_within_declared_range(items):
+    rng = random.Random(104)
+    for code in list(items.bases)[:80]:
+        for mod in items.runtime_stats(items.roll_instance(code, rng))["mods"]:
+            entry = items.modifier_index[mod["code"]]
+            assert entry["min_value"] <= mod["value"] <= entry["max_value"]
+
+
+def test_low_modifier_tiers_dominate(items):
+    """Modifier tier is weighted the same way item rarity is; without that a
+    tier 9 roll would be as common as a tier 1."""
+    rng = random.Random(105)
+    tiers = []
+    for _ in range(400):
+        tiers += [m["tier"] for m in items.runtime_stats(items.roll_instance("S9", rng))["mods"]]
+    assert tiers.count(1) > tiers.count(2) > tiers.count(4)
+
+
+def test_rolling_is_deterministic_for_a_seed(items):
+    a = items.roll_instance("M5", random.Random(7))
+    b = items.roll_instance("M5", random.Random(7))
+    assert a == b
+
+
+def test_unknown_base_is_an_error(items):
+    with pytest.raises(ItemError, match="unknown item base"):
+        items.roll_instance("NOPE1", random.Random(1))
+
+
+# --- runtime stats ---------------------------------------------------------
+
+def test_runtime_stats_include_implicits(items):
+    """A Crude Sword's implicit crit chance must survive into runtime stats
+    whether or not any modifier touched that stat."""
+    stats = items.runtime_stats(encode_instance("S1", []))
+    assert stats["stats"]["critical_strike_chance"] == 5
+    assert stats["name"] == "Crude Sword"
+    assert stats["tier"] == 1
+
+
+def test_runtime_stats_sum_implicit_and_modifier(items):
+    """A modifier on the same stat as an implicit adds to it rather than
+    replacing it."""
+    encoded = encode_instance("S1", [{"affix": PREFIX, "code": "cc1", "value": 1}])
+    assert items.runtime_stats(encoded)["stats"]["critical_strike_chance"] == 6
+
+
+def test_runtime_stats_keep_percent_implicits_separate(items):
+    """`constitution_percent` is a multiplier, not flat constitution; folding
+    them together would turn +2% into +2."""
+    encoded = encode_instance("M1", [{"affix": PREFIX, "code": "cn2", "value": 3}])
+    stats = items.runtime_stats(encoded)["stats"]
+    assert stats["constitution"] == 3
+    assert stats["constitution_percent"] == 0.5
+
+
+def test_runtime_stats_carry_base_combat_fields(items):
+    stats = items.runtime_stats(encode_instance("D1", []))
+    assert stats["speed_ticks"] == 2
+    assert stats["damage_min"] == 0.10
+    assert stats["damage_max"] == 0.35
+    assert stats["armor"] == 0
+
+
+def test_armor_base_carries_armor_and_no_damage(items):
+    stats = items.runtime_stats(encode_instance("PT9", []))
+    assert stats["armor"] == 108
+    assert stats["damage_min"] == 0
+    assert stats["damage_max"] == 0
+
+
+def test_offhand_bases_deal_no_damage(items):
+    for code, base in items.bases.items():
+        if base["equipment_slot"] == "off_hand":
+            assert base["damage_min"] == 0 and base["damage_max"] == 0, code
+
+
+def test_runtime_stats_reject_unknown_base():
+    from gep.items import ItemRegistry
+    registry = ItemRegistry({}, [], {"tier_mod_slots": {}}, set())
+    with pytest.raises(ItemError, match="unknown base"):
+        registry.runtime_stats("ZZ9:0P0S:")
+
+
+# --- shipped content -------------------------------------------------------
+
+def test_every_base_rolls_and_resolves(items):
+    """Smoke test across the whole item space: no base may fail to roll or to
+    resolve back into stats."""
+    rng = random.Random(999)
+    for code in items.bases:
+        stats = items.runtime_stats(items.roll_instance(code, rng))
+        assert stats["base_code"] == code
+        assert stats["name"]
+
+
+def test_damage_spread_matches_speed_tier(items):
+    """The agreed spread-by-speed table. A weapon whose window drifted from
+    its speed would quietly rebalance combat."""
+    expected = {2: (0.10, 0.35), 3: (0.15, 0.50), 4: (0.25, 0.65), 5: (0.35, 0.80)}
+    for code, base in items.bases.items():
+        if base["damage_max"] == 0:
+            continue  # armour and off-hands
+        window = expected[base["speed_ticks"]]
+        assert (base["damage_min"], base["damage_max"]) == window, code

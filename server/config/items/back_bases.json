@@ -1,0 +1,182 @@
+{
+    "CK1": {
+        "name": "Crude Cloak",
+        "equipment_slot": "back",
+        "type": "Cloak",
+        "Tier": 1,
+        "armor": 0,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 100,
+        "max_stack": 1,
+        "drop_tier": 0.85,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 2,
+            "precision": 2
+        }
+    },
+    "CK2": {
+        "name": "Common Cloak",
+        "equipment_slot": "back",
+        "type": "Cloak",
+        "Tier": 2,
+        "armor": 0,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 282,
+        "max_stack": 1,
+        "drop_tier": 0.3633,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 3,
+            "precision": 3
+        }
+    },
+    "CK3": {
+        "name": "Refined Cloak",
+        "equipment_slot": "back",
+        "type": "Cloak",
+        "Tier": 3,
+        "armor": 0,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 519,
+        "max_stack": 1,
+        "drop_tier": 0.1553,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 4,
+            "precision": 4
+        }
+    },
+    "CK4": {
+        "name": "Superior Cloak",
+        "equipment_slot": "back",
+        "type": "Cloak",
+        "Tier": 4,
+        "armor": 0,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 800,
+        "max_stack": 1,
+        "drop_tier": 0.0664,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 5,
+            "precision": 5
+        }
+    },
+    "CK5": {
+        "name": "Exalted Cloak",
+        "equipment_slot": "back",
+        "type": "Cloak",
+        "Tier": 5,
+        "armor": 0,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 1118,
+        "max_stack": 1,
+        "drop_tier": 0.0284,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 6,
+            "precision": 6
+        }
+    },
+    "CK6": {
+        "name": "Mythic Cloak",
+        "equipment_slot": "back",
+        "type": "Cloak",
+        "Tier": 6,
+        "armor": 0,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 1469,
+        "max_stack": 1,
+        "drop_tier": 0.0121,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 7,
+            "precision": 7
+        }
+    },
+    "CK7": {
+        "name": "Aetheric Cloak",
+        "equipment_slot": "back",
+        "type": "Cloak",
+        "Tier": 7,
+        "armor": 0,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 1852,
+        "max_stack": 1,
+        "drop_tier": 0.0052,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 8,
+            "precision": 8
+        }
+    },
+    "CK8": {
+        "name": "Timeless Cloak",
+        "equipment_slot": "back",
+        "type": "Cloak",
+        "Tier": 8,
+        "armor": 0,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 2262,
+        "max_stack": 1,
+        "drop_tier": 0.0022,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 9,
+            "precision": 9
+        }
+    },
+    "CK9": {
+        "name": "Apex Cloak",
+        "equipment_slot": "back",
+        "type": "Cloak",
+        "Tier": 9,
+        "armor": 0,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 2700,
+        "max_stack": 1,
+        "drop_tier": 0.0009,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 10,
+            "precision": 10
+        }
+    }
+}

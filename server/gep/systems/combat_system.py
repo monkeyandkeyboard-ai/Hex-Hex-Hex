@@ -22,30 +22,9 @@ from gep.combat import normalize_damage_type, resolve_attack
 from gep.floor_state import FloorState
 from gep.actions import MONSTER_STRIKE, PLAYER_DEFEATED
 from gep.hexgrid import facing_toward
-from gep.loot import roll_loot
+from gep.payout import award_rewards
 from gep.tick import TickEngine
 from gep.xp import award_xp
-
-
-def _award_drops(player, template: dict) -> list[dict]:
-    """Roll the dead monster's loot table and hand the results to the killer.
-
-    Selection lives in gep/loot.py; this only moves the result into an
-    inventory. A full pack is reported as a drop the player didn't receive
-    rather than silently voided -- the client already logs item_gained, and
-    losing loot without being told is worse than not getting it.
-    """
-    events: list[dict] = []
-    for item_id in roll_loot(template):
-        received = player.add_item(item_id, 1)
-        events.append({
-            "type": "item_gained" if received else "item_dropped_inventory_full",
-            "player_id": player.id,
-            "item_id": item_id,
-            "quantity": 1,
-            "inventory": player.inventory_snapshot(),
-        })
-    return events
 
 
 def register(
@@ -57,6 +36,7 @@ def register(
     xp_rates: dict,
     xp_table: dict,
     stat_scaling: dict,
+    rewards,
     on_threat=None,
 ) -> None:
     def face_target(player, monster) -> list[dict]:
@@ -121,7 +101,7 @@ def register(
                 events.extend(award_xp(player, "constitution", xp_base * 0.1, xp_table))
                 events.append({"type": "monster_died", "monster_id": target_id,
                                "tile": list(monster.tile)})
-                events.extend(_award_drops(player, template))
+                events.extend(award_rewards(player, template["reward_table"], rewards))
                 respawn_ticks = template.get("respawn_ticks", 60)
                 eng.schedule(respawn_ticks, "respawn-monster", {
                     "monster_id": target_id,

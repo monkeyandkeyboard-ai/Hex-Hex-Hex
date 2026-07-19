@@ -1,0 +1,44 @@
+{
+  "_comment": "Leaf drop tables (items.md §1.B). A table answers one question -- 'given a roll against this pool, what comes out?' -- and knows nothing about who rolled it. Reward profiles in rewards.json compose these into what a specific source drops.",
+
+  "COMMON_MATS": {
+    "kind": "items",
+    "entries": [["nothing", 8], ["copper_ore", 1]],
+    "quantities": { "copper_ore": [1, 2] }
+  },
+
+  "UNCOMMON_MATS": {
+    "kind": "items",
+    "entries": [["nothing", 5], ["copper_ore", 2], ["iron_ore", 1]],
+    "quantities": { "copper_ore": [1, 3], "iron_ore": [1, 2] }
+  },
+
+  "BULK_MATS": {
+    "kind": "items",
+    "entries": [["copper_ore", 3], ["iron_ore", 2]],
+    "quantities": { "copper_ore": [2, 6], "iron_ore": [1, 4] }
+  },
+
+  "_equipment_comment": "Equipment tables state a flat drop_chance rather than weighting a 'nothing' entry against the bases. Base rarity already lives in each base's drop_tier, and a nothing-weight would make the real drop rate drift every time a new base was added to the item files.",
+
+  "STARTER_EQUIPMENT": {
+    "kind": "equipment",
+    "drop_chance": 0.12,
+    "min_tier": 1,
+    "max_tier": 2
+  },
+
+  "LOW_EQUIPMENT": {
+    "kind": "equipment",
+    "drop_chance": 0.18,
+    "min_tier": 1,
+    "max_tier": 3
+  },
+
+  "CHEST_EQUIPMENT": {
+    "kind": "equipment",
+    "drop_chance": 1.0,
+    "min_tier": 1,
+    "max_tier": 4
+  }
+}

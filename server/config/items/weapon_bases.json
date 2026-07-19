@@ -1,0 +1,3296 @@
+{
+    "M1": {
+        "name": "Crude Mace",
+        "equipment_slot": "main_hand",
+        "type": "Mace",
+        "Tier": 1,
+        "armor": 0,
+        "damage_min": 0.15,
+        "damage_max": 0.50,
+        "speed_ticks": 3,
+        "base_sell_value": 100,
+        "max_stack": 1,
+        "drop_tier": 0.85,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 2,
+            "constitution_percent": 0.5
+        }
+    },
+    "M2": {
+        "name": "Common Mace",
+        "equipment_slot": "main_hand",
+        "type": "Mace",
+        "Tier": 2,
+        "armor": 0,
+        "damage_min": 0.15,
+        "damage_max": 0.50,
+        "speed_ticks": 3,
+        "base_sell_value": 282,
+        "max_stack": 1,
+        "drop_tier": 0.3633,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 2,
+            "constitution_percent": 1.0
+        }
+    },
+    "M3": {
+        "name": "Refined Mace",
+        "equipment_slot": "main_hand",
+        "type": "Mace",
+        "Tier": 3,
+        "armor": 0,
+        "damage_min": 0.15,
+        "damage_max": 0.50,
+        "speed_ticks": 3,
+        "base_sell_value": 519,
+        "max_stack": 1,
+        "drop_tier": 0.1553,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 2,
+            "constitution_percent": 1.5
+        }
+    },
+    "M4": {
+        "name": "Superior Mace",
+        "equipment_slot": "main_hand",
+        "type": "Mace",
+        "Tier": 4,
+        "armor": 0,
+        "damage_min": 0.15,
+        "damage_max": 0.50,
+        "speed_ticks": 3,
+        "base_sell_value": 800,
+        "max_stack": 1,
+        "drop_tier": 0.0664,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 2,
+            "constitution_percent": 2.0
+        }
+    },
+    "M5": {
+        "name": "Exalted Mace",
+        "equipment_slot": "main_hand",
+        "type": "Mace",
+        "Tier": 5,
+        "armor": 0,
+        "damage_min": 0.15,
+        "damage_max": 0.50,
+        "speed_ticks": 3,
+        "base_sell_value": 1118,
+        "max_stack": 1,
+        "drop_tier": 0.0284,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 2,
+            "constitution_percent": 2.5
+        }
+    },
+    "M6": {
+        "name": "Mythic Mace",
+        "equipment_slot": "main_hand",
+        "type": "Mace",
+        "Tier": 6,
+        "armor": 0,
+        "damage_min": 0.15,
+        "damage_max": 0.50,
+        "speed_ticks": 3,
+        "base_sell_value": 1469,
+        "max_stack": 1,
+        "drop_tier": 0.0121,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 2,
+            "constitution_percent": 3.0
+        }
+    },
+    "M7": {
+        "name": "Aetheric Mace",
+        "equipment_slot": "main_hand",
+        "type": "Mace",
+        "Tier": 7,
+        "armor": 0,
+        "damage_min": 0.15,
+        "damage_max": 0.50,
+        "speed_ticks": 3,
+        "base_sell_value": 1852,
+        "max_stack": 1,
+        "drop_tier": 0.0052,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 2,
+            "constitution_percent": 3.5
+        }
+    },
+    "M8": {
+        "name": "Timeless Mace",
+        "equipment_slot": "main_hand",
+        "type": "Mace",
+        "Tier": 8,
+        "armor": 0,
+        "damage_min": 0.15,
+        "damage_max": 0.50,
+        "speed_ticks": 3,
+        "base_sell_value": 2262,
+        "max_stack": 1,
+        "drop_tier": 0.0022,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 2,
+            "constitution_percent": 4.0
+        }
+    },
+    "M9": {
+        "name": "Apex Mace",
+        "equipment_slot": "main_hand",
+        "type": "Mace",
+        "Tier": 9,
+        "armor": 0,
+        "damage_min": 0.15,
+        "damage_max": 0.50,
+        "speed_ticks": 3,
+        "base_sell_value": 2700,
+        "max_stack": 1,
+        "drop_tier": 0.0009,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 2,
+            "constitution_percent": 4.5
+        }
+    },
+    "L1": {
+        "name": "Crude Maul",
+        "equipment_slot": "two_hand",
+        "type": "Maul",
+        "Tier": 1,
+        "armor": 0,
+        "damage_min": 0.35,
+        "damage_max": 0.80,
+        "speed_ticks": 5,
+        "base_sell_value": 100,
+        "max_stack": 1,
+        "drop_tier": 0.85,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 2,
+            "constitution_percent": 1.0
+        }
+    },
+    "L2": {
+        "name": "Common Maul",
+        "equipment_slot": "two_hand",
+        "type": "Maul",
+        "Tier": 2,
+        "armor": 0,
+        "damage_min": 0.35,
+        "damage_max": 0.80,
+        "speed_ticks": 5,
+        "base_sell_value": 282,
+        "max_stack": 1,
+        "drop_tier": 0.3633,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 2,
+            "constitution_percent": 2.0
+        }
+    },
+    "L3": {
+        "name": "Refined Maul",
+        "equipment_slot": "two_hand",
+        "type": "Maul",
+        "Tier": 3,
+        "armor": 0,
+        "damage_min": 0.35,
+        "damage_max": 0.80,
+        "speed_ticks": 5,
+        "base_sell_value": 519,
+        "max_stack": 1,
+        "drop_tier": 0.1553,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 2,
+            "constitution_percent": 3.0
+        }
+    },
+    "L4": {
+        "name": "Superior Maul",
+        "equipment_slot": "two_hand",
+        "type": "Maul",
+        "Tier": 4,
+        "armor": 0,
+        "damage_min": 0.35,
+        "damage_max": 0.80,
+        "speed_ticks": 5,
+        "base_sell_value": 800,
+        "max_stack": 1,
+        "drop_tier": 0.0664,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 2,
+            "constitution_percent": 4.0
+        }
+    },
+    "L5": {
+        "name": "Exalted Maul",
+        "equipment_slot": "two_hand",
+        "type": "Maul",
+        "Tier": 5,
+        "armor": 0,
+        "damage_min": 0.35,
+        "damage_max": 0.80,
+        "speed_ticks": 5,
+        "base_sell_value": 1118,
+        "max_stack": 1,
+        "drop_tier": 0.0284,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 2,
+            "constitution_percent": 5.0
+        }
+    },
+    "L6": {
+        "name": "Mythic Maul",
+        "equipment_slot": "two_hand",
+        "type": "Maul",
+        "Tier": 6,
+        "armor": 0,
+        "damage_min": 0.35,
+        "damage_max": 0.80,
+        "speed_ticks": 5,
+        "base_sell_value": 1469,
+        "max_stack": 1,
+        "drop_tier": 0.0121,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 2,
+            "constitution_percent": 6.0
+        }
+    },
+    "L7": {
+        "name": "Aetheric Maul",
+        "equipment_slot": "two_hand",
+        "type": "Maul",
+        "Tier": 7,
+        "armor": 0,
+        "damage_min": 0.35,
+        "damage_max": 0.80,
+        "speed_ticks": 5,
+        "base_sell_value": 1852,
+        "max_stack": 1,
+        "drop_tier": 0.0052,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 2,
+            "constitution_percent": 7.0
+        }
+    },
+    "L8": {
+        "name": "Timeless Maul",
+        "equipment_slot": "two_hand",
+        "type": "Maul",
+        "Tier": 8,
+        "armor": 0,
+        "damage_min": 0.35,
+        "damage_max": 0.80,
+        "speed_ticks": 5,
+        "base_sell_value": 2262,
+        "max_stack": 1,
+        "drop_tier": 0.0022,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 2,
+            "constitution_percent": 8.0
+        }
+    },
+    "L9": {
+        "name": "Apex Maul",
+        "equipment_slot": "two_hand",
+        "type": "Maul",
+        "Tier": 9,
+        "armor": 0,
+        "damage_min": 0.35,
+        "damage_max": 0.80,
+        "speed_ticks": 5,
+        "base_sell_value": 2700,
+        "max_stack": 1,
+        "drop_tier": 0.0009,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 2,
+            "constitution_percent": 9.0
+        }
+    },
+    "S1": {
+        "name": "Crude Sword",
+        "equipment_slot": "main_hand",
+        "type": "Sword",
+        "Tier": 1,
+        "armor": 0,
+        "damage_min": 0.15,
+        "damage_max": 0.50,
+        "speed_ticks": 3,
+        "base_sell_value": 100,
+        "max_stack": 1,
+        "drop_tier": 0.85,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 5
+        }
+    },
+    "S2": {
+        "name": "Common Sword",
+        "equipment_slot": "main_hand",
+        "type": "Sword",
+        "Tier": 2,
+        "armor": 0,
+        "damage_min": 0.15,
+        "damage_max": 0.50,
+        "speed_ticks": 3,
+        "base_sell_value": 282,
+        "max_stack": 1,
+        "drop_tier": 0.3633,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 5
+        }
+    },
+    "S3": {
+        "name": "Refined Sword",
+        "equipment_slot": "main_hand",
+        "type": "Sword",
+        "Tier": 3,
+        "armor": 0,
+        "damage_min": 0.15,
+        "damage_max": 0.50,
+        "speed_ticks": 3,
+        "base_sell_value": 519,
+        "max_stack": 1,
+        "drop_tier": 0.1553,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 5
+        }
+    },
+    "S4": {
+        "name": "Superior Sword",
+        "equipment_slot": "main_hand",
+        "type": "Sword",
+        "Tier": 4,
+        "armor": 0,
+        "damage_min": 0.15,
+        "damage_max": 0.50,
+        "speed_ticks": 3,
+        "base_sell_value": 800,
+        "max_stack": 1,
+        "drop_tier": 0.0664,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 5
+        }
+    },
+    "S5": {
+        "name": "Exalted Sword",
+        "equipment_slot": "main_hand",
+        "type": "Sword",
+        "Tier": 5,
+        "armor": 0,
+        "damage_min": 0.15,
+        "damage_max": 0.50,
+        "speed_ticks": 3,
+        "base_sell_value": 1118,
+        "max_stack": 1,
+        "drop_tier": 0.0284,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 5
+        }
+    },
+    "S6": {
+        "name": "Mythic Sword",
+        "equipment_slot": "main_hand",
+        "type": "Sword",
+        "Tier": 6,
+        "armor": 0,
+        "damage_min": 0.15,
+        "damage_max": 0.50,
+        "speed_ticks": 3,
+        "base_sell_value": 1469,
+        "max_stack": 1,
+        "drop_tier": 0.0121,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 5
+        }
+    },
+    "S7": {
+        "name": "Aetheric Sword",
+        "equipment_slot": "main_hand",
+        "type": "Sword",
+        "Tier": 7,
+        "armor": 0,
+        "damage_min": 0.15,
+        "damage_max": 0.50,
+        "speed_ticks": 3,
+        "base_sell_value": 1852,
+        "max_stack": 1,
+        "drop_tier": 0.0052,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 5
+        }
+    },
+    "S8": {
+        "name": "Timeless Sword",
+        "equipment_slot": "main_hand",
+        "type": "Sword",
+        "Tier": 8,
+        "armor": 0,
+        "damage_min": 0.15,
+        "damage_max": 0.50,
+        "speed_ticks": 3,
+        "base_sell_value": 2262,
+        "max_stack": 1,
+        "drop_tier": 0.0022,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 5
+        }
+    },
+    "S9": {
+        "name": "Apex Sword",
+        "equipment_slot": "main_hand",
+        "type": "Sword",
+        "Tier": 9,
+        "armor": 0,
+        "damage_min": 0.15,
+        "damage_max": 0.50,
+        "speed_ticks": 3,
+        "base_sell_value": 2700,
+        "max_stack": 1,
+        "drop_tier": 0.0009,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 5
+        }
+    },
+    "G1": {
+        "name": "Crude Greatsword",
+        "equipment_slot": "two_hand",
+        "type": "Greatsword",
+        "Tier": 1,
+        "armor": 0,
+        "damage_min": 0.25,
+        "damage_max": 0.65,
+        "speed_ticks": 4,
+        "base_sell_value": 100,
+        "max_stack": 1,
+        "drop_tier": 0.85,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 5
+        }
+    },
+    "G2": {
+        "name": "Common Greatsword",
+        "equipment_slot": "two_hand",
+        "type": "Greatsword",
+        "Tier": 2,
+        "armor": 0,
+        "damage_min": 0.25,
+        "damage_max": 0.65,
+        "speed_ticks": 4,
+        "base_sell_value": 282,
+        "max_stack": 1,
+        "drop_tier": 0.3633,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 5
+        }
+    },
+    "G3": {
+        "name": "Refined Greatsword",
+        "equipment_slot": "two_hand",
+        "type": "Greatsword",
+        "Tier": 3,
+        "armor": 0,
+        "damage_min": 0.25,
+        "damage_max": 0.65,
+        "speed_ticks": 4,
+        "base_sell_value": 519,
+        "max_stack": 1,
+        "drop_tier": 0.1553,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 5
+        }
+    },
+    "G4": {
+        "name": "Superior Greatsword",
+        "equipment_slot": "two_hand",
+        "type": "Greatsword",
+        "Tier": 4,
+        "armor": 0,
+        "damage_min": 0.25,
+        "damage_max": 0.65,
+        "speed_ticks": 4,
+        "base_sell_value": 800,
+        "max_stack": 1,
+        "drop_tier": 0.0664,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 5
+        }
+    },
+    "G5": {
+        "name": "Exalted Greatsword",
+        "equipment_slot": "two_hand",
+        "type": "Greatsword",
+        "Tier": 5,
+        "armor": 0,
+        "damage_min": 0.25,
+        "damage_max": 0.65,
+        "speed_ticks": 4,
+        "base_sell_value": 1118,
+        "max_stack": 1,
+        "drop_tier": 0.0284,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 5
+        }
+    },
+    "G6": {
+        "name": "Mythic Greatsword",
+        "equipment_slot": "two_hand",
+        "type": "Greatsword",
+        "Tier": 6,
+        "armor": 0,
+        "damage_min": 0.25,
+        "damage_max": 0.65,
+        "speed_ticks": 4,
+        "base_sell_value": 1469,
+        "max_stack": 1,
+        "drop_tier": 0.0121,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 5
+        }
+    },
+    "G7": {
+        "name": "Aetheric Greatsword",
+        "equipment_slot": "two_hand",
+        "type": "Greatsword",
+        "Tier": 7,
+        "armor": 0,
+        "damage_min": 0.25,
+        "damage_max": 0.65,
+        "speed_ticks": 4,
+        "base_sell_value": 1852,
+        "max_stack": 1,
+        "drop_tier": 0.0052,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 5
+        }
+    },
+    "G8": {
+        "name": "Timeless Greatsword",
+        "equipment_slot": "two_hand",
+        "type": "Greatsword",
+        "Tier": 8,
+        "armor": 0,
+        "damage_min": 0.25,
+        "damage_max": 0.65,
+        "speed_ticks": 4,
+        "base_sell_value": 2262,
+        "max_stack": 1,
+        "drop_tier": 0.0022,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 5
+        }
+    },
+    "G9": {
+        "name": "Apex Greatsword",
+        "equipment_slot": "two_hand",
+        "type": "Greatsword",
+        "Tier": 9,
+        "armor": 0,
+        "damage_min": 0.25,
+        "damage_max": 0.65,
+        "speed_ticks": 4,
+        "base_sell_value": 2700,
+        "max_stack": 1,
+        "drop_tier": 0.0009,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 5
+        }
+    },
+    "A1": {
+        "name": "Crude Axe",
+        "equipment_slot": "main_hand",
+        "type": "Axe",
+        "Tier": 1,
+        "armor": 0,
+        "damage_min": 0.25,
+        "damage_max": 0.65,
+        "speed_ticks": 4,
+        "base_sell_value": 100,
+        "max_stack": 1,
+        "drop_tier": 0.85,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 5
+        }
+    },
+    "A2": {
+        "name": "Common Axe",
+        "equipment_slot": "main_hand",
+        "type": "Axe",
+        "Tier": 2,
+        "armor": 0,
+        "damage_min": 0.25,
+        "damage_max": 0.65,
+        "speed_ticks": 4,
+        "base_sell_value": 282,
+        "max_stack": 1,
+        "drop_tier": 0.3633,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 5
+        }
+    },
+    "A3": {
+        "name": "Refined Axe",
+        "equipment_slot": "main_hand",
+        "type": "Axe",
+        "Tier": 3,
+        "armor": 0,
+        "damage_min": 0.25,
+        "damage_max": 0.65,
+        "speed_ticks": 4,
+        "base_sell_value": 519,
+        "max_stack": 1,
+        "drop_tier": 0.1553,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 5
+        }
+    },
+    "A4": {
+        "name": "Superior Axe",
+        "equipment_slot": "main_hand",
+        "type": "Axe",
+        "Tier": 4,
+        "armor": 0,
+        "damage_min": 0.25,
+        "damage_max": 0.65,
+        "speed_ticks": 4,
+        "base_sell_value": 800,
+        "max_stack": 1,
+        "drop_tier": 0.0664,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 5
+        }
+    },
+    "A5": {
+        "name": "Exalted Axe",
+        "equipment_slot": "main_hand",
+        "type": "Axe",
+        "Tier": 5,
+        "armor": 0,
+        "damage_min": 0.25,
+        "damage_max": 0.65,
+        "speed_ticks": 4,
+        "base_sell_value": 1118,
+        "max_stack": 1,
+        "drop_tier": 0.0284,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 5
+        }
+    },
+    "A6": {
+        "name": "Mythic Axe",
+        "equipment_slot": "main_hand",
+        "type": "Axe",
+        "Tier": 6,
+        "armor": 0,
+        "damage_min": 0.25,
+        "damage_max": 0.65,
+        "speed_ticks": 4,
+        "base_sell_value": 1469,
+        "max_stack": 1,
+        "drop_tier": 0.0121,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 5
+        }
+    },
+    "A7": {
+        "name": "Aetheric Axe",
+        "equipment_slot": "main_hand",
+        "type": "Axe",
+        "Tier": 7,
+        "armor": 0,
+        "damage_min": 0.25,
+        "damage_max": 0.65,
+        "speed_ticks": 4,
+        "base_sell_value": 1852,
+        "max_stack": 1,
+        "drop_tier": 0.0052,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 5
+        }
+    },
+    "A8": {
+        "name": "Timeless Axe",
+        "equipment_slot": "main_hand",
+        "type": "Axe",
+        "Tier": 8,
+        "armor": 0,
+        "damage_min": 0.25,
+        "damage_max": 0.65,
+        "speed_ticks": 4,
+        "base_sell_value": 2262,
+        "max_stack": 1,
+        "drop_tier": 0.0022,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 5
+        }
+    },
+    "A9": {
+        "name": "Apex Axe",
+        "equipment_slot": "main_hand",
+        "type": "Axe",
+        "Tier": 9,
+        "armor": 0,
+        "damage_min": 0.25,
+        "damage_max": 0.65,
+        "speed_ticks": 4,
+        "base_sell_value": 2700,
+        "max_stack": 1,
+        "drop_tier": 0.0009,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 5
+        }
+    },
+    "E1": {
+        "name": "Crude Greataxe",
+        "equipment_slot": "two_hand",
+        "type": "Greataxe",
+        "Tier": 1,
+        "armor": 0,
+        "damage_min": 0.35,
+        "damage_max": 0.80,
+        "speed_ticks": 5,
+        "base_sell_value": 100,
+        "max_stack": 1,
+        "drop_tier": 0.85,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 5
+        }
+    },
+    "E2": {
+        "name": "Common Greataxe",
+        "equipment_slot": "two_hand",
+        "type": "Greataxe",
+        "Tier": 2,
+        "armor": 0,
+        "damage_min": 0.35,
+        "damage_max": 0.80,
+        "speed_ticks": 5,
+        "base_sell_value": 282,
+        "max_stack": 1,
+        "drop_tier": 0.3633,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 5
+        }
+    },
+    "E3": {
+        "name": "Refined Greataxe",
+        "equipment_slot": "two_hand",
+        "type": "Greataxe",
+        "Tier": 3,
+        "armor": 0,
+        "damage_min": 0.35,
+        "damage_max": 0.80,
+        "speed_ticks": 5,
+        "base_sell_value": 519,
+        "max_stack": 1,
+        "drop_tier": 0.1553,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 5
+        }
+    },
+    "E4": {
+        "name": "Superior Greataxe",
+        "equipment_slot": "two_hand",
+        "type": "Greataxe",
+        "Tier": 4,
+        "armor": 0,
+        "damage_min": 0.35,
+        "damage_max": 0.80,
+        "speed_ticks": 5,
+        "base_sell_value": 800,
+        "max_stack": 1,
+        "drop_tier": 0.0664,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 5
+        }
+    },
+    "E5": {
+        "name": "Exalted Greataxe",
+        "equipment_slot": "two_hand",
+        "type": "Greataxe",
+        "Tier": 5,
+        "armor": 0,
+        "damage_min": 0.35,
+        "damage_max": 0.80,
+        "speed_ticks": 5,
+        "base_sell_value": 1118,
+        "max_stack": 1,
+        "drop_tier": 0.0284,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 5
+        }
+    },
+    "E6": {
+        "name": "Mythic Greataxe",
+        "equipment_slot": "two_hand",
+        "type": "Greataxe",
+        "Tier": 6,
+        "armor": 0,
+        "damage_min": 0.35,
+        "damage_max": 0.80,
+        "speed_ticks": 5,
+        "base_sell_value": 1469,
+        "max_stack": 1,
+        "drop_tier": 0.0121,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 5
+        }
+    },
+    "E7": {
+        "name": "Aetheric Greataxe",
+        "equipment_slot": "two_hand",
+        "type": "Greataxe",
+        "Tier": 7,
+        "armor": 0,
+        "damage_min": 0.35,
+        "damage_max": 0.80,
+        "speed_ticks": 5,
+        "base_sell_value": 1852,
+        "max_stack": 1,
+        "drop_tier": 0.0052,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 5
+        }
+    },
+    "E8": {
+        "name": "Timeless Greataxe",
+        "equipment_slot": "two_hand",
+        "type": "Greataxe",
+        "Tier": 8,
+        "armor": 0,
+        "damage_min": 0.35,
+        "damage_max": 0.80,
+        "speed_ticks": 5,
+        "base_sell_value": 2262,
+        "max_stack": 1,
+        "drop_tier": 0.0022,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 5
+        }
+    },
+    "E9": {
+        "name": "Apex Greataxe",
+        "equipment_slot": "two_hand",
+        "type": "Greataxe",
+        "Tier": 9,
+        "armor": 0,
+        "damage_min": 0.35,
+        "damage_max": 0.80,
+        "speed_ticks": 5,
+        "base_sell_value": 2700,
+        "max_stack": 1,
+        "drop_tier": 0.0009,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 5
+        }
+    },
+    "D1": {
+        "name": "Crude Dagger",
+        "equipment_slot": "main_hand",
+        "type": "Dagger",
+        "Tier": 1,
+        "armor": 0,
+        "damage_min": 0.10,
+        "damage_max": 0.35,
+        "speed_ticks": 2,
+        "base_sell_value": 100,
+        "max_stack": 1,
+        "drop_tier": 0.85,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 12
+        }
+    },
+    "D2": {
+        "name": "Common Dagger",
+        "equipment_slot": "main_hand",
+        "type": "Dagger",
+        "Tier": 2,
+        "armor": 0,
+        "damage_min": 0.10,
+        "damage_max": 0.35,
+        "speed_ticks": 2,
+        "base_sell_value": 282,
+        "max_stack": 1,
+        "drop_tier": 0.3633,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 12
+        }
+    },
+    "D3": {
+        "name": "Refined Dagger",
+        "equipment_slot": "main_hand",
+        "type": "Dagger",
+        "Tier": 3,
+        "armor": 0,
+        "damage_min": 0.10,
+        "damage_max": 0.35,
+        "speed_ticks": 2,
+        "base_sell_value": 519,
+        "max_stack": 1,
+        "drop_tier": 0.1553,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 12
+        }
+    },
+    "D4": {
+        "name": "Superior Dagger",
+        "equipment_slot": "main_hand",
+        "type": "Dagger",
+        "Tier": 4,
+        "armor": 0,
+        "damage_min": 0.10,
+        "damage_max": 0.35,
+        "speed_ticks": 2,
+        "base_sell_value": 800,
+        "max_stack": 1,
+        "drop_tier": 0.0664,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 12
+        }
+    },
+    "D5": {
+        "name": "Exalted Dagger",
+        "equipment_slot": "main_hand",
+        "type": "Dagger",
+        "Tier": 5,
+        "armor": 0,
+        "damage_min": 0.10,
+        "damage_max": 0.35,
+        "speed_ticks": 2,
+        "base_sell_value": 1118,
+        "max_stack": 1,
+        "drop_tier": 0.0284,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 12
+        }
+    },
+    "D6": {
+        "name": "Mythic Dagger",
+        "equipment_slot": "main_hand",
+        "type": "Dagger",
+        "Tier": 6,
+        "armor": 0,
+        "damage_min": 0.10,
+        "damage_max": 0.35,
+        "speed_ticks": 2,
+        "base_sell_value": 1469,
+        "max_stack": 1,
+        "drop_tier": 0.0121,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 12
+        }
+    },
+    "D7": {
+        "name": "Aetheric Dagger",
+        "equipment_slot": "main_hand",
+        "type": "Dagger",
+        "Tier": 7,
+        "armor": 0,
+        "damage_min": 0.10,
+        "damage_max": 0.35,
+        "speed_ticks": 2,
+        "base_sell_value": 1852,
+        "max_stack": 1,
+        "drop_tier": 0.0052,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 12
+        }
+    },
+    "D8": {
+        "name": "Timeless Dagger",
+        "equipment_slot": "main_hand",
+        "type": "Dagger",
+        "Tier": 8,
+        "armor": 0,
+        "damage_min": 0.10,
+        "damage_max": 0.35,
+        "speed_ticks": 2,
+        "base_sell_value": 2262,
+        "max_stack": 1,
+        "drop_tier": 0.0022,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 12
+        }
+    },
+    "D9": {
+        "name": "Apex Dagger",
+        "equipment_slot": "main_hand",
+        "type": "Dagger",
+        "Tier": 9,
+        "armor": 0,
+        "damage_min": 0.10,
+        "damage_max": 0.35,
+        "speed_ticks": 2,
+        "base_sell_value": 2700,
+        "max_stack": 1,
+        "drop_tier": 0.0009,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 12
+        }
+    },
+    "R1": {
+        "name": "Crude Rapier",
+        "equipment_slot": "main_hand",
+        "type": "Rapier",
+        "Tier": 1,
+        "armor": 0,
+        "damage_min": 0.10,
+        "damage_max": 0.35,
+        "speed_ticks": 2,
+        "base_sell_value": 100,
+        "max_stack": 1,
+        "drop_tier": 0.85,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 10
+        }
+    },
+    "R2": {
+        "name": "Common Rapier",
+        "equipment_slot": "main_hand",
+        "type": "Rapier",
+        "Tier": 2,
+        "armor": 0,
+        "damage_min": 0.10,
+        "damage_max": 0.35,
+        "speed_ticks": 2,
+        "base_sell_value": 282,
+        "max_stack": 1,
+        "drop_tier": 0.3633,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 10
+        }
+    },
+    "R3": {
+        "name": "Refined Rapier",
+        "equipment_slot": "main_hand",
+        "type": "Rapier",
+        "Tier": 3,
+        "armor": 0,
+        "damage_min": 0.10,
+        "damage_max": 0.35,
+        "speed_ticks": 2,
+        "base_sell_value": 519,
+        "max_stack": 1,
+        "drop_tier": 0.1553,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 10
+        }
+    },
+    "R4": {
+        "name": "Superior Rapier",
+        "equipment_slot": "main_hand",
+        "type": "Rapier",
+        "Tier": 4,
+        "armor": 0,
+        "damage_min": 0.10,
+        "damage_max": 0.35,
+        "speed_ticks": 2,
+        "base_sell_value": 800,
+        "max_stack": 1,
+        "drop_tier": 0.0664,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 10
+        }
+    },
+    "R5": {
+        "name": "Exalted Rapier",
+        "equipment_slot": "main_hand",
+        "type": "Rapier",
+        "Tier": 5,
+        "armor": 0,
+        "damage_min": 0.10,
+        "damage_max": 0.35,
+        "speed_ticks": 2,
+        "base_sell_value": 1118,
+        "max_stack": 1,
+        "drop_tier": 0.0284,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 10
+        }
+    },
+    "R6": {
+        "name": "Mythic Rapier",
+        "equipment_slot": "main_hand",
+        "type": "Rapier",
+        "Tier": 6,
+        "armor": 0,
+        "damage_min": 0.10,
+        "damage_max": 0.35,
+        "speed_ticks": 2,
+        "base_sell_value": 1469,
+        "max_stack": 1,
+        "drop_tier": 0.0121,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 10
+        }
+    },
+    "R7": {
+        "name": "Aetheric Rapier",
+        "equipment_slot": "main_hand",
+        "type": "Rapier",
+        "Tier": 7,
+        "armor": 0,
+        "damage_min": 0.10,
+        "damage_max": 0.35,
+        "speed_ticks": 2,
+        "base_sell_value": 1852,
+        "max_stack": 1,
+        "drop_tier": 0.0052,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 10
+        }
+    },
+    "R8": {
+        "name": "Timeless Rapier",
+        "equipment_slot": "main_hand",
+        "type": "Rapier",
+        "Tier": 8,
+        "armor": 0,
+        "damage_min": 0.10,
+        "damage_max": 0.35,
+        "speed_ticks": 2,
+        "base_sell_value": 2262,
+        "max_stack": 1,
+        "drop_tier": 0.0022,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 10
+        }
+    },
+    "R9": {
+        "name": "Apex Rapier",
+        "equipment_slot": "main_hand",
+        "type": "Rapier",
+        "Tier": 9,
+        "armor": 0,
+        "damage_min": 0.10,
+        "damage_max": 0.35,
+        "speed_ticks": 2,
+        "base_sell_value": 2700,
+        "max_stack": 1,
+        "drop_tier": 0.0009,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 10
+        }
+    },
+    "T1": {
+        "name": "Crude Shortbow",
+        "equipment_slot": "two_hand",
+        "type": "Shortbow",
+        "Tier": 1,
+        "armor": 0,
+        "damage_min": 0.15,
+        "damage_max": 0.50,
+        "speed_ticks": 3,
+        "base_sell_value": 100,
+        "max_stack": 1,
+        "drop_tier": 0.85,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 8
+        }
+    },
+    "T2": {
+        "name": "Common Shortbow",
+        "equipment_slot": "two_hand",
+        "type": "Shortbow",
+        "Tier": 2,
+        "armor": 0,
+        "damage_min": 0.15,
+        "damage_max": 0.50,
+        "speed_ticks": 3,
+        "base_sell_value": 282,
+        "max_stack": 1,
+        "drop_tier": 0.3633,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 8
+        }
+    },
+    "T3": {
+        "name": "Refined Shortbow",
+        "equipment_slot": "two_hand",
+        "type": "Shortbow",
+        "Tier": 3,
+        "armor": 0,
+        "damage_min": 0.15,
+        "damage_max": 0.50,
+        "speed_ticks": 3,
+        "base_sell_value": 519,
+        "max_stack": 1,
+        "drop_tier": 0.1553,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 8
+        }
+    },
+    "T4": {
+        "name": "Superior Shortbow",
+        "equipment_slot": "two_hand",
+        "type": "Shortbow",
+        "Tier": 4,
+        "armor": 0,
+        "damage_min": 0.15,
+        "damage_max": 0.50,
+        "speed_ticks": 3,
+        "base_sell_value": 800,
+        "max_stack": 1,
+        "drop_tier": 0.0664,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 8
+        }
+    },
+    "T5": {
+        "name": "Exalted Shortbow",
+        "equipment_slot": "two_hand",
+        "type": "Shortbow",
+        "Tier": 5,
+        "armor": 0,
+        "damage_min": 0.15,
+        "damage_max": 0.50,
+        "speed_ticks": 3,
+        "base_sell_value": 1118,
+        "max_stack": 1,
+        "drop_tier": 0.0284,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 8
+        }
+    },
+    "T6": {
+        "name": "Mythic Shortbow",
+        "equipment_slot": "two_hand",
+        "type": "Shortbow",
+        "Tier": 6,
+        "armor": 0,
+        "damage_min": 0.15,
+        "damage_max": 0.50,
+        "speed_ticks": 3,
+        "base_sell_value": 1469,
+        "max_stack": 1,
+        "drop_tier": 0.0121,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 8
+        }
+    },
+    "T7": {
+        "name": "Aetheric Shortbow",
+        "equipment_slot": "two_hand",
+        "type": "Shortbow",
+        "Tier": 7,
+        "armor": 0,
+        "damage_min": 0.15,
+        "damage_max": 0.50,
+        "speed_ticks": 3,
+        "base_sell_value": 1852,
+        "max_stack": 1,
+        "drop_tier": 0.0052,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 8
+        }
+    },
+    "T8": {
+        "name": "Timeless Shortbow",
+        "equipment_slot": "two_hand",
+        "type": "Shortbow",
+        "Tier": 8,
+        "armor": 0,
+        "damage_min": 0.15,
+        "damage_max": 0.50,
+        "speed_ticks": 3,
+        "base_sell_value": 2262,
+        "max_stack": 1,
+        "drop_tier": 0.0022,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 8
+        }
+    },
+    "T9": {
+        "name": "Apex Shortbow",
+        "equipment_slot": "two_hand",
+        "type": "Shortbow",
+        "Tier": 9,
+        "armor": 0,
+        "damage_min": 0.15,
+        "damage_max": 0.50,
+        "speed_ticks": 3,
+        "base_sell_value": 2700,
+        "max_stack": 1,
+        "drop_tier": 0.0009,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 8
+        }
+    },
+    "N1": {
+        "name": "Crude Longbow",
+        "equipment_slot": "two_hand",
+        "type": "Longbow",
+        "Tier": 1,
+        "armor": 0,
+        "damage_min": 0.25,
+        "damage_max": 0.65,
+        "speed_ticks": 4,
+        "base_sell_value": 100,
+        "max_stack": 1,
+        "drop_tier": 0.85,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 8
+        }
+    },
+    "N2": {
+        "name": "Common Longbow",
+        "equipment_slot": "two_hand",
+        "type": "Longbow",
+        "Tier": 2,
+        "armor": 0,
+        "damage_min": 0.25,
+        "damage_max": 0.65,
+        "speed_ticks": 4,
+        "base_sell_value": 282,
+        "max_stack": 1,
+        "drop_tier": 0.3633,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 8
+        }
+    },
+    "N3": {
+        "name": "Refined Longbow",
+        "equipment_slot": "two_hand",
+        "type": "Longbow",
+        "Tier": 3,
+        "armor": 0,
+        "damage_min": 0.25,
+        "damage_max": 0.65,
+        "speed_ticks": 4,
+        "base_sell_value": 519,
+        "max_stack": 1,
+        "drop_tier": 0.1553,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 8
+        }
+    },
+    "N4": {
+        "name": "Superior Longbow",
+        "equipment_slot": "two_hand",
+        "type": "Longbow",
+        "Tier": 4,
+        "armor": 0,
+        "damage_min": 0.25,
+        "damage_max": 0.65,
+        "speed_ticks": 4,
+        "base_sell_value": 800,
+        "max_stack": 1,
+        "drop_tier": 0.0664,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 8
+        }
+    },
+    "N5": {
+        "name": "Exalted Longbow",
+        "equipment_slot": "two_hand",
+        "type": "Longbow",
+        "Tier": 5,
+        "armor": 0,
+        "damage_min": 0.25,
+        "damage_max": 0.65,
+        "speed_ticks": 4,
+        "base_sell_value": 1118,
+        "max_stack": 1,
+        "drop_tier": 0.0284,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 8
+        }
+    },
+    "N6": {
+        "name": "Mythic Longbow",
+        "equipment_slot": "two_hand",
+        "type": "Longbow",
+        "Tier": 6,
+        "armor": 0,
+        "damage_min": 0.25,
+        "damage_max": 0.65,
+        "speed_ticks": 4,
+        "base_sell_value": 1469,
+        "max_stack": 1,
+        "drop_tier": 0.0121,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 8
+        }
+    },
+    "N7": {
+        "name": "Aetheric Longbow",
+        "equipment_slot": "two_hand",
+        "type": "Longbow",
+        "Tier": 7,
+        "armor": 0,
+        "damage_min": 0.25,
+        "damage_max": 0.65,
+        "speed_ticks": 4,
+        "base_sell_value": 1852,
+        "max_stack": 1,
+        "drop_tier": 0.0052,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 8
+        }
+    },
+    "N8": {
+        "name": "Timeless Longbow",
+        "equipment_slot": "two_hand",
+        "type": "Longbow",
+        "Tier": 8,
+        "armor": 0,
+        "damage_min": 0.25,
+        "damage_max": 0.65,
+        "speed_ticks": 4,
+        "base_sell_value": 2262,
+        "max_stack": 1,
+        "drop_tier": 0.0022,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 8
+        }
+    },
+    "N9": {
+        "name": "Apex Longbow",
+        "equipment_slot": "two_hand",
+        "type": "Longbow",
+        "Tier": 9,
+        "armor": 0,
+        "damage_min": 0.25,
+        "damage_max": 0.65,
+        "speed_ticks": 4,
+        "base_sell_value": 2700,
+        "max_stack": 1,
+        "drop_tier": 0.0009,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 8
+        }
+    },
+    "X1": {
+        "name": "Crude Light Crossbow",
+        "equipment_slot": "main_hand",
+        "type": "Light Crossbow",
+        "Tier": 1,
+        "armor": 0,
+        "damage_min": 0.10,
+        "damage_max": 0.35,
+        "speed_ticks": 2,
+        "base_sell_value": 100,
+        "max_stack": 1,
+        "drop_tier": 0.85,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 6
+        }
+    },
+    "X2": {
+        "name": "Common Light Crossbow",
+        "equipment_slot": "main_hand",
+        "type": "Light Crossbow",
+        "Tier": 2,
+        "armor": 0,
+        "damage_min": 0.10,
+        "damage_max": 0.35,
+        "speed_ticks": 2,
+        "base_sell_value": 282,
+        "max_stack": 1,
+        "drop_tier": 0.3633,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 6
+        }
+    },
+    "X3": {
+        "name": "Refined Light Crossbow",
+        "equipment_slot": "main_hand",
+        "type": "Light Crossbow",
+        "Tier": 3,
+        "armor": 0,
+        "damage_min": 0.10,
+        "damage_max": 0.35,
+        "speed_ticks": 2,
+        "base_sell_value": 519,
+        "max_stack": 1,
+        "drop_tier": 0.1553,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 6
+        }
+    },
+    "X4": {
+        "name": "Superior Light Crossbow",
+        "equipment_slot": "main_hand",
+        "type": "Light Crossbow",
+        "Tier": 4,
+        "armor": 0,
+        "damage_min": 0.10,
+        "damage_max": 0.35,
+        "speed_ticks": 2,
+        "base_sell_value": 800,
+        "max_stack": 1,
+        "drop_tier": 0.0664,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 6
+        }
+    },
+    "X5": {
+        "name": "Exalted Light Crossbow",
+        "equipment_slot": "main_hand",
+        "type": "Light Crossbow",
+        "Tier": 5,
+        "armor": 0,
+        "damage_min": 0.10,
+        "damage_max": 0.35,
+        "speed_ticks": 2,
+        "base_sell_value": 1118,
+        "max_stack": 1,
+        "drop_tier": 0.0284,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 6
+        }
+    },
+    "X6": {
+        "name": "Mythic Light Crossbow",
+        "equipment_slot": "main_hand",
+        "type": "Light Crossbow",
+        "Tier": 6,
+        "armor": 0,
+        "damage_min": 0.10,
+        "damage_max": 0.35,
+        "speed_ticks": 2,
+        "base_sell_value": 1469,
+        "max_stack": 1,
+        "drop_tier": 0.0121,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 6
+        }
+    },
+    "X7": {
+        "name": "Aetheric Light Crossbow",
+        "equipment_slot": "main_hand",
+        "type": "Light Crossbow",
+        "Tier": 7,
+        "armor": 0,
+        "damage_min": 0.10,
+        "damage_max": 0.35,
+        "speed_ticks": 2,
+        "base_sell_value": 1852,
+        "max_stack": 1,
+        "drop_tier": 0.0052,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 6
+        }
+    },
+    "X8": {
+        "name": "Timeless Light Crossbow",
+        "equipment_slot": "main_hand",
+        "type": "Light Crossbow",
+        "Tier": 8,
+        "armor": 0,
+        "damage_min": 0.10,
+        "damage_max": 0.35,
+        "speed_ticks": 2,
+        "base_sell_value": 2262,
+        "max_stack": 1,
+        "drop_tier": 0.0022,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 6
+        }
+    },
+    "X9": {
+        "name": "Apex Light Crossbow",
+        "equipment_slot": "main_hand",
+        "type": "Light Crossbow",
+        "Tier": 9,
+        "armor": 0,
+        "damage_min": 0.10,
+        "damage_max": 0.35,
+        "speed_ticks": 2,
+        "base_sell_value": 2700,
+        "max_stack": 1,
+        "drop_tier": 0.0009,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 6
+        }
+    },
+    "V1": {
+        "name": "Crude Heavy Crossbow",
+        "equipment_slot": "two_hand",
+        "type": "Heavy Crossbow",
+        "Tier": 1,
+        "armor": 0,
+        "damage_min": 0.35,
+        "damage_max": 0.80,
+        "speed_ticks": 5,
+        "base_sell_value": 100,
+        "max_stack": 1,
+        "drop_tier": 0.85,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 10
+        }
+    },
+    "V2": {
+        "name": "Common Heavy Crossbow",
+        "equipment_slot": "two_hand",
+        "type": "Heavy Crossbow",
+        "Tier": 2,
+        "armor": 0,
+        "damage_min": 0.35,
+        "damage_max": 0.80,
+        "speed_ticks": 5,
+        "base_sell_value": 282,
+        "max_stack": 1,
+        "drop_tier": 0.3633,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 10
+        }
+    },
+    "V3": {
+        "name": "Refined Heavy Crossbow",
+        "equipment_slot": "two_hand",
+        "type": "Heavy Crossbow",
+        "Tier": 3,
+        "armor": 0,
+        "damage_min": 0.35,
+        "damage_max": 0.80,
+        "speed_ticks": 5,
+        "base_sell_value": 519,
+        "max_stack": 1,
+        "drop_tier": 0.1553,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 10
+        }
+    },
+    "V4": {
+        "name": "Superior Heavy Crossbow",
+        "equipment_slot": "two_hand",
+        "type": "Heavy Crossbow",
+        "Tier": 4,
+        "armor": 0,
+        "damage_min": 0.35,
+        "damage_max": 0.80,
+        "speed_ticks": 5,
+        "base_sell_value": 800,
+        "max_stack": 1,
+        "drop_tier": 0.0664,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 10
+        }
+    },
+    "V5": {
+        "name": "Exalted Heavy Crossbow",
+        "equipment_slot": "two_hand",
+        "type": "Heavy Crossbow",
+        "Tier": 5,
+        "armor": 0,
+        "damage_min": 0.35,
+        "damage_max": 0.80,
+        "speed_ticks": 5,
+        "base_sell_value": 1118,
+        "max_stack": 1,
+        "drop_tier": 0.0284,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 10
+        }
+    },
+    "V6": {
+        "name": "Mythic Heavy Crossbow",
+        "equipment_slot": "two_hand",
+        "type": "Heavy Crossbow",
+        "Tier": 6,
+        "armor": 0,
+        "damage_min": 0.35,
+        "damage_max": 0.80,
+        "speed_ticks": 5,
+        "base_sell_value": 1469,
+        "max_stack": 1,
+        "drop_tier": 0.0121,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 10
+        }
+    },
+    "V7": {
+        "name": "Aetheric Heavy Crossbow",
+        "equipment_slot": "two_hand",
+        "type": "Heavy Crossbow",
+        "Tier": 7,
+        "armor": 0,
+        "damage_min": 0.35,
+        "damage_max": 0.80,
+        "speed_ticks": 5,
+        "base_sell_value": 1852,
+        "max_stack": 1,
+        "drop_tier": 0.0052,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 10
+        }
+    },
+    "V8": {
+        "name": "Timeless Heavy Crossbow",
+        "equipment_slot": "two_hand",
+        "type": "Heavy Crossbow",
+        "Tier": 8,
+        "armor": 0,
+        "damage_min": 0.35,
+        "damage_max": 0.80,
+        "speed_ticks": 5,
+        "base_sell_value": 2262,
+        "max_stack": 1,
+        "drop_tier": 0.0022,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 10
+        }
+    },
+    "V9": {
+        "name": "Apex Heavy Crossbow",
+        "equipment_slot": "two_hand",
+        "type": "Heavy Crossbow",
+        "Tier": 9,
+        "armor": 0,
+        "damage_min": 0.35,
+        "damage_max": 0.80,
+        "speed_ticks": 5,
+        "base_sell_value": 2700,
+        "max_stack": 1,
+        "drop_tier": 0.0009,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 10
+        }
+    },
+    "P1": {
+        "name": "Crude Spear",
+        "equipment_slot": "main_hand",
+        "type": "Spear",
+        "Tier": 1,
+        "armor": 0,
+        "damage_min": 0.15,
+        "damage_max": 0.50,
+        "speed_ticks": 3,
+        "base_sell_value": 100,
+        "max_stack": 1,
+        "drop_tier": 0.85,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 7
+        }
+    },
+    "P2": {
+        "name": "Common Spear",
+        "equipment_slot": "main_hand",
+        "type": "Spear",
+        "Tier": 2,
+        "armor": 0,
+        "damage_min": 0.15,
+        "damage_max": 0.50,
+        "speed_ticks": 3,
+        "base_sell_value": 282,
+        "max_stack": 1,
+        "drop_tier": 0.3633,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 7
+        }
+    },
+    "P3": {
+        "name": "Refined Spear",
+        "equipment_slot": "main_hand",
+        "type": "Spear",
+        "Tier": 3,
+        "armor": 0,
+        "damage_min": 0.15,
+        "damage_max": 0.50,
+        "speed_ticks": 3,
+        "base_sell_value": 519,
+        "max_stack": 1,
+        "drop_tier": 0.1553,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 7
+        }
+    },
+    "P4": {
+        "name": "Superior Spear",
+        "equipment_slot": "main_hand",
+        "type": "Spear",
+        "Tier": 4,
+        "armor": 0,
+        "damage_min": 0.15,
+        "damage_max": 0.50,
+        "speed_ticks": 3,
+        "base_sell_value": 800,
+        "max_stack": 1,
+        "drop_tier": 0.0664,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 7
+        }
+    },
+    "P5": {
+        "name": "Exalted Spear",
+        "equipment_slot": "main_hand",
+        "type": "Spear",
+        "Tier": 5,
+        "armor": 0,
+        "damage_min": 0.15,
+        "damage_max": 0.50,
+        "speed_ticks": 3,
+        "base_sell_value": 1118,
+        "max_stack": 1,
+        "drop_tier": 0.0284,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 7
+        }
+    },
+    "P6": {
+        "name": "Mythic Spear",
+        "equipment_slot": "main_hand",
+        "type": "Spear",
+        "Tier": 6,
+        "armor": 0,
+        "damage_min": 0.15,
+        "damage_max": 0.50,
+        "speed_ticks": 3,
+        "base_sell_value": 1469,
+        "max_stack": 1,
+        "drop_tier": 0.0121,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 7
+        }
+    },
+    "P7": {
+        "name": "Aetheric Spear",
+        "equipment_slot": "main_hand",
+        "type": "Spear",
+        "Tier": 7,
+        "armor": 0,
+        "damage_min": 0.15,
+        "damage_max": 0.50,
+        "speed_ticks": 3,
+        "base_sell_value": 1852,
+        "max_stack": 1,
+        "drop_tier": 0.0052,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 7
+        }
+    },
+    "P8": {
+        "name": "Timeless Spear",
+        "equipment_slot": "main_hand",
+        "type": "Spear",
+        "Tier": 8,
+        "armor": 0,
+        "damage_min": 0.15,
+        "damage_max": 0.50,
+        "speed_ticks": 3,
+        "base_sell_value": 2262,
+        "max_stack": 1,
+        "drop_tier": 0.0022,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 7
+        }
+    },
+    "P9": {
+        "name": "Apex Spear",
+        "equipment_slot": "main_hand",
+        "type": "Spear",
+        "Tier": 9,
+        "armor": 0,
+        "damage_min": 0.15,
+        "damage_max": 0.50,
+        "speed_ticks": 3,
+        "base_sell_value": 2700,
+        "max_stack": 1,
+        "drop_tier": 0.0009,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 7
+        }
+    },
+    "H1": {
+        "name": "Crude Halberd",
+        "equipment_slot": "two_hand",
+        "type": "Halberd",
+        "Tier": 1,
+        "armor": 0,
+        "damage_min": 0.35,
+        "damage_max": 0.80,
+        "speed_ticks": 5,
+        "base_sell_value": 100,
+        "max_stack": 1,
+        "drop_tier": 0.85,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 5,
+            "constitution_percent": 0.5
+        }
+    },
+    "H2": {
+        "name": "Common Halberd",
+        "equipment_slot": "two_hand",
+        "type": "Halberd",
+        "Tier": 2,
+        "armor": 0,
+        "damage_min": 0.35,
+        "damage_max": 0.80,
+        "speed_ticks": 5,
+        "base_sell_value": 282,
+        "max_stack": 1,
+        "drop_tier": 0.3633,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 5,
+            "constitution_percent": 1.0
+        }
+    },
+    "H3": {
+        "name": "Refined Halberd",
+        "equipment_slot": "two_hand",
+        "type": "Halberd",
+        "Tier": 3,
+        "armor": 0,
+        "damage_min": 0.35,
+        "damage_max": 0.80,
+        "speed_ticks": 5,
+        "base_sell_value": 519,
+        "max_stack": 1,
+        "drop_tier": 0.1553,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 5,
+            "constitution_percent": 1.5
+        }
+    },
+    "H4": {
+        "name": "Superior Halberd",
+        "equipment_slot": "two_hand",
+        "type": "Halberd",
+        "Tier": 4,
+        "armor": 0,
+        "damage_min": 0.35,
+        "damage_max": 0.80,
+        "speed_ticks": 5,
+        "base_sell_value": 800,
+        "max_stack": 1,
+        "drop_tier": 0.0664,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 5,
+            "constitution_percent": 2.0
+        }
+    },
+    "H5": {
+        "name": "Exalted Halberd",
+        "equipment_slot": "two_hand",
+        "type": "Halberd",
+        "Tier": 5,
+        "armor": 0,
+        "damage_min": 0.35,
+        "damage_max": 0.80,
+        "speed_ticks": 5,
+        "base_sell_value": 1118,
+        "max_stack": 1,
+        "drop_tier": 0.0284,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 5,
+            "constitution_percent": 2.5
+        }
+    },
+    "H6": {
+        "name": "Mythic Halberd",
+        "equipment_slot": "two_hand",
+        "type": "Halberd",
+        "Tier": 6,
+        "armor": 0,
+        "damage_min": 0.35,
+        "damage_max": 0.80,
+        "speed_ticks": 5,
+        "base_sell_value": 1469,
+        "max_stack": 1,
+        "drop_tier": 0.0121,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 5,
+            "constitution_percent": 3.0
+        }
+    },
+    "H7": {
+        "name": "Aetheric Halberd",
+        "equipment_slot": "two_hand",
+        "type": "Halberd",
+        "Tier": 7,
+        "armor": 0,
+        "damage_min": 0.35,
+        "damage_max": 0.80,
+        "speed_ticks": 5,
+        "base_sell_value": 1852,
+        "max_stack": 1,
+        "drop_tier": 0.0052,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 5,
+            "constitution_percent": 3.5
+        }
+    },
+    "H8": {
+        "name": "Timeless Halberd",
+        "equipment_slot": "two_hand",
+        "type": "Halberd",
+        "Tier": 8,
+        "armor": 0,
+        "damage_min": 0.35,
+        "damage_max": 0.80,
+        "speed_ticks": 5,
+        "base_sell_value": 2262,
+        "max_stack": 1,
+        "drop_tier": 0.0022,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 5,
+            "constitution_percent": 4.0
+        }
+    },
+    "H9": {
+        "name": "Apex Halberd",
+        "equipment_slot": "two_hand",
+        "type": "Halberd",
+        "Tier": 9,
+        "armor": 0,
+        "damage_min": 0.35,
+        "damage_max": 0.80,
+        "speed_ticks": 5,
+        "base_sell_value": 2700,
+        "max_stack": 1,
+        "drop_tier": 0.0009,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 5,
+            "constitution_percent": 4.5
+        }
+    },
+    "C1": {
+        "name": "Crude Shield",
+        "equipment_slot": "off_hand",
+        "type": "Shield",
+        "Tier": 1,
+        "armor": 0,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 4,
+        "base_sell_value": 100,
+        "max_stack": 1,
+        "drop_tier": 0.85,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 2,
+            "constitution_percent": 2.0
+        }
+    },
+    "C2": {
+        "name": "Common Shield",
+        "equipment_slot": "off_hand",
+        "type": "Shield",
+        "Tier": 2,
+        "armor": 0,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 4,
+        "base_sell_value": 282,
+        "max_stack": 1,
+        "drop_tier": 0.3633,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 3,
+            "constitution_percent": 4.0
+        }
+    },
+    "C3": {
+        "name": "Refined Shield",
+        "equipment_slot": "off_hand",
+        "type": "Shield",
+        "Tier": 3,
+        "armor": 0,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 4,
+        "base_sell_value": 519,
+        "max_stack": 1,
+        "drop_tier": 0.1553,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 4,
+            "constitution_percent": 6.0
+        }
+    },
+    "C4": {
+        "name": "Superior Shield",
+        "equipment_slot": "off_hand",
+        "type": "Shield",
+        "Tier": 4,
+        "armor": 0,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 4,
+        "base_sell_value": 800,
+        "max_stack": 1,
+        "drop_tier": 0.0664,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 5,
+            "constitution_percent": 8.0
+        }
+    },
+    "C5": {
+        "name": "Exalted Shield",
+        "equipment_slot": "off_hand",
+        "type": "Shield",
+        "Tier": 5,
+        "armor": 0,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 4,
+        "base_sell_value": 1118,
+        "max_stack": 1,
+        "drop_tier": 0.0284,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 6,
+            "constitution_percent": 10.0
+        }
+    },
+    "C6": {
+        "name": "Mythic Shield",
+        "equipment_slot": "off_hand",
+        "type": "Shield",
+        "Tier": 6,
+        "armor": 0,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 4,
+        "base_sell_value": 1469,
+        "max_stack": 1,
+        "drop_tier": 0.0121,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 7,
+            "constitution_percent": 12.0
+        }
+    },
+    "C7": {
+        "name": "Aetheric Shield",
+        "equipment_slot": "off_hand",
+        "type": "Shield",
+        "Tier": 7,
+        "armor": 0,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 4,
+        "base_sell_value": 1852,
+        "max_stack": 1,
+        "drop_tier": 0.0052,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 8,
+            "constitution_percent": 14.0
+        }
+    },
+    "C8": {
+        "name": "Timeless Shield",
+        "equipment_slot": "off_hand",
+        "type": "Shield",
+        "Tier": 8,
+        "armor": 0,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 4,
+        "base_sell_value": 2262,
+        "max_stack": 1,
+        "drop_tier": 0.0022,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 9,
+            "constitution_percent": 16.0
+        }
+    },
+    "C9": {
+        "name": "Apex Shield",
+        "equipment_slot": "off_hand",
+        "type": "Shield",
+        "Tier": 9,
+        "armor": 0,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 4,
+        "base_sell_value": 2700,
+        "max_stack": 1,
+        "drop_tier": 0.0009,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 10,
+            "constitution_percent": 18.0
+        }
+    },
+    "K1": {
+        "name": "Crude Spiked Shield",
+        "equipment_slot": "off_hand",
+        "type": "Spiked Shield",
+        "Tier": 1,
+        "armor": 0,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 4,
+        "base_sell_value": 100,
+        "max_stack": 1,
+        "drop_tier": 0.85,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 2,
+            "constitution_percent": 1.5
+        }
+    },
+    "K2": {
+        "name": "Common Spiked Shield",
+        "equipment_slot": "off_hand",
+        "type": "Spiked Shield",
+        "Tier": 2,
+        "armor": 0,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 4,
+        "base_sell_value": 282,
+        "max_stack": 1,
+        "drop_tier": 0.3633,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 3,
+            "constitution_percent": 3.0
+        }
+    },
+    "K3": {
+        "name": "Refined Spiked Shield",
+        "equipment_slot": "off_hand",
+        "type": "Spiked Shield",
+        "Tier": 3,
+        "armor": 0,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 4,
+        "base_sell_value": 519,
+        "max_stack": 1,
+        "drop_tier": 0.1553,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 4,
+            "constitution_percent": 4.5
+        }
+    },
+    "K4": {
+        "name": "Superior Spiked Shield",
+        "equipment_slot": "off_hand",
+        "type": "Spiked Shield",
+        "Tier": 4,
+        "armor": 0,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 4,
+        "base_sell_value": 800,
+        "max_stack": 1,
+        "drop_tier": 0.0664,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 5,
+            "constitution_percent": 6.0
+        }
+    },
+    "K5": {
+        "name": "Exalted Spiked Shield",
+        "equipment_slot": "off_hand",
+        "type": "Spiked Shield",
+        "Tier": 5,
+        "armor": 0,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 4,
+        "base_sell_value": 1118,
+        "max_stack": 1,
+        "drop_tier": 0.0284,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 6,
+            "constitution_percent": 7.5
+        }
+    },
+    "K6": {
+        "name": "Mythic Spiked Shield",
+        "equipment_slot": "off_hand",
+        "type": "Spiked Shield",
+        "Tier": 6,
+        "armor": 0,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 4,
+        "base_sell_value": 1469,
+        "max_stack": 1,
+        "drop_tier": 0.0121,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 7,
+            "constitution_percent": 9.0
+        }
+    },
+    "K7": {
+        "name": "Aetheric Spiked Shield",
+        "equipment_slot": "off_hand",
+        "type": "Spiked Shield",
+        "Tier": 7,
+        "armor": 0,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 4,
+        "base_sell_value": 1852,
+        "max_stack": 1,
+        "drop_tier": 0.0052,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 8,
+            "constitution_percent": 10.5
+        }
+    },
+    "K8": {
+        "name": "Timeless Spiked Shield",
+        "equipment_slot": "off_hand",
+        "type": "Spiked Shield",
+        "Tier": 8,
+        "armor": 0,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 4,
+        "base_sell_value": 2262,
+        "max_stack": 1,
+        "drop_tier": 0.0022,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 9,
+            "constitution_percent": 12.0
+        }
+    },
+    "K9": {
+        "name": "Apex Spiked Shield",
+        "equipment_slot": "off_hand",
+        "type": "Spiked Shield",
+        "Tier": 9,
+        "armor": 0,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 4,
+        "base_sell_value": 2700,
+        "max_stack": 1,
+        "drop_tier": 0.0009,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 10,
+            "constitution_percent": 13.5
+        }
+    },
+    "W1": {
+        "name": "Crude Wand",
+        "equipment_slot": "main_hand",
+        "type": "Wand",
+        "Tier": 1,
+        "armor": 0,
+        "damage_min": 0.10,
+        "damage_max": 0.35,
+        "speed_ticks": 2,
+        "base_sell_value": 100,
+        "max_stack": 1,
+        "drop_tier": 0.85,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 6
+        }
+    },
+    "W2": {
+        "name": "Common Wand",
+        "equipment_slot": "main_hand",
+        "type": "Wand",
+        "Tier": 2,
+        "armor": 0,
+        "damage_min": 0.10,
+        "damage_max": 0.35,
+        "speed_ticks": 2,
+        "base_sell_value": 282,
+        "max_stack": 1,
+        "drop_tier": 0.3633,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 6
+        }
+    },
+    "W3": {
+        "name": "Refined Wand",
+        "equipment_slot": "main_hand",
+        "type": "Wand",
+        "Tier": 3,
+        "armor": 0,
+        "damage_min": 0.10,
+        "damage_max": 0.35,
+        "speed_ticks": 2,
+        "base_sell_value": 519,
+        "max_stack": 1,
+        "drop_tier": 0.1553,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 6
+        }
+    },
+    "W4": {
+        "name": "Superior Wand",
+        "equipment_slot": "main_hand",
+        "type": "Wand",
+        "Tier": 4,
+        "armor": 0,
+        "damage_min": 0.10,
+        "damage_max": 0.35,
+        "speed_ticks": 2,
+        "base_sell_value": 800,
+        "max_stack": 1,
+        "drop_tier": 0.0664,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 6
+        }
+    },
+    "W5": {
+        "name": "Exalted Wand",
+        "equipment_slot": "main_hand",
+        "type": "Wand",
+        "Tier": 5,
+        "armor": 0,
+        "damage_min": 0.10,
+        "damage_max": 0.35,
+        "speed_ticks": 2,
+        "base_sell_value": 1118,
+        "max_stack": 1,
+        "drop_tier": 0.0284,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 6
+        }
+    },
+    "W6": {
+        "name": "Mythic Wand",
+        "equipment_slot": "main_hand",
+        "type": "Wand",
+        "Tier": 6,
+        "armor": 0,
+        "damage_min": 0.10,
+        "damage_max": 0.35,
+        "speed_ticks": 2,
+        "base_sell_value": 1469,
+        "max_stack": 1,
+        "drop_tier": 0.0121,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 6
+        }
+    },
+    "W7": {
+        "name": "Aetheric Wand",
+        "equipment_slot": "main_hand",
+        "type": "Wand",
+        "Tier": 7,
+        "armor": 0,
+        "damage_min": 0.10,
+        "damage_max": 0.35,
+        "speed_ticks": 2,
+        "base_sell_value": 1852,
+        "max_stack": 1,
+        "drop_tier": 0.0052,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 6
+        }
+    },
+    "W8": {
+        "name": "Timeless Wand",
+        "equipment_slot": "main_hand",
+        "type": "Wand",
+        "Tier": 8,
+        "armor": 0,
+        "damage_min": 0.10,
+        "damage_max": 0.35,
+        "speed_ticks": 2,
+        "base_sell_value": 2262,
+        "max_stack": 1,
+        "drop_tier": 0.0022,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 6
+        }
+    },
+    "W9": {
+        "name": "Apex Wand",
+        "equipment_slot": "main_hand",
+        "type": "Wand",
+        "Tier": 9,
+        "armor": 0,
+        "damage_min": 0.10,
+        "damage_max": 0.35,
+        "speed_ticks": 2,
+        "base_sell_value": 2700,
+        "max_stack": 1,
+        "drop_tier": 0.0009,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 6
+        }
+    },
+    "F1": {
+        "name": "Crude Staff",
+        "equipment_slot": "two_hand",
+        "type": "Staff",
+        "Tier": 1,
+        "armor": 0,
+        "damage_min": 0.25,
+        "damage_max": 0.65,
+        "speed_ticks": 4,
+        "base_sell_value": 100,
+        "max_stack": 1,
+        "drop_tier": 0.85,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 4
+        }
+    },
+    "F2": {
+        "name": "Common Staff",
+        "equipment_slot": "two_hand",
+        "type": "Staff",
+        "Tier": 2,
+        "armor": 0,
+        "damage_min": 0.25,
+        "damage_max": 0.65,
+        "speed_ticks": 4,
+        "base_sell_value": 282,
+        "max_stack": 1,
+        "drop_tier": 0.3633,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 4
+        }
+    },
+    "F3": {
+        "name": "Refined Staff",
+        "equipment_slot": "two_hand",
+        "type": "Staff",
+        "Tier": 3,
+        "armor": 0,
+        "damage_min": 0.25,
+        "damage_max": 0.65,
+        "speed_ticks": 4,
+        "base_sell_value": 519,
+        "max_stack": 1,
+        "drop_tier": 0.1553,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 4
+        }
+    },
+    "F4": {
+        "name": "Superior Staff",
+        "equipment_slot": "two_hand",
+        "type": "Staff",
+        "Tier": 4,
+        "armor": 0,
+        "damage_min": 0.25,
+        "damage_max": 0.65,
+        "speed_ticks": 4,
+        "base_sell_value": 800,
+        "max_stack": 1,
+        "drop_tier": 0.0664,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 4
+        }
+    },
+    "F5": {
+        "name": "Exalted Staff",
+        "equipment_slot": "two_hand",
+        "type": "Staff",
+        "Tier": 5,
+        "armor": 0,
+        "damage_min": 0.25,
+        "damage_max": 0.65,
+        "speed_ticks": 4,
+        "base_sell_value": 1118,
+        "max_stack": 1,
+        "drop_tier": 0.0284,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 4
+        }
+    },
+    "F6": {
+        "name": "Mythic Staff",
+        "equipment_slot": "two_hand",
+        "type": "Staff",
+        "Tier": 6,
+        "armor": 0,
+        "damage_min": 0.25,
+        "damage_max": 0.65,
+        "speed_ticks": 4,
+        "base_sell_value": 1469,
+        "max_stack": 1,
+        "drop_tier": 0.0121,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 4
+        }
+    },
+    "F7": {
+        "name": "Aetheric Staff",
+        "equipment_slot": "two_hand",
+        "type": "Staff",
+        "Tier": 7,
+        "armor": 0,
+        "damage_min": 0.25,
+        "damage_max": 0.65,
+        "speed_ticks": 4,
+        "base_sell_value": 1852,
+        "max_stack": 1,
+        "drop_tier": 0.0052,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 4
+        }
+    },
+    "F8": {
+        "name": "Timeless Staff",
+        "equipment_slot": "two_hand",
+        "type": "Staff",
+        "Tier": 8,
+        "armor": 0,
+        "damage_min": 0.25,
+        "damage_max": 0.65,
+        "speed_ticks": 4,
+        "base_sell_value": 2262,
+        "max_stack": 1,
+        "drop_tier": 0.0022,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 4
+        }
+    },
+    "F9": {
+        "name": "Apex Staff",
+        "equipment_slot": "two_hand",
+        "type": "Staff",
+        "Tier": 9,
+        "armor": 0,
+        "damage_min": 0.25,
+        "damage_max": 0.65,
+        "speed_ticks": 4,
+        "base_sell_value": 2700,
+        "max_stack": 1,
+        "drop_tier": 0.0009,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 4
+        }
+    },
+    "O1": {
+        "name": "Crude Orb",
+        "equipment_slot": "off_hand",
+        "type": "Orb",
+        "Tier": 1,
+        "armor": 0,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 3,
+        "base_sell_value": 100,
+        "max_stack": 1,
+        "drop_tier": 0.85,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 2
+        }
+    },
+    "O2": {
+        "name": "Common Orb",
+        "equipment_slot": "off_hand",
+        "type": "Orb",
+        "Tier": 2,
+        "armor": 0,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 3,
+        "base_sell_value": 282,
+        "max_stack": 1,
+        "drop_tier": 0.3633,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 3
+        }
+    },
+    "O3": {
+        "name": "Refined Orb",
+        "equipment_slot": "off_hand",
+        "type": "Orb",
+        "Tier": 3,
+        "armor": 0,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 3,
+        "base_sell_value": 519,
+        "max_stack": 1,
+        "drop_tier": 0.1553,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 4
+        }
+    },
+    "O4": {
+        "name": "Superior Orb",
+        "equipment_slot": "off_hand",
+        "type": "Orb",
+        "Tier": 4,
+        "armor": 0,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 3,
+        "base_sell_value": 800,
+        "max_stack": 1,
+        "drop_tier": 0.0664,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 5
+        }
+    },
+    "O5": {
+        "name": "Exalted Orb",
+        "equipment_slot": "off_hand",
+        "type": "Orb",
+        "Tier": 5,
+        "armor": 0,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 3,
+        "base_sell_value": 1118,
+        "max_stack": 1,
+        "drop_tier": 0.0284,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 6
+        }
+    },
+    "O6": {
+        "name": "Mythic Orb",
+        "equipment_slot": "off_hand",
+        "type": "Orb",
+        "Tier": 6,
+        "armor": 0,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 3,
+        "base_sell_value": 1469,
+        "max_stack": 1,
+        "drop_tier": 0.0121,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 7
+        }
+    },
+    "O7": {
+        "name": "Aetheric Orb",
+        "equipment_slot": "off_hand",
+        "type": "Orb",
+        "Tier": 7,
+        "armor": 0,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 3,
+        "base_sell_value": 1852,
+        "max_stack": 1,
+        "drop_tier": 0.0052,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 8
+        }
+    },
+    "O8": {
+        "name": "Timeless Orb",
+        "equipment_slot": "off_hand",
+        "type": "Orb",
+        "Tier": 8,
+        "armor": 0,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 3,
+        "base_sell_value": 2262,
+        "max_stack": 1,
+        "drop_tier": 0.0022,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 9
+        }
+    },
+    "O9": {
+        "name": "Apex Orb",
+        "equipment_slot": "off_hand",
+        "type": "Orb",
+        "Tier": 9,
+        "armor": 0,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 3,
+        "base_sell_value": 2700,
+        "max_stack": 1,
+        "drop_tier": 0.0009,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "critical_strike_chance": 10
+        }
+    }
+}

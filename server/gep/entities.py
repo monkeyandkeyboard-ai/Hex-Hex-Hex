@@ -12,12 +12,24 @@ import random
 from dataclasses import dataclass, field
 
 from gep.config_loader import COMBAT_SKILLS
+from gep.items import is_instance
 from gep.stats import compute_max_hp, compute_max_mana
 
+# Slot names are the same vocabulary the item bases use (config/items/), so an
+# item's `equipment_slot` names its destination directly and no translation
+# table sits between config and the entity.
+#
+# `two_hand` is deliberately absent: it is a property of an item, not a place
+# on the body. A two-handed item occupies main_hand and locks off_hand, which
+# the equip handler enforces -- modelling it as a third weapon slot would let
+# a player wear a greatsword and a sword at once.
 EQUIPMENT_SLOTS = (
-    "main_hand", "off_hand", "helmet", "amulet",
-    "body", "gloves", "ring", "legs", "feet", "back",
+    "main_hand", "off_hand", "head", "amulet",
+    "torso", "hands", "ring", "legs", "feet", "back",
 )
+
+# The `equipment_slot` value an item base uses to mean "both hands".
+TWO_HAND = "two_hand"
 
 INVENTORY_SIZE = 28
 BAG_SLOTS = 6
@@ -27,10 +39,10 @@ BAG_SLOTS = 6
 class Equipment:
     main_hand: str | None = None
     off_hand: str | None = None
-    helmet: str | None = None
+    head: str | None = None
     amulet: str | None = None
-    body: str | None = None
-    gloves: str | None = None
+    torso: str | None = None
+    hands: str | None = None
     ring: str | None = None
     legs: str | None = None
     feet: str | None = None
@@ -103,12 +115,17 @@ class Player:
         """Stack with existing slot first, then find an empty slot.
         Returns True if the item fit, False if inventory is full.
         """
-        # Try to stack with an existing slot
-        for i in range(INVENTORY_SIZE):
-            slot = self.inventory.get(i)
-            if slot and slot["item_id"] == item_id:
-                slot["quantity"] += quantity
-                return True
+        # Rolled equipment never stacks: each instance carries its own
+        # modifier rolls, so merging two of them into one slot would destroy
+        # the distinct item. Checked structurally rather than by a caller
+        # passing a flag, so no call site can forget.
+        if not is_instance(item_id):
+            # Try to stack with an existing slot
+            for i in range(INVENTORY_SIZE):
+                slot = self.inventory.get(i)
+                if slot and slot["item_id"] == item_id:
+                    slot["quantity"] += quantity
+                    return True
         # Find an empty slot
         for i in range(INVENTORY_SIZE):
             if self.inventory.get(i) is None:

@@ -56,6 +56,7 @@ def setup(store, floor, player, tanky=True):
         weapons=store.weapons, monsters_cfg=store.monsters,
         combat_constants=store.combat_constants, xp_rates=store.xp_rates,
         xp_table=store.xp_table, stat_scaling=store.stat_scaling,
+        rewards=store.rewards,
     )
     movement.register(engine, floor, on_move=break_engagement)
     return engine, monster

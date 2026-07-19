@@ -46,7 +46,7 @@ def setup(store):
     floor.players["p1"] = player
     engine = TickEngine()
     inventory_system.register(engine, floor, store.weapons,
-                              store.default_equipment_state)
+                              store.default_equipment_state, store.items)
     return floor, player, engine
 
 

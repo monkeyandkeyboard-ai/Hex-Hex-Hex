@@ -2,7 +2,8 @@ import pathlib
 
 import pytest
 
-from gep.config_loader import ConfigError, ConfigStore
+from gep.config_loader import ITEM_STATS, ConfigError, ConfigStore
+from gep.items import MAX_TIER, MIN_TIER
 
 CONFIG_DIR = pathlib.Path(__file__).resolve().parents[1] / "config"
 
@@ -19,7 +20,14 @@ def test_loads_real_config_dir():
     assert str(1) in store.xp_table
     assert str(2000) in store.xp_table
     assert isinstance(store.modifiers, list)
-    assert len(store.modifiers) == 54
+    # Every rollable stat must be present at all nine tiers -- a stat that
+    # stops partway up would silently become impossible to roll on high-tier
+    # gear, which no other assertion would catch.
+    stats = {m["stat"] for m in store.modifiers}
+    assert stats == set(ITEM_STATS)
+    for stat in stats:
+        tiers = sorted(m["tier"] for m in store.modifiers if m["stat"] == stat)
+        assert tiers == list(range(MIN_TIER, MAX_TIER + 1)), stat
 
 
 def test_real_stat_scaling_values(store=None):
@@ -86,7 +94,7 @@ def test_rejects_minrandom_greater_than_maxrandom(tmp_path):
         },
         "combat": {"damage_min": 3, "damage_max": 6, "speed_ticks": 4},
         "respawn_ticks": 30, "xp_reward": {"combat_base": 10},
-        "loot_table": [["nothing", 1]]
+        "reward_table": "EMPTY"
     }""", encoding="utf-8")
     with pytest.raises(ConfigError, match="minrandom > maxrandom"):
         ConfigStore(tmp_path)

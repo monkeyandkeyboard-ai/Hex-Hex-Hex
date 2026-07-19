@@ -1,0 +1,542 @@
+{
+    "CT1": {
+        "name": "Crude Cloth Robe",
+        "equipment_slot": "torso",
+        "type": "Cloth",
+        "Tier": 1,
+        "armor": 7,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 100,
+        "max_stack": 1,
+        "drop_tier": 0.85,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 2,
+            "arcana": 2
+        }
+    },
+    "CT2": {
+        "name": "Common Cloth Robe",
+        "equipment_slot": "torso",
+        "type": "Cloth",
+        "Tier": 2,
+        "armor": 14,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 282,
+        "max_stack": 1,
+        "drop_tier": 0.3633,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 3,
+            "arcana": 3
+        }
+    },
+    "CT3": {
+        "name": "Refined Cloth Robe",
+        "equipment_slot": "torso",
+        "type": "Cloth",
+        "Tier": 3,
+        "armor": 21,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 519,
+        "max_stack": 1,
+        "drop_tier": 0.1553,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 4,
+            "arcana": 4
+        }
+    },
+    "CT4": {
+        "name": "Superior Cloth Robe",
+        "equipment_slot": "torso",
+        "type": "Cloth",
+        "Tier": 4,
+        "armor": 28,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 800,
+        "max_stack": 1,
+        "drop_tier": 0.0664,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 5,
+            "arcana": 5
+        }
+    },
+    "CT5": {
+        "name": "Exalted Cloth Robe",
+        "equipment_slot": "torso",
+        "type": "Cloth",
+        "Tier": 5,
+        "armor": 35,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 1118,
+        "max_stack": 1,
+        "drop_tier": 0.0284,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 6,
+            "arcana": 6
+        }
+    },
+    "CT6": {
+        "name": "Mythic Cloth Robe",
+        "equipment_slot": "torso",
+        "type": "Cloth",
+        "Tier": 6,
+        "armor": 42,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 1469,
+        "max_stack": 1,
+        "drop_tier": 0.0121,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 7,
+            "arcana": 7
+        }
+    },
+    "CT7": {
+        "name": "Aetheric Cloth Robe",
+        "equipment_slot": "torso",
+        "type": "Cloth",
+        "Tier": 7,
+        "armor": 49,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 1852,
+        "max_stack": 1,
+        "drop_tier": 0.0052,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 8,
+            "arcana": 8
+        }
+    },
+    "CT8": {
+        "name": "Timeless Cloth Robe",
+        "equipment_slot": "torso",
+        "type": "Cloth",
+        "Tier": 8,
+        "armor": 56,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 2262,
+        "max_stack": 1,
+        "drop_tier": 0.0022,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 9,
+            "arcana": 9
+        }
+    },
+    "CT9": {
+        "name": "Apex Cloth Robe",
+        "equipment_slot": "torso",
+        "type": "Cloth",
+        "Tier": 9,
+        "armor": 63,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 2700,
+        "max_stack": 1,
+        "drop_tier": 0.0009,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 10,
+            "arcana": 10
+        }
+    },
+    "LT1": {
+        "name": "Crude Leather Tunic",
+        "equipment_slot": "torso",
+        "type": "Leather",
+        "Tier": 1,
+        "armor": 9,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 100,
+        "max_stack": 1,
+        "drop_tier": 0.85,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 2,
+            "dexterity": 2
+        }
+    },
+    "LT2": {
+        "name": "Common Leather Tunic",
+        "equipment_slot": "torso",
+        "type": "Leather",
+        "Tier": 2,
+        "armor": 18,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 282,
+        "max_stack": 1,
+        "drop_tier": 0.3633,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 3,
+            "dexterity": 3
+        }
+    },
+    "LT3": {
+        "name": "Refined Leather Tunic",
+        "equipment_slot": "torso",
+        "type": "Leather",
+        "Tier": 3,
+        "armor": 27,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 519,
+        "max_stack": 1,
+        "drop_tier": 0.1553,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 4,
+            "dexterity": 4
+        }
+    },
+    "LT4": {
+        "name": "Superior Leather Tunic",
+        "equipment_slot": "torso",
+        "type": "Leather",
+        "Tier": 4,
+        "armor": 36,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 800,
+        "max_stack": 1,
+        "drop_tier": 0.0664,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 5,
+            "dexterity": 5
+        }
+    },
+    "LT5": {
+        "name": "Exalted Leather Tunic",
+        "equipment_slot": "torso",
+        "type": "Leather",
+        "Tier": 5,
+        "armor": 45,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 1118,
+        "max_stack": 1,
+        "drop_tier": 0.0284,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 6,
+            "dexterity": 6
+        }
+    },
+    "LT6": {
+        "name": "Mythic Leather Tunic",
+        "equipment_slot": "torso",
+        "type": "Leather",
+        "Tier": 6,
+        "armor": 54,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 1469,
+        "max_stack": 1,
+        "drop_tier": 0.0121,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 7,
+            "dexterity": 7
+        }
+    },
+    "LT7": {
+        "name": "Aetheric Leather Tunic",
+        "equipment_slot": "torso",
+        "type": "Leather",
+        "Tier": 7,
+        "armor": 63,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 1852,
+        "max_stack": 1,
+        "drop_tier": 0.0052,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 8,
+            "dexterity": 8
+        }
+    },
+    "LT8": {
+        "name": "Timeless Leather Tunic",
+        "equipment_slot": "torso",
+        "type": "Leather",
+        "Tier": 8,
+        "armor": 72,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 2262,
+        "max_stack": 1,
+        "drop_tier": 0.0022,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 9,
+            "dexterity": 9
+        }
+    },
+    "LT9": {
+        "name": "Apex Leather Tunic",
+        "equipment_slot": "torso",
+        "type": "Leather",
+        "Tier": 9,
+        "armor": 81,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 2700,
+        "max_stack": 1,
+        "drop_tier": 0.0009,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 10,
+            "dexterity": 10
+        }
+    },
+    "PT1": {
+        "name": "Crude Plate Body",
+        "equipment_slot": "torso",
+        "type": "Plate",
+        "Tier": 1,
+        "armor": 12,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 100,
+        "max_stack": 1,
+        "drop_tier": 0.85,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 2,
+            "strength": 2
+        }
+    },
+    "PT2": {
+        "name": "Common Plate Body",
+        "equipment_slot": "torso",
+        "type": "Plate",
+        "Tier": 2,
+        "armor": 24,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 282,
+        "max_stack": 1,
+        "drop_tier": 0.3633,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 3,
+            "strength": 3
+        }
+    },
+    "PT3": {
+        "name": "Refined Plate Body",
+        "equipment_slot": "torso",
+        "type": "Plate",
+        "Tier": 3,
+        "armor": 36,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 519,
+        "max_stack": 1,
+        "drop_tier": 0.1553,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 4,
+            "strength": 4
+        }
+    },
+    "PT4": {
+        "name": "Superior Plate Body",
+        "equipment_slot": "torso",
+        "type": "Plate",
+        "Tier": 4,
+        "armor": 48,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 800,
+        "max_stack": 1,
+        "drop_tier": 0.0664,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 5,
+            "strength": 5
+        }
+    },
+    "PT5": {
+        "name": "Exalted Plate Body",
+        "equipment_slot": "torso",
+        "type": "Plate",
+        "Tier": 5,
+        "armor": 60,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 1118,
+        "max_stack": 1,
+        "drop_tier": 0.0284,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 6,
+            "strength": 6
+        }
+    },
+    "PT6": {
+        "name": "Mythic Plate Body",
+        "equipment_slot": "torso",
+        "type": "Plate",
+        "Tier": 6,
+        "armor": 72,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 1469,
+        "max_stack": 1,
+        "drop_tier": 0.0121,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 7,
+            "strength": 7
+        }
+    },
+    "PT7": {
+        "name": "Aetheric Plate Body",
+        "equipment_slot": "torso",
+        "type": "Plate",
+        "Tier": 7,
+        "armor": 84,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 1852,
+        "max_stack": 1,
+        "drop_tier": 0.0052,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 8,
+            "strength": 8
+        }
+    },
+    "PT8": {
+        "name": "Timeless Plate Body",
+        "equipment_slot": "torso",
+        "type": "Plate",
+        "Tier": 8,
+        "armor": 96,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 2262,
+        "max_stack": 1,
+        "drop_tier": 0.0022,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 9,
+            "strength": 9
+        }
+    },
+    "PT9": {
+        "name": "Apex Plate Body",
+        "equipment_slot": "torso",
+        "type": "Plate",
+        "Tier": 9,
+        "armor": 108,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 2700,
+        "max_stack": 1,
+        "drop_tier": 0.0009,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 10,
+            "strength": 10
+        }
+    }
+}

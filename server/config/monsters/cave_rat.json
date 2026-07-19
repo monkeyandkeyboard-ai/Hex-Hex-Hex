@@ -30,8 +30,7 @@
     "wander_chance": 0.75,
     "pursue_interval_ticks": 2
   },
-  "loot_rolls": 1,
   "respawn_ticks": 30,
   "xp_reward": { "combat_base": 12 },
-  "loot_table": [["nothing", 8], ["copper_ore", 1]]
+  "reward_table": "CAVE_RAT_DROPS"
 }

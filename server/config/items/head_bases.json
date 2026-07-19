@@ -1,0 +1,542 @@
+{
+    "CH1": {
+        "name": "Crude Cloth Cowl",
+        "equipment_slot": "head",
+        "type": "Cloth",
+        "Tier": 1,
+        "armor": 3,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 100,
+        "max_stack": 1,
+        "drop_tier": 0.85,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 2,
+            "arcana": 2
+        }
+    },
+    "CH2": {
+        "name": "Common Cloth Cowl",
+        "equipment_slot": "head",
+        "type": "Cloth",
+        "Tier": 2,
+        "armor": 6,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 282,
+        "max_stack": 1,
+        "drop_tier": 0.3633,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 3,
+            "arcana": 3
+        }
+    },
+    "CH3": {
+        "name": "Refined Cloth Cowl",
+        "equipment_slot": "head",
+        "type": "Cloth",
+        "Tier": 3,
+        "armor": 9,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 519,
+        "max_stack": 1,
+        "drop_tier": 0.1553,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 4,
+            "arcana": 4
+        }
+    },
+    "CH4": {
+        "name": "Superior Cloth Cowl",
+        "equipment_slot": "head",
+        "type": "Cloth",
+        "Tier": 4,
+        "armor": 12,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 800,
+        "max_stack": 1,
+        "drop_tier": 0.0664,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 5,
+            "arcana": 5
+        }
+    },
+    "CH5": {
+        "name": "Exalted Cloth Cowl",
+        "equipment_slot": "head",
+        "type": "Cloth",
+        "Tier": 5,
+        "armor": 15,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 1118,
+        "max_stack": 1,
+        "drop_tier": 0.0284,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 6,
+            "arcana": 6
+        }
+    },
+    "CH6": {
+        "name": "Mythic Cloth Cowl",
+        "equipment_slot": "head",
+        "type": "Cloth",
+        "Tier": 6,
+        "armor": 18,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 1469,
+        "max_stack": 1,
+        "drop_tier": 0.0121,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 7,
+            "arcana": 7
+        }
+    },
+    "CH7": {
+        "name": "Aetheric Cloth Cowl",
+        "equipment_slot": "head",
+        "type": "Cloth",
+        "Tier": 7,
+        "armor": 21,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 1852,
+        "max_stack": 1,
+        "drop_tier": 0.0052,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 8,
+            "arcana": 8
+        }
+    },
+    "CH8": {
+        "name": "Timeless Cloth Cowl",
+        "equipment_slot": "head",
+        "type": "Cloth",
+        "Tier": 8,
+        "armor": 24,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 2262,
+        "max_stack": 1,
+        "drop_tier": 0.0022,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 9,
+            "arcana": 9
+        }
+    },
+    "CH9": {
+        "name": "Apex Cloth Cowl",
+        "equipment_slot": "head",
+        "type": "Cloth",
+        "Tier": 9,
+        "armor": 27,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 2700,
+        "max_stack": 1,
+        "drop_tier": 0.0009,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 10,
+            "arcana": 10
+        }
+    },
+    "LH1": {
+        "name": "Crude Leather Coif",
+        "equipment_slot": "head",
+        "type": "Leather",
+        "Tier": 1,
+        "armor": 5,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 100,
+        "max_stack": 1,
+        "drop_tier": 0.85,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 2,
+            "dexterity": 2
+        }
+    },
+    "LH2": {
+        "name": "Common Leather Coif",
+        "equipment_slot": "head",
+        "type": "Leather",
+        "Tier": 2,
+        "armor": 10,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 282,
+        "max_stack": 1,
+        "drop_tier": 0.3633,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 3,
+            "dexterity": 3
+        }
+    },
+    "LH3": {
+        "name": "Refined Leather Coif",
+        "equipment_slot": "head",
+        "type": "Leather",
+        "Tier": 3,
+        "armor": 15,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 519,
+        "max_stack": 1,
+        "drop_tier": 0.1553,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 4,
+            "dexterity": 4
+        }
+    },
+    "LH4": {
+        "name": "Superior Leather Coif",
+        "equipment_slot": "head",
+        "type": "Leather",
+        "Tier": 4,
+        "armor": 20,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 800,
+        "max_stack": 1,
+        "drop_tier": 0.0664,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 5,
+            "dexterity": 5
+        }
+    },
+    "LH5": {
+        "name": "Exalted Leather Coif",
+        "equipment_slot": "head",
+        "type": "Leather",
+        "Tier": 5,
+        "armor": 25,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 1118,
+        "max_stack": 1,
+        "drop_tier": 0.0284,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 6,
+            "dexterity": 6
+        }
+    },
+    "LH6": {
+        "name": "Mythic Leather Coif",
+        "equipment_slot": "head",
+        "type": "Leather",
+        "Tier": 6,
+        "armor": 30,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 1469,
+        "max_stack": 1,
+        "drop_tier": 0.0121,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 7,
+            "dexterity": 7
+        }
+    },
+    "LH7": {
+        "name": "Aetheric Leather Coif",
+        "equipment_slot": "head",
+        "type": "Leather",
+        "Tier": 7,
+        "armor": 35,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 1852,
+        "max_stack": 1,
+        "drop_tier": 0.0052,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 8,
+            "dexterity": 8
+        }
+    },
+    "LH8": {
+        "name": "Timeless Leather Coif",
+        "equipment_slot": "head",
+        "type": "Leather",
+        "Tier": 8,
+        "armor": 40,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 2262,
+        "max_stack": 1,
+        "drop_tier": 0.0022,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 9,
+            "dexterity": 9
+        }
+    },
+    "LH9": {
+        "name": "Apex Leather Coif",
+        "equipment_slot": "head",
+        "type": "Leather",
+        "Tier": 9,
+        "armor": 45,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 2700,
+        "max_stack": 1,
+        "drop_tier": 0.0009,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 10,
+            "dexterity": 10
+        }
+    },
+    "PH1": {
+        "name": "Crude Plate Helm",
+        "equipment_slot": "head",
+        "type": "Plate",
+        "Tier": 1,
+        "armor": 8,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 100,
+        "max_stack": 1,
+        "drop_tier": 0.85,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 2,
+            "strength": 2
+        }
+    },
+    "PH2": {
+        "name": "Common Plate Helm",
+        "equipment_slot": "head",
+        "type": "Plate",
+        "Tier": 2,
+        "armor": 16,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 282,
+        "max_stack": 1,
+        "drop_tier": 0.3633,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 3,
+            "strength": 3
+        }
+    },
+    "PH3": {
+        "name": "Refined Plate Helm",
+        "equipment_slot": "head",
+        "type": "Plate",
+        "Tier": 3,
+        "armor": 24,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 519,
+        "max_stack": 1,
+        "drop_tier": 0.1553,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 4,
+            "strength": 4
+        }
+    },
+    "PH4": {
+        "name": "Superior Plate Helm",
+        "equipment_slot": "head",
+        "type": "Plate",
+        "Tier": 4,
+        "armor": 32,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 800,
+        "max_stack": 1,
+        "drop_tier": 0.0664,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 5,
+            "strength": 5
+        }
+    },
+    "PH5": {
+        "name": "Exalted Plate Helm",
+        "equipment_slot": "head",
+        "type": "Plate",
+        "Tier": 5,
+        "armor": 40,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 1118,
+        "max_stack": 1,
+        "drop_tier": 0.0284,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 6,
+            "strength": 6
+        }
+    },
+    "PH6": {
+        "name": "Mythic Plate Helm",
+        "equipment_slot": "head",
+        "type": "Plate",
+        "Tier": 6,
+        "armor": 48,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 1469,
+        "max_stack": 1,
+        "drop_tier": 0.0121,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 7,
+            "strength": 7
+        }
+    },
+    "PH7": {
+        "name": "Aetheric Plate Helm",
+        "equipment_slot": "head",
+        "type": "Plate",
+        "Tier": 7,
+        "armor": 56,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 1852,
+        "max_stack": 1,
+        "drop_tier": 0.0052,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 8,
+            "strength": 8
+        }
+    },
+    "PH8": {
+        "name": "Timeless Plate Helm",
+        "equipment_slot": "head",
+        "type": "Plate",
+        "Tier": 8,
+        "armor": 64,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 2262,
+        "max_stack": 1,
+        "drop_tier": 0.0022,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 9,
+            "strength": 9
+        }
+    },
+    "PH9": {
+        "name": "Apex Plate Helm",
+        "equipment_slot": "head",
+        "type": "Plate",
+        "Tier": 9,
+        "armor": 72,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 2700,
+        "max_stack": 1,
+        "drop_tier": 0.0009,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 10,
+            "strength": 10
+        }
+    }
+}

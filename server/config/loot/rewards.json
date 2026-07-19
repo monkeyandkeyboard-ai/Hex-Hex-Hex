@@ -1,0 +1,32 @@
+{
+  "_comment": "Reward profiles: what a *source* yields when it pays out. A profile is a list of drop slots, each naming how many rolls to make against which table in tables.json. Splitting rolls across slots is what lets materials and equipment drop on independent schedules -- a source that reliably yields ore but rarely a weapon is two slots, not one table with a delicately balanced weight column.",
+
+  "_reuse_comment": "Nothing here names a monster, a chest, or a quest. A profile is referenced by id from whatever pays it out, so two unrelated sources can share one profile and a source can be re-pointed at a different profile without touching code.",
+
+  "CAVE_RAT_DROPS": {
+    "slots": [
+      { "rolls": 1, "table": "COMMON_MATS" },
+      { "rolls": 1, "table": "STARTER_EQUIPMENT" }
+    ]
+  },
+
+  "GOBLIN_DROPS": {
+    "slots": [
+      { "rolls": 2, "table": "UNCOMMON_MATS" },
+      { "rolls": 1, "table": "LOW_EQUIPMENT" }
+    ]
+  },
+
+  "EMPTY": {
+    "slots": []
+  },
+
+  "_container_comment": "Containers use the same shape as monsters. CHEST_EQUIPMENT has drop_chance 1.0, so a chest is guaranteed its equipment where a monster's is a lottery -- the difference is config, not a second code path.",
+
+  "WOODEN_CHEST": {
+    "slots": [
+      { "rolls": 3, "table": "BULK_MATS" },
+      { "rolls": 1, "table": "CHEST_EQUIPMENT" }
+    ]
+  }
+}

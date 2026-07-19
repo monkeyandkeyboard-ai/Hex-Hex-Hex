@@ -1,0 +1,542 @@
+{
+    "CL1": {
+        "name": "Crude Cloth Britches",
+        "equipment_slot": "legs",
+        "type": "Cloth",
+        "Tier": 1,
+        "armor": 5,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 100,
+        "max_stack": 1,
+        "drop_tier": 0.85,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 2,
+            "arcana": 2
+        }
+    },
+    "CL2": {
+        "name": "Common Cloth Britches",
+        "equipment_slot": "legs",
+        "type": "Cloth",
+        "Tier": 2,
+        "armor": 10,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 282,
+        "max_stack": 1,
+        "drop_tier": 0.3633,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 3,
+            "arcana": 3
+        }
+    },
+    "CL3": {
+        "name": "Refined Cloth Britches",
+        "equipment_slot": "legs",
+        "type": "Cloth",
+        "Tier": 3,
+        "armor": 15,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 519,
+        "max_stack": 1,
+        "drop_tier": 0.1553,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 4,
+            "arcana": 4
+        }
+    },
+    "CL4": {
+        "name": "Superior Cloth Britches",
+        "equipment_slot": "legs",
+        "type": "Cloth",
+        "Tier": 4,
+        "armor": 20,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 800,
+        "max_stack": 1,
+        "drop_tier": 0.0664,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 5,
+            "arcana": 5
+        }
+    },
+    "CL5": {
+        "name": "Exalted Cloth Britches",
+        "equipment_slot": "legs",
+        "type": "Cloth",
+        "Tier": 5,
+        "armor": 25,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 1118,
+        "max_stack": 1,
+        "drop_tier": 0.0284,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 6,
+            "arcana": 6
+        }
+    },
+    "CL6": {
+        "name": "Mythic Cloth Britches",
+        "equipment_slot": "legs",
+        "type": "Cloth",
+        "Tier": 6,
+        "armor": 30,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 1469,
+        "max_stack": 1,
+        "drop_tier": 0.0121,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 7,
+            "arcana": 7
+        }
+    },
+    "CL7": {
+        "name": "Aetheric Cloth Britches",
+        "equipment_slot": "legs",
+        "type": "Cloth",
+        "Tier": 7,
+        "armor": 35,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 1852,
+        "max_stack": 1,
+        "drop_tier": 0.0052,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 8,
+            "arcana": 8
+        }
+    },
+    "CL8": {
+        "name": "Timeless Cloth Britches",
+        "equipment_slot": "legs",
+        "type": "Cloth",
+        "Tier": 8,
+        "armor": 40,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 2262,
+        "max_stack": 1,
+        "drop_tier": 0.0022,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 9,
+            "arcana": 9
+        }
+    },
+    "CL9": {
+        "name": "Apex Cloth Britches",
+        "equipment_slot": "legs",
+        "type": "Cloth",
+        "Tier": 9,
+        "armor": 45,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 2700,
+        "max_stack": 1,
+        "drop_tier": 0.0009,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 10,
+            "arcana": 10
+        }
+    },
+    "LL1": {
+        "name": "Crude Leather Chaps",
+        "equipment_slot": "legs",
+        "type": "Leather",
+        "Tier": 1,
+        "armor": 7,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 100,
+        "max_stack": 1,
+        "drop_tier": 0.85,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 2,
+            "dexterity": 2
+        }
+    },
+    "LL2": {
+        "name": "Common Leather Chaps",
+        "equipment_slot": "legs",
+        "type": "Leather",
+        "Tier": 2,
+        "armor": 14,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 282,
+        "max_stack": 1,
+        "drop_tier": 0.3633,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 3,
+            "dexterity": 3
+        }
+    },
+    "LL3": {
+        "name": "Refined Leather Chaps",
+        "equipment_slot": "legs",
+        "type": "Leather",
+        "Tier": 3,
+        "armor": 21,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 519,
+        "max_stack": 1,
+        "drop_tier": 0.1553,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 4,
+            "dexterity": 4
+        }
+    },
+    "LL4": {
+        "name": "Superior Leather Chaps",
+        "equipment_slot": "legs",
+        "type": "Leather",
+        "Tier": 4,
+        "armor": 28,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 800,
+        "max_stack": 1,
+        "drop_tier": 0.0664,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 5,
+            "dexterity": 5
+        }
+    },
+    "LL5": {
+        "name": "Exalted Leather Chaps",
+        "equipment_slot": "legs",
+        "type": "Leather",
+        "Tier": 5,
+        "armor": 35,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 1118,
+        "max_stack": 1,
+        "drop_tier": 0.0284,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 6,
+            "dexterity": 6
+        }
+    },
+    "LL6": {
+        "name": "Mythic Leather Chaps",
+        "equipment_slot": "legs",
+        "type": "Leather",
+        "Tier": 6,
+        "armor": 42,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 1469,
+        "max_stack": 1,
+        "drop_tier": 0.0121,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 7,
+            "dexterity": 7
+        }
+    },
+    "LL7": {
+        "name": "Aetheric Leather Chaps",
+        "equipment_slot": "legs",
+        "type": "Leather",
+        "Tier": 7,
+        "armor": 49,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 1852,
+        "max_stack": 1,
+        "drop_tier": 0.0052,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 8,
+            "dexterity": 8
+        }
+    },
+    "LL8": {
+        "name": "Timeless Leather Chaps",
+        "equipment_slot": "legs",
+        "type": "Leather",
+        "Tier": 8,
+        "armor": 56,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 2262,
+        "max_stack": 1,
+        "drop_tier": 0.0022,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 9,
+            "dexterity": 9
+        }
+    },
+    "LL9": {
+        "name": "Apex Leather Chaps",
+        "equipment_slot": "legs",
+        "type": "Leather",
+        "Tier": 9,
+        "armor": 63,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 2700,
+        "max_stack": 1,
+        "drop_tier": 0.0009,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 10,
+            "dexterity": 10
+        }
+    },
+    "PL1": {
+        "name": "Crude Plate Legs",
+        "equipment_slot": "legs",
+        "type": "Plate",
+        "Tier": 1,
+        "armor": 10,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 100,
+        "max_stack": 1,
+        "drop_tier": 0.85,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 2,
+            "strength": 2
+        }
+    },
+    "PL2": {
+        "name": "Common Plate Legs",
+        "equipment_slot": "legs",
+        "type": "Plate",
+        "Tier": 2,
+        "armor": 20,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 282,
+        "max_stack": 1,
+        "drop_tier": 0.3633,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 3,
+            "strength": 3
+        }
+    },
+    "PL3": {
+        "name": "Refined Plate Legs",
+        "equipment_slot": "legs",
+        "type": "Plate",
+        "Tier": 3,
+        "armor": 30,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 519,
+        "max_stack": 1,
+        "drop_tier": 0.1553,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 4,
+            "strength": 4
+        }
+    },
+    "PL4": {
+        "name": "Superior Plate Legs",
+        "equipment_slot": "legs",
+        "type": "Plate",
+        "Tier": 4,
+        "armor": 40,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 800,
+        "max_stack": 1,
+        "drop_tier": 0.0664,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 5,
+            "strength": 5
+        }
+    },
+    "PL5": {
+        "name": "Exalted Plate Legs",
+        "equipment_slot": "legs",
+        "type": "Plate",
+        "Tier": 5,
+        "armor": 50,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 1118,
+        "max_stack": 1,
+        "drop_tier": 0.0284,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 6,
+            "strength": 6
+        }
+    },
+    "PL6": {
+        "name": "Mythic Plate Legs",
+        "equipment_slot": "legs",
+        "type": "Plate",
+        "Tier": 6,
+        "armor": 60,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 1469,
+        "max_stack": 1,
+        "drop_tier": 0.0121,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 7,
+            "strength": 7
+        }
+    },
+    "PL7": {
+        "name": "Aetheric Plate Legs",
+        "equipment_slot": "legs",
+        "type": "Plate",
+        "Tier": 7,
+        "armor": 70,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 1852,
+        "max_stack": 1,
+        "drop_tier": 0.0052,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 8,
+            "strength": 8
+        }
+    },
+    "PL8": {
+        "name": "Timeless Plate Legs",
+        "equipment_slot": "legs",
+        "type": "Plate",
+        "Tier": 8,
+        "armor": 80,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 2262,
+        "max_stack": 1,
+        "drop_tier": 0.0022,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 9,
+            "strength": 9
+        }
+    },
+    "PL9": {
+        "name": "Apex Plate Legs",
+        "equipment_slot": "legs",
+        "type": "Plate",
+        "Tier": 9,
+        "armor": 90,
+        "damage_min": 0,
+        "damage_max": 0,
+        "speed_ticks": 0,
+        "base_sell_value": 2700,
+        "max_stack": 1,
+        "drop_tier": 0.0009,
+        "item_level": 0,
+        "required_level": 0,
+        "description": "",
+        "implicits": {
+            "constitution": 10,
+            "strength": 10
+        }
+    }
+}

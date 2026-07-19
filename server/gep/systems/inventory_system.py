@@ -3,8 +3,16 @@
 Registers:
   equip-item    {player_id, inv_slot}         -> move item from inventory to its equipment slot
   unequip-item  {player_id, equip_slot}       -> move item from equipment slot back to inventory
+
+Slot resolution goes through the item registry, so a rolled equipment
+instance and a bare registry id are equipped by the same path -- the handler
+never learns to parse an instance string itself.
+
+Two-handed items are the one place where equipping touches a second slot:
+they occupy main_hand and force off_hand empty. That rule lives here rather
+than in the item data because it is about the body, not the item.
 """
-from gep.entities import EQUIPMENT_SLOTS
+from gep.entities import EQUIPMENT_SLOTS, TWO_HAND
 from gep.floor_state import FloorState
 from gep.tick import TickEngine
 
@@ -14,7 +22,29 @@ def register(
     floor: FloorState,
     weapons: dict,
     default_equipment_state: str,
+    items,
 ) -> None:
+
+    def resolve_slot(item_id: str) -> str | None:
+        """Which body slot an item goes in, or None if it is not equippable.
+
+        Checks the item registry first and the equipment-state registry
+        second: bases are the real item space, while `weapons` holds the
+        handful of non-item states (unarmed) that are equipped but never
+        dropped.
+        """
+        declared = items.declared_slot(item_id)
+        if declared is None:
+            weapon_cfg = weapons.get(item_id)
+            declared = weapon_cfg.get("equipment_slot", "main_hand") if weapon_cfg else None
+        if declared is None:
+            return None
+        if declared == TWO_HAND:
+            return "main_hand"
+        return declared if declared in EQUIPMENT_SLOTS else None
+
+    def is_two_handed(item_id: str | None) -> bool:
+        return item_id is not None and items.declared_slot(item_id) == TWO_HAND
 
     def handle_equip(intent: dict, eng: TickEngine) -> list[dict]:
         player_id = intent.get("player_id")
@@ -32,30 +62,51 @@ def register(
             return [{"type": "error", "reason": "empty inventory slot", "player_id": player_id}]
 
         item_id = item["item_id"]
-
-        # Determine equipment slot from weapon config; other item types added as config grows
-        equip_slot = None
-        weapon_cfg = weapons.get(item_id)
-        if weapon_cfg:
-            equip_slot = weapon_cfg.get("equipment_slot", "main_hand")
-
-        if equip_slot is None or equip_slot not in EQUIPMENT_SLOTS:
+        equip_slot = resolve_slot(item_id)
+        if equip_slot is None:
             return [{"type": "error", "reason": f"{item_id!r} is not equippable", "player_id": player_id}]
 
-        # Swap currently equipped item back to inventory if present
-        currently_equipped = getattr(player.equipment, equip_slot, None)
-        if currently_equipped:
-            player.add_item(currently_equipped, 1)
+        # Work out everything coming off before anything goes on, so a full
+        # pack aborts the swap instead of leaving the player holding neither.
+        displaced = []
+        current = getattr(player.equipment, equip_slot, None)
+        if current:
+            displaced.append((equip_slot, current))
 
-        # Equip
-        setattr(player.equipment, equip_slot, item_id)
+        two_handed = is_two_handed(item_id)
+        if two_handed:
+            off_hand = getattr(player.equipment, "off_hand", None)
+            if off_hand:
+                displaced.append(("off_hand", off_hand))
+        elif equip_slot == "off_hand" and is_two_handed(getattr(player.equipment, "main_hand", None)):
+            # Filling the off hand puts the two-hander away.
+            displaced.append(("main_hand", getattr(player.equipment, "main_hand")))
+
+        # The equipping item leaves its own inventory slot, so that slot is
+        # available to whatever comes off: a straight swap always fits, even
+        # at 28/28.
+        free_slots = sum(1 for i in range(len(player.inventory_snapshot()))
+                         if player.inventory.get(i) is None)
+        if item["quantity"] <= 1:
+            free_slots += 1
+        if len(displaced) > free_slots:
+            return [{"type": "error", "reason": "inventory full", "player_id": player_id}]
+
         item["quantity"] -= 1
         if item["quantity"] <= 0:
             player.inventory[inv_slot] = None
 
-        # Keep weapon_id in sync for combat system
+        for slot_name, displaced_id in displaced:
+            setattr(player.equipment, slot_name, None)
+            player.add_item(displaced_id, 1)
+
+        setattr(player.equipment, equip_slot, item_id)
+
+        # Keep weapon_id in sync for combat.
         if equip_slot == "main_hand":
             player.weapon_id = item_id
+        elif any(slot == "main_hand" for slot, _ in displaced):
+            player.weapon_id = default_equipment_state
 
         return [{
             "type": "equipment_update",

@@ -1,434 +1,506 @@
-[
-    {
-        "modifier_code": "st1",
-        "stat": "Strength",
-        "tier": 1,
-        "weight": 0.85,
-        "min_value": 1,
-        "max_value": 2
-    },
-    {
-        "modifier_code": "st2",
-        "stat": "Strength",
-        "tier": 2,
-        "weight": 0.3633,
-        "min_value": 3,
-        "max_value": 4
-    },
-    {
-        "modifier_code": "st3",
-        "stat": "Strength",
-        "tier": 3,
-        "weight": 0.1553,
-        "min_value": 5,
-        "max_value": 6
-    },
-    {
-        "modifier_code": "st4",
-        "stat": "Strength",
-        "tier": 4,
-        "weight": 0.0664,
-        "min_value": 7,
-        "max_value": 11
-    },
-    {
-        "modifier_code": "st5",
-        "stat": "Strength",
-        "tier": 5,
-        "weight": 0.0284,
-        "min_value": 12,
-        "max_value": 20
-    },
-    {
-        "modifier_code": "st6",
-        "stat": "Strength",
-        "tier": 6,
-        "weight": 0.0121,
-        "min_value": 21,
-        "max_value": 36
-    },
-    {
-        "modifier_code": "st7",
-        "stat": "Strength",
-        "tier": 7,
-        "weight": 0.0052,
-        "min_value": 37,
-        "max_value": 63
-    },
-    {
-        "modifier_code": "st8",
-        "stat": "Strength",
-        "tier": 8,
-        "weight": 0.0022,
-        "min_value": 64,
-        "max_value": 112
-    },
-    {
-        "modifier_code": "st9",
-        "stat": "Strength",
-        "tier": 9,
-        "weight": 0.0009,
-        "min_value": 113,
-        "max_value": 200
-    },
-    {
-        "modifier_code": "cn1",
-        "stat": "Constitution",
-        "tier": 1,
-        "weight": 0.85,
-        "min_value": 1,
-        "max_value": 2
-    },
-    {
-        "modifier_code": "cn2",
-        "stat": "Constitution",
-        "tier": 2,
-        "weight": 0.3633,
-        "min_value": 3,
-        "max_value": 4
-    },
-    {
-        "modifier_code": "cn3",
-        "stat": "Constitution",
-        "tier": 3,
-        "weight": 0.1553,
-        "min_value": 5,
-        "max_value": 6
-    },
-    {
-        "modifier_code": "cn4",
-        "stat": "Constitution",
-        "tier": 4,
-        "weight": 0.0664,
-        "min_value": 7,
-        "max_value": 11
-    },
-    {
-        "modifier_code": "cn5",
-        "stat": "Constitution",
-        "tier": 5,
-        "weight": 0.0284,
-        "min_value": 12,
-        "max_value": 20
-    },
-    {
-        "modifier_code": "cn6",
-        "stat": "Constitution",
-        "tier": 6,
-        "weight": 0.0121,
-        "min_value": 21,
-        "max_value": 36
-    },
-    {
-        "modifier_code": "cn7",
-        "stat": "Constitution",
-        "tier": 7,
-        "weight": 0.0052,
-        "min_value": 37,
-        "max_value": 63
-    },
-    {
-        "modifier_code": "cn8",
-        "stat": "Constitution",
-        "tier": 8,
-        "weight": 0.0022,
-        "min_value": 64,
-        "max_value": 112
-    },
-    {
-        "modifier_code": "cn9",
-        "stat": "Constitution",
-        "tier": 9,
-        "weight": 0.0009,
-        "min_value": 113,
-        "max_value": 200
-    },
-    {
-        "modifier_code": "pr1",
-        "stat": "Precision",
-        "tier": 1,
-        "weight": 0.85,
-        "min_value": 1,
-        "max_value": 2
-    },
-    {
-        "modifier_code": "pr2",
-        "stat": "Precision",
-        "tier": 2,
-        "weight": 0.3633,
-        "min_value": 3,
-        "max_value": 4
-    },
-    {
-        "modifier_code": "pr3",
-        "stat": "Precision",
-        "tier": 3,
-        "weight": 0.1553,
-        "min_value": 5,
-        "max_value": 6
-    },
-    {
-        "modifier_code": "pr4",
-        "stat": "Precision",
-        "tier": 4,
-        "weight": 0.0664,
-        "min_value": 7,
-        "max_value": 11
-    },
-    {
-        "modifier_code": "pr5",
-        "stat": "Precision",
-        "tier": 5,
-        "weight": 0.0284,
-        "min_value": 12,
-        "max_value": 20
-    },
-    {
-        "modifier_code": "pr6",
-        "stat": "Precision",
-        "tier": 6,
-        "weight": 0.0121,
-        "min_value": 21,
-        "max_value": 36
-    },
-    {
-        "modifier_code": "pr7",
-        "stat": "Precision",
-        "tier": 7,
-        "weight": 0.0052,
-        "min_value": 37,
-        "max_value": 63
-    },
-    {
-        "modifier_code": "pr8",
-        "stat": "Precision",
-        "tier": 8,
-        "weight": 0.0022,
-        "min_value": 64,
-        "max_value": 112
-    },
-    {
-        "modifier_code": "pr9",
-        "stat": "Precision",
-        "tier": 9,
-        "weight": 0.0009,
-        "min_value": 113,
-        "max_value": 200
-    },
-    {
-        "modifier_code": "dx1",
-        "stat": "Dexterity",
-        "tier": 1,
-        "weight": 0.85,
-        "min_value": 1,
-        "max_value": 2
-    },
-    {
-        "modifier_code": "dx2",
-        "stat": "Dexterity",
-        "tier": 2,
-        "weight": 0.3633,
-        "min_value": 3,
-        "max_value": 4
-    },
-    {
-        "modifier_code": "dx3",
-        "stat": "Dexterity",
-        "tier": 3,
-        "weight": 0.1553,
-        "min_value": 5,
-        "max_value": 6
-    },
-    {
-        "modifier_code": "dx4",
-        "stat": "Dexterity",
-        "tier": 4,
-        "weight": 0.0664,
-        "min_value": 7,
-        "max_value": 11
-    },
-    {
-        "modifier_code": "dx5",
-        "stat": "Dexterity",
-        "tier": 5,
-        "weight": 0.0284,
-        "min_value": 12,
-        "max_value": 20
-    },
-    {
-        "modifier_code": "dx6",
-        "stat": "Dexterity",
-        "tier": 6,
-        "weight": 0.0121,
-        "min_value": 21,
-        "max_value": 36
-    },
-    {
-        "modifier_code": "dx7",
-        "stat": "Dexterity",
-        "tier": 7,
-        "weight": 0.0052,
-        "min_value": 37,
-        "max_value": 63
-    },
-    {
-        "modifier_code": "dx8",
-        "stat": "Dexterity",
-        "tier": 8,
-        "weight": 0.0022,
-        "min_value": 64,
-        "max_value": 112
-    },
-    {
-        "modifier_code": "dx9",
-        "stat": "Dexterity",
-        "tier": 9,
-        "weight": 0.0009,
-        "min_value": 113,
-        "max_value": 200
-    },
-    {
-        "modifier_code": "ar1",
-        "stat": "Arcana",
-        "tier": 1,
-        "weight": 0.85,
-        "min_value": 1,
-        "max_value": 2
-    },
-    {
-        "modifier_code": "ar2",
-        "stat": "Arcana",
-        "tier": 2,
-        "weight": 0.3633,
-        "min_value": 3,
-        "max_value": 4
-    },
-    {
-        "modifier_code": "ar3",
-        "stat": "Arcana",
-        "tier": 3,
-        "weight": 0.1553,
-        "min_value": 5,
-        "max_value": 6
-    },
-    {
-        "modifier_code": "ar4",
-        "stat": "Arcana",
-        "tier": 4,
-        "weight": 0.0664,
-        "min_value": 7,
-        "max_value": 11
-    },
-    {
-        "modifier_code": "ar5",
-        "stat": "Arcana",
-        "tier": 5,
-        "weight": 0.0284,
-        "min_value": 12,
-        "max_value": 20
-    },
-    {
-        "modifier_code": "ar6",
-        "stat": "Arcana",
-        "tier": 6,
-        "weight": 0.0121,
-        "min_value": 21,
-        "max_value": 36
-    },
-    {
-        "modifier_code": "ar7",
-        "stat": "Arcana",
-        "tier": 7,
-        "weight": 0.0052,
-        "min_value": 37,
-        "max_value": 63
-    },
-    {
-        "modifier_code": "ar8",
-        "stat": "Arcana",
-        "tier": 8,
-        "weight": 0.0022,
-        "min_value": 64,
-        "max_value": 112
-    },
-    {
-        "modifier_code": "ar9",
-        "stat": "Arcana",
-        "tier": 9,
-        "weight": 0.0009,
-        "min_value": 113,
-        "max_value": 200
-    },
-    {
-        "modifier_code": "cc1",
-        "stat": "Crit Chance",
-        "tier": 1,
-        "weight": 0.85,
-        "min_value": 1,
-        "max_value": 1
-    },
-    {
-        "modifier_code": "cc2",
-        "stat": "Crit Chance",
-        "tier": 2,
-        "weight": 0.3633,
-        "min_value": 2,
-        "max_value": 2
-    },
-    {
-        "modifier_code": "cc3",
-        "stat": "Crit Chance",
-        "tier": 3,
-        "weight": 0.1553,
-        "min_value": 3,
-        "max_value": 3
-    },
-    {
-        "modifier_code": "cc4",
-        "stat": "Crit Chance",
-        "tier": 4,
-        "weight": 0.0664,
-        "min_value": 4,
-        "max_value": 4
-    },
-    {
-        "modifier_code": "cc5",
-        "stat": "Crit Chance",
-        "tier": 5,
-        "weight": 0.0284,
-        "min_value": 5,
-        "max_value": 5
-    },
-    {
-        "modifier_code": "cc6",
-        "stat": "Crit Chance",
-        "tier": 6,
-        "weight": 0.0121,
-        "min_value": 6,
-        "max_value": 6
-    },
-    {
-        "modifier_code": "cc7",
-        "stat": "Crit Chance",
-        "tier": 7,
-        "weight": 0.0052,
-        "min_value": 7,
-        "max_value": 7
-    },
-    {
-        "modifier_code": "cc8",
-        "stat": "Crit Chance",
-        "tier": 8,
-        "weight": 0.0022,
-        "min_value": 8,
-        "max_value": 8
-    },
-    {
-        "modifier_code": "cc9",
-        "stat": "Crit Chance",
-        "tier": 9,
-        "weight": 0.0009,
-        "min_value": 9,
-        "max_value": 10
-    }
+[
+    {
+        "modifier_code": "st1",
+        "stat": "strength",
+        "tier": 1,
+        "weight": 0.85,
+        "min_value": 1,
+        "max_value": 2
+    },
+    {
+        "modifier_code": "st2",
+        "stat": "strength",
+        "tier": 2,
+        "weight": 0.3633,
+        "min_value": 3,
+        "max_value": 4
+    },
+    {
+        "modifier_code": "st3",
+        "stat": "strength",
+        "tier": 3,
+        "weight": 0.1553,
+        "min_value": 5,
+        "max_value": 6
+    },
+    {
+        "modifier_code": "st4",
+        "stat": "strength",
+        "tier": 4,
+        "weight": 0.0664,
+        "min_value": 7,
+        "max_value": 11
+    },
+    {
+        "modifier_code": "st5",
+        "stat": "strength",
+        "tier": 5,
+        "weight": 0.0284,
+        "min_value": 12,
+        "max_value": 20
+    },
+    {
+        "modifier_code": "st6",
+        "stat": "strength",
+        "tier": 6,
+        "weight": 0.0121,
+        "min_value": 21,
+        "max_value": 36
+    },
+    {
+        "modifier_code": "st7",
+        "stat": "strength",
+        "tier": 7,
+        "weight": 0.0052,
+        "min_value": 37,
+        "max_value": 63
+    },
+    {
+        "modifier_code": "st8",
+        "stat": "strength",
+        "tier": 8,
+        "weight": 0.0022,
+        "min_value": 64,
+        "max_value": 112
+    },
+    {
+        "modifier_code": "st9",
+        "stat": "strength",
+        "tier": 9,
+        "weight": 0.0009,
+        "min_value": 113,
+        "max_value": 200
+    },
+    {
+        "modifier_code": "cn1",
+        "stat": "constitution",
+        "tier": 1,
+        "weight": 0.85,
+        "min_value": 1,
+        "max_value": 2
+    },
+    {
+        "modifier_code": "cn2",
+        "stat": "constitution",
+        "tier": 2,
+        "weight": 0.3633,
+        "min_value": 3,
+        "max_value": 4
+    },
+    {
+        "modifier_code": "cn3",
+        "stat": "constitution",
+        "tier": 3,
+        "weight": 0.1553,
+        "min_value": 5,
+        "max_value": 6
+    },
+    {
+        "modifier_code": "cn4",
+        "stat": "constitution",
+        "tier": 4,
+        "weight": 0.0664,
+        "min_value": 7,
+        "max_value": 11
+    },
+    {
+        "modifier_code": "cn5",
+        "stat": "constitution",
+        "tier": 5,
+        "weight": 0.0284,
+        "min_value": 12,
+        "max_value": 20
+    },
+    {
+        "modifier_code": "cn6",
+        "stat": "constitution",
+        "tier": 6,
+        "weight": 0.0121,
+        "min_value": 21,
+        "max_value": 36
+    },
+    {
+        "modifier_code": "cn7",
+        "stat": "constitution",
+        "tier": 7,
+        "weight": 0.0052,
+        "min_value": 37,
+        "max_value": 63
+    },
+    {
+        "modifier_code": "cn8",
+        "stat": "constitution",
+        "tier": 8,
+        "weight": 0.0022,
+        "min_value": 64,
+        "max_value": 112
+    },
+    {
+        "modifier_code": "cn9",
+        "stat": "constitution",
+        "tier": 9,
+        "weight": 0.0009,
+        "min_value": 113,
+        "max_value": 200
+    },
+    {
+        "modifier_code": "pr1",
+        "stat": "precision",
+        "tier": 1,
+        "weight": 0.85,
+        "min_value": 1,
+        "max_value": 2
+    },
+    {
+        "modifier_code": "pr2",
+        "stat": "precision",
+        "tier": 2,
+        "weight": 0.3633,
+        "min_value": 3,
+        "max_value": 4
+    },
+    {
+        "modifier_code": "pr3",
+        "stat": "precision",
+        "tier": 3,
+        "weight": 0.1553,
+        "min_value": 5,
+        "max_value": 6
+    },
+    {
+        "modifier_code": "pr4",
+        "stat": "precision",
+        "tier": 4,
+        "weight": 0.0664,
+        "min_value": 7,
+        "max_value": 11
+    },
+    {
+        "modifier_code": "pr5",
+        "stat": "precision",
+        "tier": 5,
+        "weight": 0.0284,
+        "min_value": 12,
+        "max_value": 20
+    },
+    {
+        "modifier_code": "pr6",
+        "stat": "precision",
+        "tier": 6,
+        "weight": 0.0121,
+        "min_value": 21,
+        "max_value": 36
+    },
+    {
+        "modifier_code": "pr7",
+        "stat": "precision",
+        "tier": 7,
+        "weight": 0.0052,
+        "min_value": 37,
+        "max_value": 63
+    },
+    {
+        "modifier_code": "pr8",
+        "stat": "precision",
+        "tier": 8,
+        "weight": 0.0022,
+        "min_value": 64,
+        "max_value": 112
+    },
+    {
+        "modifier_code": "pr9",
+        "stat": "precision",
+        "tier": 9,
+        "weight": 0.0009,
+        "min_value": 113,
+        "max_value": 200
+    },
+    {
+        "modifier_code": "dx1",
+        "stat": "dexterity",
+        "tier": 1,
+        "weight": 0.85,
+        "min_value": 1,
+        "max_value": 2
+    },
+    {
+        "modifier_code": "dx2",
+        "stat": "dexterity",
+        "tier": 2,
+        "weight": 0.3633,
+        "min_value": 3,
+        "max_value": 4
+    },
+    {
+        "modifier_code": "dx3",
+        "stat": "dexterity",
+        "tier": 3,
+        "weight": 0.1553,
+        "min_value": 5,
+        "max_value": 6
+    },
+    {
+        "modifier_code": "dx4",
+        "stat": "dexterity",
+        "tier": 4,
+        "weight": 0.0664,
+        "min_value": 7,
+        "max_value": 11
+    },
+    {
+        "modifier_code": "dx5",
+        "stat": "dexterity",
+        "tier": 5,
+        "weight": 0.0284,
+        "min_value": 12,
+        "max_value": 20
+    },
+    {
+        "modifier_code": "dx6",
+        "stat": "dexterity",
+        "tier": 6,
+        "weight": 0.0121,
+        "min_value": 21,
+        "max_value": 36
+    },
+    {
+        "modifier_code": "dx7",
+        "stat": "dexterity",
+        "tier": 7,
+        "weight": 0.0052,
+        "min_value": 37,
+        "max_value": 63
+    },
+    {
+        "modifier_code": "dx8",
+        "stat": "dexterity",
+        "tier": 8,
+        "weight": 0.0022,
+        "min_value": 64,
+        "max_value": 112
+    },
+    {
+        "modifier_code": "dx9",
+        "stat": "dexterity",
+        "tier": 9,
+        "weight": 0.0009,
+        "min_value": 113,
+        "max_value": 200
+    },
+    {
+        "modifier_code": "ar1",
+        "stat": "arcana",
+        "tier": 1,
+        "weight": 0.85,
+        "min_value": 1,
+        "max_value": 2
+    },
+    {
+        "modifier_code": "ar2",
+        "stat": "arcana",
+        "tier": 2,
+        "weight": 0.3633,
+        "min_value": 3,
+        "max_value": 4
+    },
+    {
+        "modifier_code": "ar3",
+        "stat": "arcana",
+        "tier": 3,
+        "weight": 0.1553,
+        "min_value": 5,
+        "max_value": 6
+    },
+    {
+        "modifier_code": "ar4",
+        "stat": "arcana",
+        "tier": 4,
+        "weight": 0.0664,
+        "min_value": 7,
+        "max_value": 11
+    },
+    {
+        "modifier_code": "ar5",
+        "stat": "arcana",
+        "tier": 5,
+        "weight": 0.0284,
+        "min_value": 12,
+        "max_value": 20
+    },
+    {
+        "modifier_code": "ar6",
+        "stat": "arcana",
+        "tier": 6,
+        "weight": 0.0121,
+        "min_value": 21,
+        "max_value": 36
+    },
+    {
+        "modifier_code": "ar7",
+        "stat": "arcana",
+        "tier": 7,
+        "weight": 0.0052,
+        "min_value": 37,
+        "max_value": 63
+    },
+    {
+        "modifier_code": "ar8",
+        "stat": "arcana",
+        "tier": 8,
+        "weight": 0.0022,
+        "min_value": 64,
+        "max_value": 112
+    },
+    {
+        "modifier_code": "ar9",
+        "stat": "arcana",
+        "tier": 9,
+        "weight": 0.0009,
+        "min_value": 113,
+        "max_value": 200
+    },
+    {
+        "modifier_code": "ma1",
+        "stat": "mana_attunement",
+        "tier": 1,
+        "weight": 0.85,
+        "min_value": 1,
+        "max_value": 2
+    },
+    {
+        "modifier_code": "ma2",
+        "stat": "mana_attunement",
+        "tier": 2,
+        "weight": 0.3633,
+        "min_value": 3,
+        "max_value": 4
+    },
+    {
+        "modifier_code": "ma3",
+        "stat": "mana_attunement",
+        "tier": 3,
+        "weight": 0.1553,
+        "min_value": 5,
+        "max_value": 6
+    },
+    {
+        "modifier_code": "ma4",
+        "stat": "mana_attunement",
+        "tier": 4,
+        "weight": 0.0664,
+        "min_value": 7,
+        "max_value": 11
+    },
+    {
+        "modifier_code": "ma5",
+        "stat": "mana_attunement",
+        "tier": 5,
+        "weight": 0.0284,
+        "min_value": 12,
+        "max_value": 20
+    },
+    {
+        "modifier_code": "ma6",
+        "stat": "mana_attunement",
+        "tier": 6,
+        "weight": 0.0121,
+        "min_value": 21,
+        "max_value": 36
+    },
+    {
+        "modifier_code": "ma7",
+        "stat": "mana_attunement",
+        "tier": 7,
+        "weight": 0.0052,
+        "min_value": 37,
+        "max_value": 63
+    },
+    {
+        "modifier_code": "ma8",
+        "stat": "mana_attunement",
+        "tier": 8,
+        "weight": 0.0022,
+        "min_value": 64,
+        "max_value": 112
+    },
+    {
+        "modifier_code": "ma9",
+        "stat": "mana_attunement",
+        "tier": 9,
+        "weight": 0.0009,
+        "min_value": 113,
+        "max_value": 200
+    },
+    {
+        "modifier_code": "cc1",
+        "stat": "critical_strike_chance",
+        "tier": 1,
+        "weight": 0.85,
+        "min_value": 1,
+        "max_value": 1
+    },
+    {
+        "modifier_code": "cc2",
+        "stat": "critical_strike_chance",
+        "tier": 2,
+        "weight": 0.3633,
+        "min_value": 2,
+        "max_value": 2
+    },
+    {
+        "modifier_code": "cc3",
+        "stat": "critical_strike_chance",
+        "tier": 3,
+        "weight": 0.1553,
+        "min_value": 3,
+        "max_value": 3
+    },
+    {
+        "modifier_code": "cc4",
+        "stat": "critical_strike_chance",
+        "tier": 4,
+        "weight": 0.0664,
+        "min_value": 4,
+        "max_value": 4
+    },
+    {
+        "modifier_code": "cc5",
+        "stat": "critical_strike_chance",
+        "tier": 5,
+        "weight": 0.0284,
+        "min_value": 5,
+        "max_value": 5
+    },
+    {
+        "modifier_code": "cc6",
+        "stat": "critical_strike_chance",
+        "tier": 6,
+        "weight": 0.0121,
+        "min_value": 6,
+        "max_value": 6
+    },
+    {
+        "modifier_code": "cc7",
+        "stat": "critical_strike_chance",
+        "tier": 7,
+        "weight": 0.0052,
+        "min_value": 7,
+        "max_value": 7
+    },
+    {
+        "modifier_code": "cc8",
+        "stat": "critical_strike_chance",
+        "tier": 8,
+        "weight": 0.0022,
+        "min_value": 8,
+        "max_value": 8
+    },
+    {
+        "modifier_code": "cc9",
+        "stat": "critical_strike_chance",
+        "tier": 9,
+        "weight": 0.0009,
+        "min_value": 9,
+        "max_value": 10
+    }
 ]

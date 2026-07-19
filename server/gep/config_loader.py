@@ -6,6 +6,9 @@ on a malformed file rather than partway through a tick.
 import json
 from pathlib import Path
 
+from gep.items import BASE_REQUIRED_KEYS, MAX_TIER, MIN_TIER, PERCENT_SUFFIX, ItemRegistry
+from gep.rewards import RewardService
+
 COMBAT_SKILLS = (
     "precision",
     "strength",
@@ -14,6 +17,12 @@ COMBAT_SKILLS = (
     "mana_attunement",
     "constitution",
 )
+
+# Stats an item base or modifier may grant. Combat skills plus the derived
+# stats that are not skills in their own right. Every implicit and every
+# modifier is checked against this at load, so a typo'd stat name is a startup
+# failure rather than an item that silently grants nothing.
+ITEM_STATS = frozenset(COMBAT_SKILLS) | {"critical_strike_chance"}
 
 _MONSTER_REQUIRED = {
     "id",
@@ -25,7 +34,7 @@ _MONSTER_REQUIRED = {
     "combat",
     "respawn_ticks",
     "xp_reward",
-    "loot_table",
+    "reward_table",
 }
 
 _RESOURCE_REQUIRED = {
@@ -218,6 +227,106 @@ def _normalize_equipment(weapons: dict) -> None:
                 )
 
 
+def _load_item_bases(path: Path) -> dict[str, dict]:
+    """Merge every *_bases.json into one registry keyed by base code.
+
+    The split into per-slot files is organizational only -- codes are unique
+    across the whole item space, and a collision between two files is a hard
+    error rather than one file quietly winning.
+    """
+    if not path.is_dir():
+        raise ConfigError(f"missing config directory: {path}")
+
+    bases: dict[str, dict] = {}
+    origin: dict[str, str] = {}
+    for file in sorted(path.glob("*_bases.json")):
+        data = _load_json(file)
+        for code, entry in data.items():
+            if code.startswith("_"):
+                continue  # documentation keys
+            if code in bases:
+                raise ConfigError(
+                    f"{file.name}: duplicate item base code {code!r} "
+                    f"(already defined in {origin[code]})"
+                )
+            bases[code] = entry
+            origin[code] = file.name
+    if not bases:
+        raise ConfigError(f"{path}: no item bases found")
+    return bases
+
+
+def _validate_item_bases(bases: dict[str, dict]) -> None:
+    for code, base in bases.items():
+        missing = BASE_REQUIRED_KEYS - base.keys()
+        if missing:
+            raise ConfigError(f"item base {code}: missing required keys {sorted(missing)}")
+
+        tier = base["Tier"]
+        if not isinstance(tier, int) or not MIN_TIER <= tier <= MAX_TIER:
+            raise ConfigError(
+                f"item base {code}: 'Tier' must be an integer {MIN_TIER}..{MAX_TIER}"
+            )
+
+        drop_tier = base["drop_tier"]
+        if not isinstance(drop_tier, (int, float)) or drop_tier < 0:
+            raise ConfigError(f"item base {code}: 'drop_tier' must be a number >= 0")
+
+        for field in ("damage_min", "damage_max", "armor", "base_sell_value", "speed_ticks"):
+            if not isinstance(base[field], (int, float)) or isinstance(base[field], bool):
+                raise ConfigError(f"item base {code}: {field!r} must be a number")
+            if base[field] < 0:
+                raise ConfigError(f"item base {code}: {field!r} must be >= 0")
+
+        if base["damage_min"] > base["damage_max"]:
+            raise ConfigError(f"item base {code}: damage_min > damage_max")
+
+        if not isinstance(base["max_stack"], int) or base["max_stack"] < 1:
+            raise ConfigError(f"item base {code}: 'max_stack' must be an integer >= 1")
+
+        implicits = base["implicits"]
+        if not isinstance(implicits, dict):
+            raise ConfigError(f"item base {code}: 'implicits' must be an object")
+        for stat, value in implicits.items():
+            root_stat = stat[: -len(PERCENT_SUFFIX)] if stat.endswith(PERCENT_SUFFIX) else stat
+            if root_stat not in ITEM_STATS:
+                raise ConfigError(f"item base {code}: implicit names unknown stat {stat!r}")
+            if not isinstance(value, (int, float)) or isinstance(value, bool):
+                raise ConfigError(f"item base {code}: implicit {stat!r} must be a number")
+
+
+def _validate_modifiers(modifiers: list) -> None:
+    if not isinstance(modifiers, list) or not modifiers:
+        raise ConfigError("modifiers.json: must be a non-empty list")
+
+    seen: set[str] = set()
+    for entry in modifiers:
+        code = entry.get("modifier_code")
+        if not isinstance(code, str) or len(code) != 3:
+            raise ConfigError(f"modifier {code!r}: 'modifier_code' must be 3 characters")
+        if code in seen:
+            raise ConfigError(f"modifier {code!r}: duplicate modifier_code")
+        seen.add(code)
+
+        if entry.get("stat") not in ITEM_STATS:
+            raise ConfigError(f"modifier {code}: unknown stat {entry.get('stat')!r}")
+
+        tier = entry.get("tier")
+        if not isinstance(tier, int) or not MIN_TIER <= tier <= MAX_TIER:
+            raise ConfigError(f"modifier {code}: 'tier' must be an integer {MIN_TIER}..{MAX_TIER}")
+
+        weight = entry.get("weight")
+        if not isinstance(weight, (int, float)) or weight < 0:
+            raise ConfigError(f"modifier {code}: 'weight' must be a number >= 0")
+
+        low, high = entry.get("min_value"), entry.get("max_value")
+        for field, value in (("min_value", low), ("max_value", high)):
+            if not isinstance(value, int) or value < 0:
+                raise ConfigError(f"modifier {code}: {field!r} must be an integer >= 0")
+        if low > high:
+            raise ConfigError(f"modifier {code}: min_value > max_value")
+
+
 class ConfigStore:
     def __init__(self, config_dir: str | Path):
         root = Path(config_dir)
@@ -231,6 +340,19 @@ class ConfigStore:
         self.stat_scaling = _load_json(root / "stat_scaling.json")
         self.xp_table = _load_json(root / "xp_table.json")
         self.modifiers = _load_json(root / "modifiers.json")
+
+        self.loot_tables = _load_json(root / "loot" / "tables.json")
+        self.reward_profiles = _load_json(root / "loot" / "rewards.json")
+        self.item_generation = _load_json(root / "item_generation.json")
+        self.item_bases = _load_item_bases(root / "items")
+        _validate_item_bases(self.item_bases)
+        _validate_modifiers(self.modifiers)
+        self.items = ItemRegistry(
+            self.item_bases, self.modifiers, self.item_generation, ITEM_STATS
+        )
+        self._validate_item_generation()
+        # One service, built once, handed to every payout site.
+        self.rewards = RewardService(self.reward_profiles, self.loot_tables, self.items)
 
         self.monsters = _load_dir(root / "monsters", _MONSTER_REQUIRED)
         _validate_monster_stats(self.monsters)
@@ -267,23 +389,119 @@ class ConfigStore:
             )
         return state
 
-    def _validate_loot_tables(self) -> None:
-        """Loot entries must name something that exists. Runs after resources
-        and weapons are loaded, since a drop may be either. Without this a
-        typo'd item id stays silent until the moment something dies.
-        """
-        from gep.loot import NOTHING
+    def _validate_item_generation(self) -> None:
+        """Every tier must declare a slot count, and no tier may exceed the
+        declared ceiling. A tier missing from the table would raise a KeyError
+        at the moment an item of that tier dropped, which is the worst
+        possible time to discover it."""
+        gen = self.item_generation
+        slots = gen.get("tier_mod_slots") or {}
+        max_prefixes = gen.get("max_prefixes")
+        max_suffixes = gen.get("max_suffixes")
+        for field, value in (("max_prefixes", max_prefixes), ("max_suffixes", max_suffixes)):
+            if not isinstance(value, int) or value < 0:
+                raise ConfigError(f"item_generation.json: {field!r} must be an integer >= 0")
 
-        for monster_id, data in self.monsters.items():
-            for pair in data.get("loot_table") or []:
+        for tier in range(MIN_TIER, MAX_TIER + 1):
+            entry = slots.get(str(tier))
+            if entry is None:
+                raise ConfigError(f"item_generation.json: tier {tier} missing from 'tier_mod_slots'")
+            for field, ceiling in (("prefixes", max_prefixes), ("suffixes", max_suffixes)):
+                count = entry.get(field)
+                if not isinstance(count, int) or count < 0:
+                    raise ConfigError(
+                        f"item_generation.json: tier {tier} {field!r} must be an integer >= 0"
+                    )
+                if count > ceiling:
+                    raise ConfigError(
+                        f"item_generation.json: tier {tier} {field!r} ({count}) exceeds max ({ceiling})"
+                    )
+
+        cap = gen.get("modifier_tier_cap", "item_tier")
+        if cap not in ("item_tier", "unrestricted"):
+            raise ConfigError(
+                f"item_generation.json: 'modifier_tier_cap' must be 'item_tier' or "
+                f"'unrestricted', got {cap!r}"
+            )
+
+    def _validate_loot_tables(self) -> None:
+        """Loot tables must name things that exist, every reward profile must
+        reference tables that exist, and every source must reference a profile
+        that exists. Without this a typo'd id stays silent until the moment
+        something pays out.
+        """
+        from gep.rewards import KIND_EQUIPMENT, KIND_ITEMS, NOTHING
+
+        for table_id, table in self.loot_tables.items():
+            if table_id.startswith("_") or not isinstance(table, dict):
+                continue  # documentation keys
+            kind = table.get("kind", KIND_ITEMS)
+            if kind == KIND_EQUIPMENT:
+                chance = table.get("drop_chance")
+                if not isinstance(chance, (int, float)) or not 0 <= chance <= 1:
+                    raise ConfigError(
+                        f"loot table {table_id}: 'drop_chance' must be within 0..1"
+                    )
+                low = int(table.get("min_tier", MIN_TIER))
+                high = int(table.get("max_tier", MAX_TIER))
+                if not MIN_TIER <= low <= high <= MAX_TIER:
+                    raise ConfigError(
+                        f"loot table {table_id}: tier range {low}..{high} is outside "
+                        f"{MIN_TIER}..{MAX_TIER}"
+                    )
+                if not self.items.drop_candidates(
+                    slots=table.get("slots"), min_tier=low, max_tier=high,
+                    types=table.get("types"),
+                ):
+                    raise ConfigError(
+                        f"loot table {table_id}: filters match no item bases, so the "
+                        f"table can never drop anything"
+                    )
+                continue
+
+            for pair in table.get("entries") or []:
                 item_id, weight = pair[0], pair[1]
-                if item_id != NOTHING and item_id not in self.resources and item_id not in self.weapons:
-                    raise ConfigError(f"monster {monster_id}: unknown loot item {item_id!r}")
+                if item_id != NOTHING and item_id not in self.resources:
+                    raise ConfigError(f"loot table {table_id}: unknown item {item_id!r}")
                 if weight < 0:
-                    raise ConfigError(f"monster {monster_id}: negative loot weight for {item_id!r}")
-            rolls = data.get("loot_rolls", 1)
-            if not isinstance(rolls, int) or rolls < 0:
-                raise ConfigError(f"monster {monster_id}: 'loot_rolls' must be an integer >= 0")
+                    raise ConfigError(f"loot table {table_id}: negative weight for {item_id!r}")
+            for item_id, bounds in (table.get("quantities") or {}).items():
+                if item_id not in self.resources:
+                    raise ConfigError(f"loot table {table_id}: quantity for unknown item {item_id!r}")
+                if len(bounds) != 2 or any(not isinstance(b, int) or b < 0 for b in bounds):
+                    raise ConfigError(
+                        f"loot table {table_id}: quantity for {item_id!r} must be two "
+                        f"integers >= 0"
+                    )
+
+        for profile_id, profile in self.reward_profiles.items():
+            if profile_id.startswith("_") or not isinstance(profile, dict):
+                continue  # documentation keys
+            slots = profile.get("slots")
+            if not isinstance(slots, list):
+                raise ConfigError(f"reward profile {profile_id}: 'slots' must be a list")
+            for slot in slots:
+                table_id = slot.get("table")
+                if table_id not in self.loot_tables or str(table_id).startswith("_"):
+                    raise ConfigError(
+                        f"reward profile {profile_id}: slot references unknown loot "
+                        f"table {table_id!r}"
+                    )
+                rolls = slot.get("rolls", 1)
+                if not isinstance(rolls, int) or rolls < 0:
+                    raise ConfigError(
+                        f"reward profile {profile_id}: slot 'rolls' must be an integer >= 0"
+                    )
+
+        # Sources reference profiles by id. Monsters are simply the first
+        # kind of source; a container registry validates through this same
+        # loop when one exists.
+        for monster_id, data in self.monsters.items():
+            profile_id = data.get("reward_table")
+            if profile_id not in self.reward_profiles or str(profile_id).startswith("_"):
+                raise ConfigError(
+                    f"monster {monster_id}: unknown reward_table {profile_id!r}"
+                )
 
     def _validate_biomes(self) -> None:
         for biome_id, data in self.biomes.items():

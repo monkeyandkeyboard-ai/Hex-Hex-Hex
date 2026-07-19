@@ -42,7 +42,7 @@ export const state = {
   selfSkills: {},
   // 28-element array, each null or { item_id, quantity }
   selfInventory: new Array(28).fill(null),
-  // { main_hand, off_hand, helmet, ... }
+  // { main_hand, off_hand, head, torso, hands, ... } -- see EQUIP_SLOTS in hud.js
   selfEquipment: {},
 
   // Camera

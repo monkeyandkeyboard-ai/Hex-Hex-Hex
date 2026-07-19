@@ -4,10 +4,13 @@
 
 import { state } from "./state.js";
 
+// Slot ids match the server's EQUIPMENT_SLOTS (gep/entities.py), which in
+// turn match the `equipment_slot` field on every item base. One vocabulary
+// end to end -- a rename here without one there shows as an empty panel.
 const EQUIP_SLOTS = [
-  ["helmet", "Helmet"], ["amulet", "Amulet"], ["back", "Back"],
-  ["main_hand", "Main Hand"], ["body", "Body"], ["off_hand", "Off Hand"],
-  ["gloves", "Gloves"], ["legs", "Legs"], ["ring", "Ring"],
+  ["head", "Head"], ["amulet", "Amulet"], ["back", "Back"],
+  ["main_hand", "Main Hand"], ["torso", "Torso"], ["off_hand", "Off Hand"],
+  ["hands", "Hands"], ["legs", "Legs"], ["ring", "Ring"],
   ["feet", "Feet"],
 ];
 
