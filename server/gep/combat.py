@@ -5,8 +5,11 @@ Field names match the real config from the prior codebase:
   constant_c, constant_divisor, defense_soft_cap_factor, evasion_multiplier,
   hit_chance_base, hit_chance_cap, damage_type_weighting.
 
-Callers pass a pre-rolled `weapon_damage` float (rolled from the weapon or
-monster's damage_min..damage_max range before this call).
+Callers pass the attacker's baseline damage as `weapon_damage`. For players
+that is the equipment state's flat `base_power`; for monsters it is still a
+roll across the template's damage_min..damage_max. This function does not
+care which -- it applies stat multipliers and mitigation to whatever number
+it is handed.
 """
 import random
 

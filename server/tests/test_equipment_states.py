@@ -97,10 +97,13 @@ def test_identical_swings_deal_identical_damage(store):
     attacker = make_player(store)
     attacker.skills.combat.update({"strength": 50, "precision": 400})
 
+    # One fixed target: roll_monster randomizes constitution, and a different
+    # mitigation value per iteration would mask what this is checking.
+    target = roll_monster("m", store.monsters["cave_rat"], store.stat_scaling)
+    target.hp = target.max_hp = 10_000_000
+
     damages = []
     for _ in range(5):
-        target = roll_monster("m", store.monsters["cave_rat"], store.stat_scaling)
-        target.hp = target.max_hp = 10_000
         # Force past evasion (high roll) and into a hit (low roll), isolating
         # the damage number from the two checks that are still random.
         original = combat_mod.random.random

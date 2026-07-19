@@ -11,3 +11,6 @@ __pycache__/
 node_modules/
 *.egg-info/
 .venv/
+
+# Scratch dump of git log output, not a project source
+git_history.txt
