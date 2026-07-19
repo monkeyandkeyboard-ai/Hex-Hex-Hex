@@ -6,6 +6,29 @@ import { state } from "./state.js";
 const MAX_LOG = 80;
 let logEl;
 
+// --- Packed payload decoding ---------------------------------------------
+// The server ships per-tile structural fields as base64 byte arrays in
+// canonical tile order (server/gep/hexgrid.py tiles_in_radius): q ascending,
+// then r ascending. This must match exactly or the map shears.
+
+function decodeBytes(b64) {
+  if (!b64) return new Uint8Array(0);
+  const bin = atob(b64);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+function canonicalTiles(radius) {
+  const tiles = [];
+  for (let q = -radius; q <= radius; q++) {
+    const rLo = Math.max(-radius, -q - radius);
+    const rHi = Math.min(radius, -q + radius);
+    for (let r = rLo; r <= rHi; r++) tiles.push([q, r]);
+  }
+  return tiles;
+}
+
 export function initEvents(logElement) {
   logEl = logElement;
 }
@@ -31,9 +54,18 @@ export function applySnapshot(msg) {
 
   state.biomes = msg.biomes || {};
 
-  state.regions.clear();
-  for (const [key, bid] of Object.entries(msg.regions || {})) {
-    state.regions.set(key, bid);
+  // Structural payload: one byte per tile in canonical order. Rebuild the
+  // same tile order the server packed against, and index it for lookups.
+  state.biomeLegend = msg.biome_legend || [];
+  state.biomeMap = decodeBytes(msg.biome_map);
+  state.elevation = decodeBytes(msg.elevation);
+  state.roughness = decodeBytes(msg.roughness);
+
+  state.tileOrder = canonicalTiles(state.radius);
+  state.tileIndex.clear();
+  for (let i = 0; i < state.tileOrder.length; i++) {
+    const [q, r] = state.tileOrder[i];
+    state.tileIndex.set(`${q},${r}`, i);
   }
 
   state.roads.clear();

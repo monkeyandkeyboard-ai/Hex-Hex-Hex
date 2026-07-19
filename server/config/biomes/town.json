@@ -5,5 +5,10 @@
   "resource_spawn_chance": 0.0,
   "resource_weights": [],
   "monster_weight": 0.0,
-  "monster_weights": []
+  "monster_weights": [],
+  "hsl": {
+    "h": 222,
+    "s": 14,
+    "l": 26
+  }
 }

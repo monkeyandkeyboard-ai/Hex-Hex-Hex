@@ -140,12 +140,40 @@ class ConfigStore:
     def _validate_archetypes(self) -> None:
         archetypes = self.floor_archetypes.get("archetypes", {})
         for name, params in archetypes.items():
-            for pair in params.get("biome_weights", []):
-                if pair[0] not in self.biomes:
-                    raise ConfigError(f"archetype {name}: unknown biome {pair[0]!r}")
+            for biome_id in self._archetype_biome_refs(params):
+                if biome_id not in self.biomes:
+                    raise ConfigError(f"archetype {name}: unknown biome {biome_id!r}")
+            layout = params.get("layout", {})
+            mode = layout.get("mode")
+            if mode not in ("radial", "elevation", "cluster"):
+                raise ConfigError(f"archetype {name}: unknown layout mode {mode!r}")
+            if mode == "radial" and not layout.get("bands"):
+                raise ConfigError(f"archetype {name}: radial layout needs 'bands'")
+            if mode == "elevation" and not layout.get("strata"):
+                raise ConfigError(f"archetype {name}: elevation layout needs 'strata'")
+            if mode == "cluster" and not layout.get("biome_weights"):
+                raise ConfigError(f"archetype {name}: cluster layout needs 'biome_weights'")
         for rule in self.floor_archetypes.get("overrides", []):
             if rule["archetype"] not in archetypes:
                 raise ConfigError(f"archetype override references unknown archetype {rule['archetype']!r}")
         default = self.floor_archetypes.get("default_archetype")
         if default not in archetypes:
             raise ConfigError(f"default_archetype {default!r} is not defined")
+
+    @staticmethod
+    def _archetype_biome_refs(params: dict) -> list[str]:
+        """Every biome id an archetype template can reference, across all
+        layout modes plus the fallback/forbid rules."""
+        refs: list[str] = []
+        layout = params.get("layout", {})
+        refs += [b["biome"] for b in layout.get("bands", [])]
+        refs += [b["biome"] for b in layout.get("strata", [])]
+        refs += [pair[0] for pair in layout.get("biome_weights", [])]
+        refs += list(layout.get("radial_constraints", {}).keys())
+        extremity = layout.get("extremity")
+        if extremity:
+            refs.append(extremity["biome"])
+        refs += params.get("forbid_biomes", [])
+        if params.get("fallback_biome"):
+            refs.append(params["fallback_biome"])
+        return refs

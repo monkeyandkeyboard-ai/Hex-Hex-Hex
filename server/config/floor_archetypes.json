@@ -1,20 +1,73 @@
 {
-  "default_archetype": "dungeon",
+  "default_archetype": "rocky_depths",
   "overrides": [
-    { "floor_multiple_of": 25, "archetype": "town" }
+    { "floor_multiple_of": 25, "archetype": "town_hub" },
+    { "floor_multiple_of": 7, "archetype": "fungal_cavern" }
   ],
   "archetypes": {
-    "dungeon": {
-      "safe": false,
-      "region_count": 6,
-      "biome_weights": [["rocky", 3], ["fungal", 2], ["hazard", 1]],
-      "monster_spawn_count": 12
-    },
-    "town": {
+    "town_hub": {
+      "display_name": "Waystation",
       "safe": true,
-      "region_count": 1,
-      "biome_weights": [["town", 1]],
-      "monster_spawn_count": 0
+      "monster_spawn_count": 0,
+      "fallback_biome": "rocky",
+      "forbid_biomes": ["hazard"],
+      "layout": {
+        "mode": "radial",
+        "warp": { "scale": 0.04, "amount": 0.06 },
+        "bands": [
+          { "to": 0.35, "biome": "town" },
+          { "to": 0.70, "biome": "rocky" },
+          { "to": 1.01, "biome": "rocky" }
+        ]
+      },
+      "elevation": {
+        "octaves": 3,
+        "scale": 0.045,
+        "flatten": [
+          { "to": 0.35, "target": 0.5, "strength": 1.0 },
+          { "to": 0.45, "target": 0.5, "strength": 0.5 }
+        ]
+      },
+      "roughness": { "octaves": 4, "scale": 0.22 }
+    },
+
+    "fungal_cavern": {
+      "display_name": "Fungal Cavern",
+      "safe": false,
+      "monster_spawn_count": 14,
+      "fallback_biome": "rocky",
+      "layout": {
+        "mode": "elevation",
+        "strata": [
+          { "below": 0.42, "biome": "fungal" },
+          { "below": 0.78, "biome": "rocky" },
+          { "below": 1.01, "biome": "rocky" }
+        ],
+        "extremity": {
+          "biome": "hazard",
+          "beyond_radius_pct": 0.75,
+          "elevation_above": 0.62
+        }
+      },
+      "elevation": { "octaves": 4, "scale": 0.05, "flatten": [] },
+      "roughness": { "octaves": 4, "scale": 0.25 }
+    },
+
+    "rocky_depths": {
+      "display_name": "Rocky Depths",
+      "safe": false,
+      "monster_spawn_count": 12,
+      "fallback_biome": "rocky",
+      "layout": {
+        "mode": "cluster",
+        "region_count": 6,
+        "biome_weights": [["rocky", 3], ["fungal", 2], ["hazard", 1]],
+        "radial_constraints": {
+          "hazard": { "min_radius_pct": 0.45 }
+        }
+      },
+      "elevation": { "octaves": 4, "scale": 0.05, "flatten": [] },
+      "roughness": { "octaves": 4, "scale": 0.24 }
     }
   }
 }

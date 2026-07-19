@@ -3,7 +3,30 @@
   "display_name": "Fungal Hollows",
   "color": "#1f3326",
   "resource_spawn_chance": 0.007,
-  "resource_weights": [["copper_ore", 4], ["iron_ore", 1]],
+  "resource_weights": [
+    [
+      "copper_ore",
+      4
+    ],
+    [
+      "iron_ore",
+      1
+    ]
+  ],
   "monster_weight": 1.2,
-  "monster_weights": [["cave_rat", 2], ["goblin_skirmisher", 2]]
+  "monster_weights": [
+    [
+      "cave_rat",
+      2
+    ],
+    [
+      "goblin_skirmisher",
+      2
+    ]
+  ],
+  "hsl": {
+    "h": 138,
+    "s": 24,
+    "l": 18
+  }
 }

@@ -14,7 +14,9 @@ Two generation paths:
 """
 from dataclasses import dataclass, field
 
+from gep.biome_layout import apply_constraints, build_macro_layout, flatten_elevation
 from gep.hexgrid import ring_tiles, tiles_in_radius
+from gep.noise import build_field, normalise
 from gep.prng import Mulberry32, rng_for_tile, seed_from_floor
 from gep.regions import assign_regions
 from gep.roads import build_roads
@@ -37,6 +39,9 @@ class FloorLayout:
     roads: set[Tile] = field(default_factory=set)
     archetype: str = "dungeon"
     safe: bool = False
+    # Per-tile structural fields in [0, 1]; empty on the legacy path.
+    elevation: dict[Tile, float] = field(default_factory=dict)
+    roughness: dict[Tile, float] = field(default_factory=dict)
 
     def to_dict(self) -> dict:
         return {
@@ -61,13 +66,44 @@ def _floor_index(rng: Mulberry32, n: int) -> int:
     return min(n - 1, int(rng.next_float() * n))
 
 
+# --- Compact wire packing -------------------------------------------------
+# Per-tile fields ship as base64 byte arrays in canonical tile order (the
+# order of tiles_in_radius), not as 12k-entry JSON objects. The client walks
+# the same order to rebuild its lookup.
+
+def pack_unit_field(field: dict[Tile, float], tiles: list[Tile]) -> str:
+    """Quantise a [0, 1] field to one byte per tile, base64 encoded."""
+    import base64
+    buf = bytearray(len(tiles))
+    for i, tile in enumerate(tiles):
+        v = field.get(tile, 0.5)
+        buf[i] = max(0, min(255, int(round(v * 255.0))))
+    return base64.b64encode(bytes(buf)).decode("ascii")
+
+
+def pack_biome_map(regions: dict[Tile, str], tiles: list[Tile], legend: list[str]) -> str:
+    """One byte per tile indexing into `legend`, base64 encoded."""
+    import base64
+    index = {bid: i for i, bid in enumerate(legend)}
+    buf = bytearray(len(tiles))
+    for i, tile in enumerate(tiles):
+        buf[i] = index.get(regions.get(tile), 0)
+    return base64.b64encode(bytes(buf)).decode("ascii")
+
+
 def resolve_archetype(floor_number: int, archetypes: dict) -> tuple[str, dict]:
-    """Pick the archetype id + its params for a floor number."""
+    """Pick the archetype id + its params for a floor number.
+
+    First matching override wins, so overrides are listed most-specific
+    first: floor 175 is a multiple of both 25 and 7 and must resolve to the
+    town, not the fungal cavern.
+    """
     name = archetypes.get("default_archetype", "dungeon")
     for rule in archetypes.get("overrides", []):
         m = rule.get("floor_multiple_of")
         if m and floor_number % m == 0:
             name = rule["archetype"]
+            break
     params = archetypes["archetypes"][name]
     return name, params
 
@@ -148,13 +184,36 @@ def generate_floor(
             resource_nodes=resource_nodes, monster_spawns=spawns,
         )
 
-    # ---- New path: archetype -> regions -> roads -> spawns ----
+    # ---- Template path: hierarchical generation ----
     archetype_name, params = resolve_archetype(floor_number, archetypes)
     safe = params.get("safe", False)
 
-    regions = assign_regions(
-        floor_seed, all_tiles, params["region_count"], params["biome_weights"]
+    # Step 2 (run first): the raw structural noise fields. These are pure
+    # functions of seed and coordinates, so they can be sampled before the
+    # macro layout -- which the "elevation" layout mode requires, since it
+    # derives biomes from elevation strata.
+    elev_cfg = params.get("elevation", {})
+    rough_cfg = params.get("roughness", {})
+    elevation = normalise(build_field(
+        floor_seed ^ 0xE1E7, all_tiles,
+        octaves=elev_cfg.get("octaves", 4), scale=elev_cfg.get("scale", 0.05),
+    ))
+    roughness = normalise(build_field(
+        floor_seed ^ 0x9E55, all_tiles,
+        octaves=rough_cfg.get("octaves", 4), scale=rough_cfg.get("scale", 0.24),
+    ))
+
+    # Step 1: macro layout -- partition the grid into large, continuous
+    # biome structures according to the archetype template.
+    regions = build_macro_layout(
+        floor_seed, all_tiles, radius, params["layout"], elevation
     )
+
+    # Step 3: template validation -- enforce forbidden/radially-constrained
+    # biomes, then flatten elevation inside protected zones (e.g. town core).
+    regions = apply_constraints(regions, radius, params)
+    elevation = flatten_elevation(elevation, radius, elev_cfg.get("flatten", []))
+
     tile_set = set(all_tiles)
     roads = build_roads(tile_set, up_exit, down_exit)
 
@@ -201,4 +260,5 @@ def generate_floor(
         up_exit=up_exit, down_exit=down_exit,
         resource_nodes=resource_nodes, monster_spawns=spawns,
         regions=regions, roads=roads, archetype=archetype_name, safe=safe,
+        elevation=elevation, roughness=roughness,
     )

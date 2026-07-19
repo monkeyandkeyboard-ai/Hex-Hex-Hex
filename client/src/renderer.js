@@ -106,8 +106,38 @@ function drawTile(q, r, fill, stroke) {
   ctx.fillStyle = fill;
   ctx.fill();
   ctx.strokeStyle = stroke;
-  ctx.lineWidth = 0.5;
+  ctx.lineWidth = BORDER_WIDTH;
   ctx.stroke();
+}
+
+// --- Procedural HSL stack -------------------------------------------------
+// Layer 1 base biome hue/sat/lightness, Layer 2 roughness micro-texture,
+// Layer 3 directional elevation shading. Colour strings are cached by
+// (biome, quantised lightness) since building 12k hsl() strings per frame
+// would dominate the frame budget.
+
+const BORDER_WIDTH = 1;
+const ROUGHNESS_AMOUNT = 7;   // lightness swing from micro-texture
+const ELEVATION_AMOUNT = 10;  // lightness swing from absolute height
+const SLOPE_AMOUNT = 30;      // directional shading strength
+
+const colorCache = new Map();
+
+function tileColor(biomeIdx, lightness) {
+  const li = Math.max(2, Math.min(70, Math.round(lightness)));
+  const key = biomeIdx * 128 + li;
+  let c = colorCache.get(key);
+  if (c === undefined) {
+    const biome = state.biomes[state.biomeLegend[biomeIdx]];
+    const hsl = (biome && biome.hsl) || { h: 0, s: 0, l: 20 };
+    c = `hsl(${hsl.h}, ${hsl.s}%, ${li}%)`;
+    colorCache.set(key, c);
+  }
+  return c;
+}
+
+export function resetColorCache() {
+  colorCache.clear();
 }
 
 function drawDot(q, r, color, size = 5) {
@@ -154,29 +184,50 @@ export function render() {
     [...state.resourceNodes.keys()]
   );
 
-  // Draw all tiles (simple approach: iterate known tiles from radius)
-  const r = state.radius;
-  for (let q = -r; q <= r; q++) {
-    const rLo = Math.max(-r, -q - r);
-    const rHi = Math.min(r, -q + r);
-    for (let rv = rLo; rv <= rHi; rv++) {
-      const key = `${q},${rv}`;
+  // Tiles: walk canonical order so the packed arrays index directly.
+  // Cull anything off-screen -- a full floor is ~12.5k hexes.
+  const elev = state.elevation, rough = state.roughness, bmap = state.biomeMap;
+  const hasStructure = bmap.length === state.tileOrder.length && bmap.length > 0;
+  const margin = tileSize * 2;
 
-      // Base fill: biome color if this tile belongs to a region.
-      let fill = COLORS.tile;
-      const biomeId = state.regions.get(key);
-      if (biomeId && state.biomes[biomeId]) fill = state.biomes[biomeId].color;
+  for (let i = 0; i < state.tileOrder.length; i++) {
+    const [q, rv] = state.tileOrder[i];
+    const [cx, cy] = hexToPixel(q, rv);
+    if (cx < -margin || cx > w + margin || cy < -margin || cy > h + margin) continue;
 
-      const isRoad = state.roads.has(key);
-      if (isRoad) fill = COLORS.road;
+    const key = `${q},${rv}`;
+    let fill = COLORS.tile;
 
-      if (state.upExit && q === state.upExit[0] && rv === state.upExit[1]) fill = COLORS.upExit;
-      else if (state.downExit && q === state.downExit[0] && rv === state.downExit[1]) fill = COLORS.downExit;
-      else if (resourceKeys.has(key)) fill = COLORS.resource;
+    if (hasStructure) {
+      const e = elev[i] / 255;
+      const ro = rough[i] / 255;
 
-      const isHovered = hoveredTile && hoveredTile[0] === q && hoveredTile[1] === rv;
-      drawTile(q, rv, isHovered ? COLORS.tileHover : fill, isRoad ? "#6a5636" : COLORS.tileBorder);
+      // Layer 3: directional shading -- slope against the tile "above"
+      // (decreasing r is up-screen), so ridges catch light and hollows fall
+      // into shadow.
+      const iUp = state.tileIndex.get(`${q},${rv - 1}`);
+      const eUp = iUp !== undefined ? elev[iUp] / 255 : e;
+      const slope = e - eUp;
+
+      const biome = state.biomes[state.biomeLegend[bmap[i]]];
+      const baseL = (biome && biome.hsl ? biome.hsl.l : 20);
+      const lightness = baseL
+        + (ro - 0.5) * ROUGHNESS_AMOUNT      // Layer 2: micro texture
+        + (e - 0.5) * ELEVATION_AMOUNT       // absolute height
+        + slope * SLOPE_AMOUNT;              // Layer 3: directional
+      fill = tileColor(bmap[i], lightness);
     }
+
+    const isRoad = state.roads.has(key);
+    if (isRoad) fill = COLORS.road;
+
+    if (state.upExit && q === state.upExit[0] && rv === state.upExit[1]) fill = COLORS.upExit;
+    else if (state.downExit && q === state.downExit[0] && rv === state.downExit[1]) fill = COLORS.downExit;
+    else if (resourceKeys.has(key)) fill = COLORS.resource;
+
+    const isHovered = hoveredTile && hoveredTile[0] === q && hoveredTile[1] === rv;
+    // Layer 4: crisp fixed-width border anchoring the grid.
+    drawTile(q, rv, isHovered ? COLORS.tileHover : fill, isRoad ? "#6a5636" : COLORS.tileBorder);
   }
 
   // Resource dots

@@ -13,11 +13,17 @@ export const state = {
   archetype: null,
   safe: false,
 
-  // tile key "q,r" -> biome_id
-  regions: new Map(),
+  // Structural payload, parallel arrays in canonical tile order
+  tileOrder: [],              // [ [q,r], ... ]
+  tileIndex: new Map(),       // "q,r" -> index into the arrays below
+  biomeLegend: [],            // index -> biome_id
+  biomeMap: new Uint8Array(0),
+  elevation: new Uint8Array(0),
+  roughness: new Uint8Array(0),
+
   // set of tile keys "q,r" that are road tiles
   roads: new Set(),
-  // biome_id -> { color, display_name }
+  // biome_id -> { display_name, hsl }
   biomes: {},
 
   // tile key "q,r" -> resource_id

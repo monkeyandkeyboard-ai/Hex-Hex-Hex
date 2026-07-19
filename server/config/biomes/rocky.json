@@ -3,7 +3,30 @@
   "display_name": "Rocky Caverns",
   "color": "#332b22",
   "resource_spawn_chance": 0.008,
-  "resource_weights": [["iron_ore", 4], ["copper_ore", 2]],
+  "resource_weights": [
+    [
+      "iron_ore",
+      4
+    ],
+    [
+      "copper_ore",
+      2
+    ]
+  ],
   "monster_weight": 1.0,
-  "monster_weights": [["cave_rat", 3], ["goblin_skirmisher", 1]]
+  "monster_weights": [
+    [
+      "cave_rat",
+      3
+    ],
+    [
+      "goblin_skirmisher",
+      1
+    ]
+  ],
+  "hsl": {
+    "h": 30,
+    "s": 18,
+    "l": 20
+  }
 }

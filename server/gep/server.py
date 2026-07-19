@@ -24,7 +24,7 @@ import websockets
 from gep import db
 from gep.config_loader import ConfigStore
 from gep.entities import Equipment, Player, Skills, roll_monster
-from gep.floorgen import generate_floor
+from gep.floorgen import generate_floor, pack_biome_map, pack_unit_field
 from gep.floor_state import FloorState
 from gep.floor_manager import FloorManager
 from gep.stats import compute_max_hp, compute_max_mana
@@ -118,9 +118,20 @@ def floor_snapshot(floor: FloorState, tick: int, tick_duration: float, xp_table:
         "safe": layout.safe,
         "up_exit": list(layout.up_exit),
         "down_exit": list(layout.down_exit) if layout.down_exit else None,
-        "regions": {f"{q},{r}": bid for (q, r), bid in layout.regions.items()},
+        # Structural payload, packed one byte per tile in canonical tile order
+        # (tiles_in_radius): biome index + quantised elevation/roughness.
+        "biome_legend": list(biomes.keys()),
+        "biome_map": pack_biome_map(layout.regions, layout.tiles, list(biomes.keys())),
+        "elevation": pack_unit_field(layout.elevation, layout.tiles),
+        "roughness": pack_unit_field(layout.roughness, layout.tiles),
         "roads": [list(t) for t in layout.roads],
-        "biomes": {bid: {"color": b["color"], "display_name": b["display_name"]} for bid, b in biomes.items()},
+        "biomes": {
+            bid: {
+                "display_name": b["display_name"],
+                "hsl": b.get("hsl", {"h": 0, "s": 0, "l": 20}),
+            }
+            for bid, b in biomes.items()
+        },
         "resource_nodes": {f"{q},{r}": rid for (q, r), rid in floor.resource_nodes.items()},
         "monsters": {
             mid: {
