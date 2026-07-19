@@ -52,7 +52,13 @@ def register(engine: TickEngine, floor: FloorState) -> None:
         # sees it doesn't match and drops. This lets a new click override
         # the next tick's movement instead of fighting the old path.
         player.move_seq += 1
-        eng.schedule(1, "move-step", {
+
+        # Schedule at delay=0: the tick engine drains intents BEFORE actions,
+        # so this step fires in the same tick's action drain -- alongside any
+        # stale step from the old path, which the seq check drops. Net effect:
+        # click and the player advances this tick in the new direction, no
+        # dead tick between old and new path.
+        eng.schedule(0, "move-step", {
             "player_id": player_id,
             "remaining": remaining,
             "speed": getattr(player, "move_speed", 1),
