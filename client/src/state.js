@@ -60,3 +60,21 @@ export const state = {
   // Active sidebar tab: "skills" | "inventory" | "equipment"
   activeTab: "skills",
 };
+
+/** Whether terrain permits standing on a tile, per the biome definitions the
+ * server sent. Entities are deliberately not considered: a monster on a tile
+ * is a thing you click to attack, not a thing that makes the click invalid.
+ *
+ * This is not a second authority on movement -- the server rejects impassable
+ * destinations regardless, and it is still the only thing that moves anyone.
+ * It exists so clicking a mountain does nothing locally instead of costing a
+ * round-trip to be told no. Unknown tiles and missing biome data read as
+ * passable so a client that is mid-load defers to the server rather than
+ * locking the player in place.
+ */
+export function isTilePassable(q, r) {
+  const i = state.tileIndex.get(`${q},${r}`);
+  if (i === undefined || i >= state.biomeMap.length) return true;
+  const def = state.biomes[state.biomeLegend[state.biomeMap[i]]];
+  return !def || def.passable !== false;
+}

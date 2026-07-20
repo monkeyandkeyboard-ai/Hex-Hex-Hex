@@ -186,3 +186,68 @@ def test_player_facing_defaults_and_survives_a_stationary_tick():
     assert player.facing == "down"
     engine.step([])
     assert player.facing == "down"
+
+
+def test_impassable_target_is_rejected_and_player_does_not_move():
+    """The destination is not exempt from terrain.
+
+    A* admits the goal regardless of the passability predicate so that a player
+    can path into a monster to attack it. That exemption applied to terrain too,
+    which meant clicking a mountain returned a valid path ending on top of it --
+    the player walked onto impassable ground and stood there.
+    """
+    floor = make_floor()
+    player = make_player(tile=(0, 0))
+    floor.players["p1"] = player
+    engine = setup_engine(floor)
+
+    barrier = (2, 0)
+    floor.layout.blocked.add(barrier)
+
+    result = engine.step([{
+        "intent_type": "move-to-tile", "player_id": "p1",
+        "target_q": barrier[0], "target_r": barrier[1],
+    }])
+
+    errors = [e for e in result.events if e["type"] == "error"]
+    assert len(errors) == 1
+    assert "impassable" in errors[0]["reason"]
+    assert not [e for e in result.events if e["type"] == "position_update"]
+    assert player.tile == (0, 0)
+
+
+def test_move_step_stops_at_terrain_that_blocks_the_final_tile():
+    """Defence in depth at the coordinate write itself.
+
+    Guards the case where a step was already scheduled with a path whose last
+    tile is a barrier -- the intent-level check cannot see those, and this is
+    the last gate before player.tile is assigned.
+    """
+    floor = make_floor()
+    player = make_player(tile=(0, 0))
+    floor.players["p1"] = player
+    engine = setup_engine(floor)
+
+    floor.layout.blocked.add((2, 0))
+    engine.schedule(0, "move-step", {
+        "player_id": "p1",
+        "remaining": [(1, 0), (2, 0)],
+        "speed": 2,
+        "seq": player.move_seq,
+    })
+
+    result = engine.step([])
+
+    assert player.tile == (1, 0)   # advanced up to the barrier, not onto it
+    assert [e["type"] for e in result.events if e["type"] == "move_blocked"]
+
+
+def test_monsters_cannot_wander_onto_impassable_terrain():
+    """Terrain that stops players must stop monsters, or a goblin swims."""
+    floor = make_floor()
+    floor.layout.blocked.add((1, 0))
+    assert floor.is_passable((1, 0)) is False
+    assert floor.is_terrain_passable((1, 0)) is False
+    # ...and an ordinary neighbour is still fine, so the assertion above is
+    # testing the barrier rather than a floor that blocks everything.
+    assert floor.is_terrain_passable((0, 1)) is True

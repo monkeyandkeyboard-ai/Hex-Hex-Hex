@@ -56,6 +56,19 @@ class FloorState:
     def is_valid_tile(self, tile: Tile) -> bool:
         return tile in self.tile_set
 
+    def is_terrain_passable(self, tile: Tile) -> bool:
+        """Terrain alone: on the floor and not walled off, ignoring entities.
+
+        Separate from is_passable because the two kinds of blocking have
+        different lifetimes and different rules at a path's endpoint. A monster
+        in the destination tile is a legal target -- you walk into it to attack
+        it, which is why A* admits the goal unconditionally and why move-step
+        exempts the final tile. Terrain gets no such exemption: a cliff is never
+        a thing you are trying to reach. Without this split the destination
+        exemption is a hole wide enough to walk onto a mountain through.
+        """
+        return self.is_valid_tile(tile) and tile not in self.layout.blocked
+
     def is_passable(self, tile: Tile) -> bool:
         """A tile is passable if it exists on the floor, terrain permits entry,
         and it is not occupied by a blocking entity. Resource nodes are not
@@ -67,9 +80,7 @@ class FloorState:
         why the terrain check goes here rather than at either call site --
         terrain that stopped players but not monsters would let a goblin swim.
         """
-        if not self.is_valid_tile(tile):
-            return False
-        if tile in self.layout.blocked:
+        if not self.is_terrain_passable(tile):
             return False
         for monster in self.monsters.values():
             if monster.tile == tile and monster.alive:

@@ -1,7 +1,7 @@
 // Translates clicks/taps on the canvas into intents sent to the server.
 // Never predicts outcomes -- just sends intent and waits for server state.
 
-import { state } from "./state.js";
+import { state, isTilePassable } from "./state.js";
 import { getHoveredTile } from "./renderer.js";
 
 let sendIntent;
@@ -62,6 +62,11 @@ function handleTap(px, py) {
     return;
   }
 
-  // Default: move
+  // Default: move. Impassable terrain is dropped here rather than sent and
+  // rejected -- the renderer already draws these tiles as raised barriers, so
+  // a click on one is a misclick on scenery, not an action worth a round-trip.
+  // The exit branches above skip this check by design: structural tiles are
+  // forced back to walkable at generation, so they are never barriers.
+  if (!isTilePassable(q, r)) return;
   sendIntent({ intent_type: "move-to-tile", target_q: q, target_r: r });
 }

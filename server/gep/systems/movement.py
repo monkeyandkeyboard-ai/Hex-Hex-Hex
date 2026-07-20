@@ -42,6 +42,13 @@ def register(engine: TickEngine, floor: FloorState, on_move=None) -> None:
         if not floor.is_valid_tile(target):
             return [{"type": "error", "reason": "target tile not on this floor", "player_id": player_id}]
 
+        # Rejected here rather than left to A*: find_path admits the goal
+        # regardless of the predicate (so you can path into a monster to attack
+        # it), which means an impassable destination would otherwise return a
+        # perfectly good path ending on a cliff face.
+        if not floor.is_terrain_passable(target):
+            return [{"type": "error", "reason": "target tile is impassable", "player_id": player_id}]
+
         if player.tile == target:
             return []
 
@@ -96,10 +103,16 @@ def register(engine: TickEngine, floor: FloorState, on_move=None) -> None:
         while remaining and steps_taken < speed:
             next_tile = remaining[0]
             is_last = len(remaining) == 1
-            if not is_last and not floor.is_passable(next_tile):
-                # Intermediate tile became impassable since path was computed
-                # (e.g. a monster stepped into it). Stop at current position;
-                # client must re-issue a move intent to route around.
+            # Terrain is checked on every tile, entities only on intermediate
+            # ones. The final tile may legitimately hold a monster -- that is
+            # how you close to melee -- but it may never be terrain the biome
+            # forbids, and this is the last gate before the coordinate write.
+            if not floor.is_terrain_passable(next_tile) or (
+                not is_last and not floor.is_passable(next_tile)
+            ):
+                # Blocked since the path was computed (e.g. a monster stepped
+                # into it). Stop at current position; the client must re-issue
+                # a move intent to route around.
                 events.append({"type": "move_blocked", "player_id": player_id, "tile": list(player.tile)})
                 return events
             remaining.pop(0)
