@@ -9,7 +9,8 @@ import pathlib
 
 from gep.config_loader import ConfigStore
 from gep.floorgen import (
-    generate_floor, pack_biome_map, pack_unit_field, resolve_archetype,
+    exit_separation_bounds, generate_floor, pack_biome_map, pack_unit_field,
+    resolve_archetype,
 )
 from gep.hexgrid import hex_distance
 from gep.pathfinding import hex_neighbors
@@ -55,6 +56,73 @@ def test_floor_1_road_starts_at_center():
     assert layout.down_exit is None
     assert (0, 0) in layout.roads
     assert layout.up_exit in layout.roads
+
+
+# Exit placement is decided before the pipeline runs, so these can sample the
+# exit-picking directly instead of generating 50-odd 12k-tile floors -- doing
+# that for real exhausted memory and got the runner killed.
+def _separations(floors=range(2, 102)):
+    from gep.floorgen import _place_exits
+    from gep.prng import Mulberry32, seed_from_floor
+
+    radius = cfg.floor_ruleset["radius"]
+    out = []
+    for n in floors:
+        seed = seed_from_floor("tower-a", n, cfg.world["global_seed"])
+        up, down = _place_exits(Mulberry32(seed), radius, n, cfg.floor_ruleset)
+        out.append(hex_distance(up, down))
+    return out
+
+
+def test_exit_separation_is_respected():
+    lo, hi = exit_separation_bounds(cfg.floor_ruleset)
+    for n, d in zip(range(2, 102), _separations()):
+        assert lo <= d <= hi, f"floor {n}: exits {d} apart, window [{lo}, {hi}]"
+
+
+def test_exit_separation_still_varies():
+    """The rule exists to remove the extremes, not to fix the distance. A
+    window that always produced the same trek would be its own problem."""
+    lo, hi = exit_separation_bounds(cfg.floor_ruleset)
+    seen = set(_separations())
+    assert len(seen) > 40, f"only {len(seen)} distinct separations"
+    # Spans a real range rather than hugging one end of the window.
+    assert max(seen) - min(seen) > (hi - lo) * 0.5
+
+
+def test_exit_separation_kills_the_diameter_spike():
+    """Hex-ring geometry puts a third of all tile pairs at exactly the
+    diameter, so without an upper bound a third of floors are a maximum-length
+    trek. That spike is what the bound is really for."""
+    diameter = 2 * cfg.floor_ruleset["radius"]
+    assert max(_separations()) < diameter
+
+
+def test_generated_floor_matches_the_separation_rule():
+    """One end-to-end floor, to pin that generate_floor actually applies the
+    rule rather than the helper agreeing with itself."""
+    lo, hi = exit_separation_bounds(cfg.floor_ruleset)
+    layout = _gen(5)
+    assert lo <= hex_distance(layout.up_exit, layout.down_exit) <= hi
+
+
+def test_unsatisfiable_exit_separation_is_rejected_at_load(tmp_path):
+    import json
+    import shutil
+    from gep.config_loader import ConfigError
+
+    shutil.copytree(CONFIG_DIR, tmp_path / "config")
+    path = tmp_path / "config" / "floor_ruleset.json"
+    rs = json.loads(path.read_text())
+    rs["exit_separation"]["min_moves"] = 999
+    path.write_text(json.dumps(rs))
+
+    try:
+        ConfigStore(tmp_path / "config")
+    except ConfigError as e:
+        assert "exit_separation" in str(e)
+    else:
+        raise AssertionError("an unsatisfiable window loaded without complaint")
 
 
 def test_exits_carry_reserved_tile_types():

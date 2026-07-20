@@ -32,7 +32,8 @@ shipped silently.
 """
 from dataclasses import dataclass, field
 
-from gep.hexgrid import ring_tiles, tiles_in_radius
+from gep.constraints import GenerationError
+from gep.hexgrid import hex_distance, ring_tiles, tiles_in_radius
 from gep.pipeline import GenContext, run_pipeline
 from gep.prefabs import PlacedPrefab
 from gep.prng import Mulberry32, seed_from_floor
@@ -134,12 +135,64 @@ def resolve_archetype(floor_number: int, archetypes: dict) -> tuple[str, dict]:
     return name, params
 
 
-def _place_exits(floor_rng: Mulberry32, radius: int, floor_number: int) -> tuple[Tile, Tile | None]:
+def exit_separation_bounds(ruleset: dict) -> tuple[int, int]:
+    """The legal move-distance window between a floor's entrance and its exit.
+
+    `min_moves` is absolute because it expresses a gameplay floor -- a floor
+    should never be crossable in a handful of steps regardless of how big the
+    map is. The maximum is a fraction of the diameter because it expresses a
+    proportion of the map, and should track the radius if that is retuned.
+
+    An absent rule means "unconstrained", which is the one place this module
+    tolerates a missing key. That is not the usual silent-default drift the
+    other generation params guard against: ConfigStore._validate_floor_ruleset
+    makes the block *mandatory* in shipping config and proves the window is
+    satisfiable at startup, which is strictly stronger than failing on
+    whichever floor first drew a bad pair. The tolerance exists so the
+    hand-built radius-8 rulesets in the combat and movement tests -- which have
+    no opinion about exits and could not satisfy a 24-move minimum anyway --
+    do not have to carry a field they never read.
+    """
+    sep = ruleset.get("exit_separation")
+    diameter = 2 * ruleset["radius"]
+    if not sep:
+        return 0, diameter
+    return sep["min_moves"], int(sep["max_diameter_pct"] * diameter)
+
+
+def _place_exits(floor_rng: Mulberry32, radius: int, floor_number: int,
+                 ruleset: dict) -> tuple[Tile, Tile | None]:
+    """Pick the two exit tiles on the outer ring, honouring the separation rule.
+
+    Candidates are *filtered* rather than resampled until one fits: rejection
+    sampling would consume a variable number of PRNG draws and make the tile
+    choice depend on how many rolls were discarded. Filtering keeps the draw
+    count fixed at one per exit, so the same seed yields the same floor even if
+    the bounds are later retuned to admit more or fewer candidates.
+
+    Worth knowing about the geometry: on a hex ring, a third of all tile pairs
+    sit at *exactly* the diameter, because every tile on a flat edge is
+    diametrically opposite one on the far edge. Without an upper bound, a third
+    of floors are a maximum-length trek. That spike is what the bound is really
+    for -- it is not a rounding guard.
+    """
+    min_moves, max_moves = exit_separation_bounds(ruleset)
     ring_pool = ring_tiles(radius, radius)
     up_exit = ring_pool.pop(_floor_index(floor_rng, len(ring_pool)))
-    down_exit = None
-    if floor_number > 1:
-        down_exit = ring_pool.pop(_floor_index(floor_rng, len(ring_pool)))
+    if floor_number == 1:
+        # No down exit: the entrance is the centre, so the separation is fixed
+        # at exactly the radius. Nothing to choose, but it still has to be
+        # legal -- validated at config load, not silently accepted here.
+        return up_exit, None
+
+    legal = [t for t in ring_pool if min_moves <= hex_distance(up_exit, t) <= max_moves]
+    if not legal:
+        raise GenerationError(
+            f"floor {floor_number}: no tile on the outer ring is between "
+            f"{min_moves} and {max_moves} moves from the up exit {up_exit}. "
+            f"Widen exit_separation in floor_ruleset.json."
+        )
+    down_exit = legal[_floor_index(floor_rng, len(legal))]
     return up_exit, down_exit
 
 
@@ -157,7 +210,7 @@ def generate_floor(
 
     radius = ruleset["radius"]
     all_tiles = tiles_in_radius(radius)
-    up_exit, down_exit = _place_exits(floor_rng, radius, floor_number)
+    up_exit, down_exit = _place_exits(floor_rng, radius, floor_number, ruleset)
 
     # The exits are not just coordinates the client happens to colour in: they
     # are tiles with an identity, assigned here at the moment they are chosen

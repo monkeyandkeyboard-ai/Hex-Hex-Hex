@@ -207,6 +207,45 @@ loot table used by monsters that spawn inside `monster_rarity_radius`. Rarity
 is expressed as *which table*, not as a numeric multiplier, because tier ranges
 live in `loot/tables.json` and are selected by profile id.
 
+## Exit separation
+
+`floor_ruleset.json` constrains how far a floor's entrance is from its exit:
+
+```json
+"exit_separation": {
+  "min_moves": 6,
+  "max_diameter_pct": 0.80
+}
+```
+
+`min_moves` is absolute — a floor should never be crossable in a couple of
+steps regardless of map size. The maximum is a fraction of the diameter, so it
+tracks the radius if that is retuned.
+
+**The upper bound is the load-bearing one, for a non-obvious reason.** On a hex
+ring, every tile on a flat edge is diametrically opposite one on the far edge,
+so roughly **a third of all tile pairs sit at exactly the diameter**. Left
+unconstrained, a third of floors are a maximum-length trek and 42% are within
+10% of it. That spike — not a gentle skew — is what `max_diameter_pct` exists
+to clip. At radius 64 with the values above, separations run 8–102 moves with a
+median near 56.
+
+Exit placement **filters** candidates rather than resampling until one fits.
+Rejection sampling would consume a variable number of PRNG draws, so the chosen
+tile would depend on how many rolls were discarded — retuning the bounds would
+silently reshuffle every existing floor. Filtering keeps it at one draw per
+exit, so seeds stay stable across a retune.
+
+Validated at startup, including one case that would otherwise surface late:
+**floor 1's separation is fixed at exactly the radius**, because its entrance is
+the centre and cannot be re-rolled. A `min_moves` above the radius makes the
+whole tower unsatisfiable, and that fails on boot rather than mid-game.
+
+An absent `exit_separation` block means unconstrained. That tolerance exists
+only for the hand-built radius-6-8 rulesets in the combat and movement tests,
+which have no opinion about exits; `ConfigStore` makes the block mandatory in
+shipping config.
+
 ## Reserved tile types
 
 A tile's **biome** says what it is made of; every tile has one. A **reserved

@@ -357,6 +357,51 @@ def floor_snapshot(
     }
 
 
+def build_broadcasts(results, floors, player_floor, connected, cfg) -> list[tuple[list[str], dict]]:
+    """Turn one tick's per-floor results into (recipients, payload) pairs.
+
+    Pulled out of run_server's loop and kept free of sockets and awaits so the
+    routing can be tested without a live server -- the bug this shape prevents
+    was unreachable from any test while it lived inline.
+
+    `results` is keyed by the floors that were actually stepped, and this
+    iterates *that*, not `floors`. Taking the stairs builds the destination
+    floor during the step, so by broadcast time `floors` can hold a floor with
+    no tick result; indexing `results` by it raised KeyError and killed the
+    server loop. The arriving player loses nothing -- change_floor put them in
+    pending_snapshots and they get a full snapshot, which says strictly more
+    than a tick result. Their new floor broadcasts normally from the next tick.
+    """
+    out: list[tuple[list[str], dict]] = []
+    for fl_num, result in results.items():
+        floor_state, _ = floors[fl_num]
+        recipients = [pid for pid in connected if player_floor.get(pid) == fl_num]
+        if not recipients:
+            continue
+        # Systems that emit inventory/equipment only know item ids; resolve
+        # them into client-facing form once here rather than teaching every
+        # system about the item registry and resources.
+        result.events = [resolve_event_items(e, cfg.items, cfg.resources) for e in result.events]
+        for pid in recipients:
+            p = floor_state.players.get(pid)
+            if p:
+                result.events.append({
+                    "type": "player_update",
+                    "player_id": pid,
+                    "hp": p.hp,
+                    "max_hp": p.max_hp,
+                    "skills": _skills_payload(p, cfg.xp_table),
+                    "inventory": resolve_inventory(p.inventory_snapshot(), cfg.items, cfg.resources),
+                    "equipment": resolve_equipment(p.equipment.to_dict(), cfg.items, cfg.resources),
+                })
+        out.append((recipients, {
+            "tick": result.tick,
+            "tick_duration": result.tick_duration,
+            "events": result.events,
+        }))
+    return out
+
+
 async def run_server():
     cfg = ConfigStore(CONFIG_DIR)
 
@@ -545,32 +590,11 @@ async def run_server():
                 pending_snapshots.clear()
 
             # Broadcast each floor's tick result to the players standing on it.
-            for fl_num, (floor_state, floor_engine) in list(floors.items()):
-                recipients = [pid for pid, ws in connections.items() if player_floor.get(pid) == fl_num]
-                if not recipients:
-                    continue
-                result = results[fl_num]
-                # Systems that emit inventory/equipment only know item ids;
-                # resolve them into client-facing form once here rather than
-                # teaching every system about the item registry and resources.
-                result.events = [resolve_event_items(e, cfg.items, cfg.resources) for e in result.events]
-                for pid in recipients:
-                    p = floor_state.players.get(pid)
-                    if p:
-                        result.events.append({
-                            "type": "player_update",
-                            "player_id": pid,
-                            "hp": p.hp,
-                            "max_hp": p.max_hp,
-                            "skills": _skills_payload(p, cfg.xp_table),
-                            "inventory": resolve_inventory(p.inventory_snapshot(), cfg.items, cfg.resources),
-                            "equipment": resolve_equipment(p.equipment.to_dict(), cfg.items, cfg.resources),
-                        })
-                broadcast = json.dumps({
-                    "tick": result.tick,
-                    "tick_duration": result.tick_duration,
-                    "events": result.events,
-                })
+            # Routing is build_broadcasts' job; this only sends.
+            for recipients, payload in build_broadcasts(
+                results, floors, player_floor, connections.keys(), cfg
+            ):
+                broadcast = json.dumps(payload)
                 await asyncio.gather(
                     *(connections[pid].send(broadcast) for pid in recipients),
                     return_exceptions=True,

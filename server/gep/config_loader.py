@@ -467,6 +467,7 @@ class ConfigStore:
         self._validate_archetypes()
         self._validate_loot_tables()
         self._validate_spawn_ruleset()
+        self._validate_floor_ruleset()
 
     def _resolve_default_equipment_state(self) -> str:
         """The equipment id a player holds when main_hand is empty.
@@ -484,6 +485,50 @@ class ConfigStore:
                 f"world.json: default_equipment_state {state!r} is not in config/weapons/"
             )
         return state
+
+    def _validate_floor_ruleset(self) -> None:
+        """The exit separation window must be satisfiable for every floor.
+
+        Checked here rather than in the generator because an unsatisfiable
+        window does not fail on floor 1 -- it fails on whichever floor first
+        happens to draw an up exit with no legal partner, which could be floor
+        200 in front of a player. A startup error is the whole point.
+        """
+        rs = self.floor_ruleset
+        radius = rs.get("radius")
+        if not isinstance(radius, int) or radius < 1:
+            raise ConfigError("floor_ruleset.json: 'radius' must be an integer >= 1")
+
+        sep = rs.get("exit_separation")
+        if not isinstance(sep, dict):
+            raise ConfigError("floor_ruleset.json: 'exit_separation' is required")
+        for key in ("min_moves", "max_diameter_pct"):
+            if key not in sep:
+                raise ConfigError(f"floor_ruleset.json: exit_separation.{key!r} is required")
+
+        min_moves = sep["min_moves"]
+        pct = sep["max_diameter_pct"]
+        if not isinstance(min_moves, int) or min_moves < 1:
+            raise ConfigError("floor_ruleset.json: exit_separation.min_moves must be an integer >= 1")
+        if not isinstance(pct, (int, float)) or not 0 < pct <= 1:
+            raise ConfigError(
+                "floor_ruleset.json: exit_separation.max_diameter_pct must be in (0, 1]"
+            )
+
+        max_moves = int(pct * 2 * radius)
+        if min_moves > max_moves:
+            raise ConfigError(
+                f"floor_ruleset.json: exit_separation is empty -- min_moves {min_moves} "
+                f"exceeds max_diameter_pct {pct} of diameter {2 * radius} (= {max_moves})"
+            )
+        # Floor 1's entrance is the centre, so its separation is fixed at
+        # exactly the radius and cannot be re-rolled to satisfy the window.
+        if not min_moves <= radius <= max_moves:
+            raise ConfigError(
+                f"floor_ruleset.json: floor 1's entrance is the centre, so its exit "
+                f"separation is always the radius ({radius}), which falls outside "
+                f"the configured window [{min_moves}, {max_moves}]"
+            )
 
     def _validate_item_generation(self) -> None:
         """Every tier must declare a slot count, and no tier may exceed the
