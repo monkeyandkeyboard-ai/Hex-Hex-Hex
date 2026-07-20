@@ -109,6 +109,37 @@
     #login-buttons button:hover { border-color: #7ec8e3; color: #7ec8e3; }
     #login-error { color: #e07070; font-size: 11px; min-height: 14px; text-align: center; }
 
+    /* Skill tree modal */
+    #skilltree-overlay {
+      position: fixed; inset: 0; background: rgba(13, 13, 15, 0.88);
+      display: none; align-items: center; justify-content: center; z-index: 150;
+    }
+    #skilltree-modal {
+      background: #161618; border: 1px solid #2a2a2e; border-radius: 6px;
+      padding: 14px 18px 18px; width: 460px; position: relative;
+    }
+    #skilltree-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 2px; }
+    #skilltree-title { font-size: 14px; color: #7ec8e3; letter-spacing: 1px; text-transform: capitalize; }
+    #skilltree-budget { font-size: 11px; color: #888; margin-bottom: 8px; }
+    #skilltree-close {
+      position: absolute; top: 8px; right: 10px; background: none; border: none;
+      color: #777; font-family: monospace; font-size: 16px; cursor: pointer;
+    }
+    #skilltree-close:hover { color: #e07070; }
+    #skilltree-grid svg { display: block; width: 100%; height: auto; }
+    #skilltree-grid .hex polygon {
+      fill: #1e1e22; stroke: #2a2a2e; stroke-width: 2; transition: fill 0.15s;
+    }
+    #skilltree-grid .hex text { fill: #444; font-family: monospace; font-size: 11px; }
+    #skilltree-grid .hex.allocated polygon { fill: #2b4a5c; stroke: #3d7ea6; }
+    #skilltree-grid .hex.allocated text { fill: #cfe8f3; }
+    #skilltree-grid .hex.head polygon { fill: #3d7ea6; stroke: #7ec8e3; stroke-width: 3; }
+    #skilltree-grid .hex.head text { fill: #fff; }
+    #skilltree-grid .hex.valid polygon { fill: #24302a; stroke: #4e7a52; cursor: pointer; }
+    #skilltree-grid .hex.valid:hover polygon { fill: #335c3a; stroke: #7ed87e; }
+    .skill-row { cursor: pointer; }
+    .skill-row:hover .skill-name { color: #7ec8e3; }
+
     /* Item tooltip */
     #item-tooltip {
       position: fixed; z-index: 200; display: none; pointer-events: none;
@@ -159,6 +190,15 @@
 </div>
 
 <div id="item-tooltip"></div>
+
+<div id="skilltree-overlay">
+  <div id="skilltree-modal">
+    <button id="skilltree-close" type="button" aria-label="Close">✕</button>
+    <div id="skilltree-head"><span id="skilltree-title">Skill</span></div>
+    <div id="skilltree-budget"></div>
+    <div id="skilltree-grid"></div>
+  </div>
+</div>
 
 <div id="login-overlay">
   <form id="login-form">

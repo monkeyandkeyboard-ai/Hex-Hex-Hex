@@ -3,6 +3,7 @@
 // (28-slot grid, click to equip), Equipment (10 slots, click to unequip).
 
 import { state } from "./state.js";
+import { initSkillTree, openSkillTree, refreshSkillTree } from "./skilltree.js";
 
 // Slot ids match the server's EQUIPMENT_SLOTS (gep/entities.py), which in
 // turn match the `equipment_slot` field on every item base. One vocabulary
@@ -50,6 +51,12 @@ export function initHud() {
       }
     });
   }
+
+  initSkillTree();
+  skillsPane.addEventListener("click", (e) => {
+    const row = e.target.closest(".skill-row");
+    if (row) openSkillTree(row.dataset.skill);
+  });
 
   inventoryPane.addEventListener("click", (e) => {
     const cell = e.target.closest(".inv-slot");
@@ -168,6 +175,8 @@ function renderSkills() {
   const sig = JSON.stringify(entries);
   if (sig === lastSkillsSig) return;
   lastSkillsSig = sig;
+  // A level-up changes the tree's point budget, so an open tree must redraw.
+  refreshSkillTree();
 
   skillsPane.innerHTML = entries.map(([name, s]) => {
     // s = {level, xp, xp_next}; tolerate old plain-number form
@@ -175,7 +184,7 @@ function renderSkills() {
     const xp = typeof s === "object" ? s.xp : 0;
     const xpNext = typeof s === "object" ? s.xp_next : 0;
     const pct = xpNext > 0 ? Math.min(100, (xp / xpNext) * 100) : 0;
-    return `<div class="skill-row">
+    return `<div class="skill-row" data-skill="${name}">
       <div class="skill-head">
         <span class="skill-name">${name.replace(/_/g, " ")}</span>
         <span class="skill-lvl">${level}</span>
