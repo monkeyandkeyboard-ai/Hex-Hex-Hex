@@ -504,6 +504,12 @@ class ConfigStore:
         if not isinstance(radius, int) or radius < 1:
             raise ConfigError("floor_ruleset.json: 'radius' must be an integer >= 1")
 
+        islands = rs.get("min_island_tiles")
+        if not isinstance(islands, int) or isinstance(islands, bool) or islands < 1:
+            raise ConfigError(
+                "floor_ruleset.json: 'min_island_tiles' must be an integer >= 1"
+            )
+
         sep = rs.get("exit_separation")
         if not isinstance(sep, dict):
             raise ConfigError("floor_ruleset.json: 'exit_separation' is required")
@@ -793,6 +799,28 @@ class ConfigStore:
                 if extremity.get(key) is None:
                     raise ConfigError(f"archetype {name}: 'layout.extremity.{key}' is required")
 
+        # Same rule as elevation/roughness: every number a feature reads is
+        # declared, so a floor is never generated from a value nobody chose.
+        for block, keys in (
+            ("rivers", ("biome", "count", "meander", "width_chance")),
+            ("chambers", ("wall_biome", "room_count", "room_radius_min",
+                          "room_radius_max", "min_spacing", "inset_pct")),
+        ):
+            cfg = params.get(block)
+            if cfg is None:
+                continue
+            for key in keys:
+                if cfg.get(key) is None:
+                    raise ConfigError(f"archetype {name}: '{block}.{key}' is required")
+        rivers = params.get("rivers")
+        if rivers and rivers["count"] < 1:
+            raise ConfigError(f"archetype {name}: 'rivers.count' must be >= 1")
+        chambers = params.get("chambers")
+        if chambers and chambers["room_radius_min"] > chambers["room_radius_max"]:
+            raise ConfigError(
+                f"archetype {name}: 'chambers.room_radius_min' exceeds 'room_radius_max'"
+            )
+
     @staticmethod
     def _validate_pipeline(name: str, params: dict) -> None:
         """An archetype's generation stack must name real, runnable stages.
@@ -819,6 +847,24 @@ class ConfigStore:
                 raise ConfigError(f"archetype {name}: unknown pipeline stage {stage_id!r}")
         if len(set(stages)) != len(stages):
             raise ConfigError(f"archetype {name}: 'pipeline' lists a stage more than once")
+
+        # Feature stages overwrite what macro_layout wrote, so scheduling one
+        # before it means the layout silently erases the feature. That failure
+        # produces a floor with no river and no error, which is the worst shape
+        # a config mistake can take.
+        for feature in ("rivers", "chambers"):
+            if feature in stages:
+                if "macro_layout" not in stages:
+                    raise ConfigError(
+                        f"archetype {name}: stage {feature!r} overwrites the macro "
+                        f"layout, so 'macro_layout' must also be in 'pipeline'"
+                    )
+                if stages.index(feature) < stages.index("macro_layout"):
+                    raise ConfigError(
+                        f"archetype {name}: stage {feature!r} must come after "
+                        f"'macro_layout' -- it overwrites what the layout wrote, so "
+                        f"running it first would leave no trace of the feature"
+                    )
         if params.get("prefabs") and "prefabs" not in stages:
             raise ConfigError(
                 f"archetype {name}: declares prefabs but its pipeline omits the 'prefabs' stage"
@@ -842,4 +888,10 @@ class ConfigStore:
             refs += pair
         if params.get("fallback_biome"):
             refs.append(params["fallback_biome"])
+        # Feature stages name biomes outside the layout block; without these a
+        # typo'd river biome would only surface as a KeyError mid-generation.
+        if params.get("rivers"):
+            refs.append(params["rivers"]["biome"])
+        if params.get("chambers"):
+            refs.append(params["chambers"]["wall_biome"])
         return refs

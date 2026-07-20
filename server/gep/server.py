@@ -303,11 +303,13 @@ def floor_snapshot(
         "elevation": pack_unit_field(layout.elevation, layout.tiles),
         "roughness": pack_unit_field(layout.roughness, layout.tiles),
         "roads": [list(t) for t in layout.roads],
-        # Terrain the player cannot enter, and the tiles carved through it so
-        # the exits stay reachable (gep/passability.py). Movement is validated
-        # server-side regardless; these ship so the client can stop drawing a
-        # move preview into a cliff, and so a crossing can render as a bridge.
-        "blocked": [list(t) for t in layout.blocked],
+        # Crossings only (gep/passability.py). The blocked set is deliberately
+        # NOT shipped: the client already has biome_map and the biome table, and
+        # `passable` below makes every blocked tile derivable from those. Sending
+        # it as coordinates cost 100KB on a chamber floor, where 84% of tiles are
+        # barrier -- "sparse" stopped being true the moment barriers got big.
+        # Crossings stay because a carved ford is no longer water, so nothing in
+        # the biome data says where one is.
         "crossings": [list(t) for t in layout.crossings],
         # Reserved tile types (gep/tiles.py): sparse tile -> id. up_exit and
         # down_exit above are the same two tiles, kept because the exit intent
@@ -324,6 +326,12 @@ def floor_snapshot(
             bid: {
                 "display_name": b["display_name"],
                 "hsl": b.get("hsl", {"h": 0, "s": 0, "l": 20}),
+                # One bool per biome replaces a per-tile blocked array: the
+                # client crosses this with biome_map to know which tiles it
+                # must not path into. Movement remains server-authoritative --
+                # this is so the client can decline to draw a move preview
+                # into a cliff, not so it can decide the move itself.
+                "passable": b["passable"],
                 # Optional: how the client textures this biome's tiles. Purely
                 # presentational, and optional on purpose -- a biome without
                 # it still renders, just flat. Shipped rather than hardcoded

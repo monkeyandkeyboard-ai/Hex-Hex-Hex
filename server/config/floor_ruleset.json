@@ -4,5 +4,7 @@
   "exit_separation": {
     "min_moves": 6,
     "max_diameter_pct": 0.80
-  }
+  },
+
+  "min_island_tiles": 40
 }

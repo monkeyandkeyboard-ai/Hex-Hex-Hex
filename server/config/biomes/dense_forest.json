@@ -1,0 +1,21 @@
+{
+  "id": "dense_forest",
+  "display_name": "Dense Thicket",
+  "color": "#1d3320",
+  "passable": false,
+  "resource_spawn_chance": 0.0,
+  "resource_weights": [],
+  "monster_weight": 0.0,
+  "monster_weights": [],
+  "hsl": {
+    "h": 128,
+    "s": 27,
+    "l": 16
+  },
+  "texture": {
+    "style": "speckle",
+    "density": 0.85,
+    "contrast": 0.11,
+    "grain": 2.4
+  }
+}

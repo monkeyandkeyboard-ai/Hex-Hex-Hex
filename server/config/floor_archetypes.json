@@ -2,6 +2,8 @@
   "default_archetype": "rocky_depths",
   "overrides": [
     { "floor_multiple_of": 25, "archetype": "town_hub" },
+    { "floor_multiple_of": 11, "archetype": "flooded_ruins" },
+    { "floor_multiple_of": 9, "archetype": "mountain_pass" },
     { "floor_multiple_of": 7, "archetype": "fungal_cavern" }
   ],
   "archetypes": {
@@ -67,6 +69,68 @@
       },
       "elevation": { "octaves": 4, "scale": 0.05, "flatten": [] },
       "roughness": { "octaves": 4, "scale": 0.25 }
+    },
+
+    "flooded_ruins": {
+      "display_name": "Flooded Ruins",
+      "safe": false,
+      "fallback_biome": "rocky",
+      "prefabs": ["monster_encampment"],
+      "pipeline": [
+        "noise_fields",
+        "macro_layout",
+        "chambers",
+        "rivers",
+        "flatten_elevation",
+        "prefabs"
+      ],
+      "layout": {
+        "mode": "cluster",
+        "region_count": 5,
+        "biome_weights": [["rocky", 3], ["fungal", 2]]
+      },
+      "chambers": {
+        "wall_biome": "mountain",
+        "room_count": 14,
+        "room_radius_min": 3,
+        "room_radius_max": 7,
+        "min_spacing": 9,
+        "inset_pct": 0.12
+      },
+      "rivers": {
+        "biome": "water",
+        "count": 3,
+        "meander": 0.35,
+        "width_chance": 0.45
+      },
+      "elevation": { "octaves": 4, "scale": 0.05, "flatten": [] },
+      "roughness": { "octaves": 4, "scale": 0.24 }
+    },
+
+    "mountain_pass": {
+      "display_name": "Mountain Pass",
+      "safe": false,
+      "fallback_biome": "rocky",
+      "prefabs": ["monster_encampment"],
+      "pipeline": [
+        "noise_fields",
+        "macro_layout",
+        "template_constraints",
+        "flatten_elevation",
+        "biome_adjacency",
+        "prefabs"
+      ],
+      "layout": {
+        "mode": "elevation",
+        "strata": [
+          { "below": 0.30, "biome": "dense_forest" },
+          { "below": 0.44, "biome": "fungal" },
+          { "below": 0.68, "biome": "rocky" },
+          { "below": 1.01, "biome": "mountain" }
+        ]
+      },
+      "elevation": { "octaves": 5, "scale": 0.035, "flatten": [] },
+      "roughness": { "octaves": 4, "scale": 0.22 }
     },
 
     "rocky_depths": {

@@ -30,11 +30,13 @@ from typing import Callable
 
 from gep.biome_layout import apply_constraints, build_macro_layout, flatten_elevation
 from gep.constraints import enforce_biome_adjacency, validate_connectivity
+from gep.features import carve_chambers, carve_rivers
 from gep.noise import build_field, normalise
 from gep.passability import (
     blocked_tiles,
     carve_crossings,
     clear_structural_tiles,
+    reconnect_islands,
     terrain_predicate,
 )
 from gep.prefabs import PlacedPrefab, place_prefabs
@@ -71,6 +73,11 @@ class GenContext:
     params: dict                      # the archetype's config block
     prefab_defs: dict | None = None
     biome_defs: dict | None = None
+    # Smallest cut-off pocket of walkable ground still worth bridging to.
+    # Floor-ruleset config rather than per-archetype: where scenery ends and a
+    # stranded wing of the map begins is a property of how the game plays, not
+    # of what a given floor is made of.
+    min_island_tiles: int = 0
 
     # --- written by stages ---
     elevation: dict[Tile, float] = field(default_factory=dict)
@@ -88,6 +95,11 @@ class GenContext:
     # bridges and fords: a crossing is the tile where the barrier was opened,
     # not decoration laid over one.
     crossings: set[Tile] = field(default_factory=set)
+    # Tiles each feature stage claimed. Kept for the client and for tests --
+    # once biome_adjacency or the structural clear has run over them, the
+    # region field alone can no longer say which tiles were river.
+    rivers: set[Tile] = field(default_factory=set)
+    chambers: set[Tile] = field(default_factory=set)
 
     def spawn_point(self) -> Tile:
         return self.down_exit if self.down_exit is not None else (0, 0)
@@ -165,6 +177,35 @@ def stage_biome_adjacency(ctx: GenContext) -> None:
     )
 
 
+def stage_rivers(ctx: GenContext) -> None:
+    """Draw rivers over the macro layout.
+
+    Must follow `macro_layout` (it overwrites what that wrote) and must precede
+    the terminal pair, which run_pipeline guarantees. A river bisecting the
+    floor is expected and is not this stage's problem to solve: the crossing
+    carver runs between here and `connectivity` and opens fords wherever the
+    river actually blocks a route. Rivers reasoning about their own crossings
+    would duplicate that guarantee and could disagree with it.
+    """
+    cfg = ctx.params.get("rivers")
+    if not cfg:
+        return
+    ctx.rivers = carve_rivers(
+        ctx.floor_seed, ctx.regions, ctx.tiles, ctx.tile_set, ctx.radius, cfg
+    )
+
+
+def stage_chambers(ctx: GenContext) -> None:
+    """Reduce the floor to rooms joined by corridors, walling off the rest."""
+    cfg = ctx.params.get("chambers")
+    if not cfg:
+        return
+    ctx.chambers = carve_chambers(
+        ctx.floor_seed, ctx.regions, ctx.tiles, ctx.tile_set, ctx.radius,
+        ctx.structural_tiles(), cfg,
+    )
+
+
 def stage_prefabs(ctx: GenContext) -> None:
     """Stamp fixed-footprint structures onto the finished terrain.
 
@@ -206,6 +247,8 @@ STAGE_REGISTRY = {
     "template_constraints": stage_template_constraints,
     "flatten_elevation": stage_flatten_elevation,
     "biome_adjacency": stage_biome_adjacency,
+    "chambers": stage_chambers,
+    "rivers": stage_rivers,
     "prefabs": stage_prefabs,
     "roads": stage_roads,
     "connectivity": stage_connectivity,
@@ -241,9 +284,18 @@ def run_pipeline(ctx: GenContext, stage_ids: list[str]) -> None:
     # This runs before `roads` so the road spine can use the crossings, and
     # before `connectivity` so that check validates the carved result rather
     # than the raw terrain.
+    fallback = ctx.params.get("fallback_biome")
     ctx.crossings = carve_crossings(
         ctx.regions, ctx.blocked, ctx.tile_set,
-        ctx.spawn_point(), ctx.exits(), ctx.params.get("fallback_biome"),
+        ctx.spawn_point(), ctx.exits(), fallback,
+    )
+    # Reaching the exits is not the same as the floor being playable. A river
+    # across a chamber floor can leave most of the rooms visible and
+    # unreachable while every exit stays connected, so sizeable stranded
+    # pockets get a crossing too.
+    ctx.crossings |= reconnect_islands(
+        ctx.regions, ctx.blocked, ctx.tile_set, ctx.spawn_point(), fallback,
+        ctx.min_island_tiles,
     )
 
     for stage_id in TERMINAL_STAGES:

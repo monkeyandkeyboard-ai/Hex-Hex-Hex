@@ -26,7 +26,8 @@ to be standing somewhere is still a correctly generated floor.
 """
 from typing import Callable
 
-from gep.pathfinding import find_path
+from gep.hexgrid import hex_distance
+from gep.pathfinding import find_path, hex_neighbors
 
 Tile = tuple[int, int]
 
@@ -151,6 +152,105 @@ def carve_crossings(
                 regions[tile] = fallback_biome
                 carved.add(tile)
     return carved
+
+
+def open_components(
+    tile_set: set[Tile],
+    blocked: set[Tile],
+) -> list[list[Tile]]:
+    """Connected groups of walkable tiles, largest first.
+
+    Flood filled in canonical tile order and returned sorted by (size
+    descending, first tile) so the ordering is total and seed-independent --
+    two components of equal size must not swap places between runs.
+    """
+    open_tiles = [t for t in sorted(tile_set) if t not in blocked]
+    remaining = set(open_tiles)
+    out: list[list[Tile]] = []
+    for tile in open_tiles:
+        if tile not in remaining:
+            continue
+        group, stack = [], [tile]
+        remaining.discard(tile)
+        while stack:
+            current = stack.pop()
+            group.append(current)
+            for n in hex_neighbors(*current):
+                if n in remaining:
+                    remaining.discard(n)
+                    stack.append(n)
+        out.append(sorted(group))
+    out.sort(key=lambda g: (-len(g), g[0]))
+    return out
+
+
+def reconnect_islands(
+    regions: dict[Tile, str],
+    blocked: set[Tile],
+    tile_set: set[Tile],
+    spawn_point: Tile,
+    fallback_biome: str | None,
+    min_island_tiles: int,
+) -> set[Tile]:
+    """Open a crossing to every sizeable pocket of walkable ground cut off from
+    the main body of the floor.
+
+    Reaching the exits is not the same as the floor being playable. Measured on
+    the flooded ruins archetype before this existed: rivers drawn across a
+    chamber floor left 40-80% of the carved rooms unreachable -- rooms the
+    player can see across the water and never enter. Every exit was reachable
+    the whole time, so the exit-level guarantee reported success.
+
+    Deliberately *not* "reconnect everything". A three-tile ledge behind a
+    waterfall is scenery and walling it off is fine; the map does not have to
+    be exhaustively traversable, and forcing that would dissolve the barriers
+    into decoration. `min_island_tiles` is where scenery ends and a stranded
+    wing of the dungeon begins, and it is config, not a constant here, because
+    that line is a pacing judgement.
+
+    Islands are processed largest first, and the reachable set is recomputed
+    after each carve, so opening a route to a big pocket that happens to also
+    touch a small one does not then carve a second redundant crossing.
+    """
+    if not blocked or not fallback_biome or min_island_tiles <= 0:
+        return set()
+
+    carved: set[Tile] = set()
+    while True:
+        components = open_components(tile_set, blocked)
+        main = next((c for c in components if spawn_point in set(c)), None)
+        if main is None:
+            return carved
+        main_set = set(main)
+
+        island = next(
+            (c for c in components
+             if c[0] not in main_set and len(c) >= min_island_tiles),
+            None,
+        )
+        if island is None:
+            return carved
+
+        # Bridge from the island tile closest to the main body, so the crossing
+        # is the short span it would be in reality rather than a tunnel from
+        # wherever the flood fill happened to start.
+        source = min(island, key=lambda t: (min(hex_distance(t, m) for m in main), t))
+        target = min(main, key=lambda m: (hex_distance(source, m), m))
+        route = find_path(source, target, lambda t: t in tile_set)
+        if route is None:
+            return carved
+
+        opened = False
+        for tile in route:
+            if tile in blocked:
+                blocked.discard(tile)
+                regions[tile] = fallback_biome
+                carved.add(tile)
+                opened = True
+        if not opened:
+            # Nothing left to open on the shortest span; further passes would
+            # loop on the same island forever.
+            return carved
 
 
 def terrain_predicate(

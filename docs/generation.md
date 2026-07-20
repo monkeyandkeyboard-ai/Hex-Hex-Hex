@@ -316,6 +316,80 @@ No PRNG is consumed by any of this — A* is deterministic and exits are
 processed in a fixed order — so the carved set is a pure function of the
 layout, and adding it could not shift any existing seed's terrain.
 
+## Features: rivers and chambers
+
+Rivers and chambers are **stages**, not layout modes. A layout mode answers
+"what biome is this tile" for each tile independently; a feature answers "where
+does this structure run", which is a path or a shape, and the covered tiles
+follow from that. Forcing rivers into `biome_layout.py` would mean a fourth
+mode that ignores the mode contract, and every later feature would add another.
+The three layout modes stay three.
+
+Both run **after `macro_layout`** and overwrite what it wrote. Enforced at load
+— a feature scheduled before the layout would be silently erased by it,
+producing a floor with no river and no error, which is the worst shape a config
+mistake can take.
+
+They also run **before** the passability/crossing pass, and that is the load-
+bearing part of the ordering. A river is *allowed* to bisect the floor. It does
+not reason about its own fords, because the crossing carver already guarantees
+crossings for every barrier — a river reimplementing that would duplicate the
+guarantee and could disagree with it.
+
+### Rivers
+
+A meandering walk, not A*: a shortest path is a straight line and a straight
+line is a canal. Each step weighs neighbours that close the distance to the
+mouth against those that hold it level, with `meander` setting how often the
+lateral option wins. Sources sit on the outer ring and mouths near the
+antipode, so a river spans the disc rather than nicking a corner. Widening is
+per-tile (`width_chance`), so the channel broadens and narrows along its length
+instead of being uniformly two across, and every widened tile touches the
+spine, which is what bounds it at 1–2 tiles.
+
+### Chambers
+
+A hex-room carver. Rooms are hex discs because the grid is hex — a rectangular
+room on a hex grid has ragged edges that read as noise rather than architecture.
+
+It inverts the usual approach: instead of carving rooms out of solid rock, it
+overwrites everything the rooms and corridors *don't* cover with the wall
+biome. So rooms keep whatever the macro layout decided, a chamber floor still
+varies by biome instead of being one flat colour, and the stage composes with
+all three layout modes rather than replacing them.
+
+Rooms anchor on the structural tiles first (both staircases and the centre) so
+a staircase always opens into a room rather than a corridor stub. Corridors
+join consecutive room centres in placement order, making the room graph a
+connected chain. The crossing carver would repair a disconnected one, but it
+would do it by tunnelling straight through walls, and a corridor that ignores
+the room layout looks exactly like the bug it isn't.
+
+### Islands, and why exit-reachability was not enough
+
+Measured on `flooded_ruins` when rivers first landed: rivers drawn across a
+chamber floor left **40–80% of the carved rooms unreachable** — rooms visible
+across the water and impossible to enter. Every exit was reachable throughout,
+so the exit-level guarantee reported success the whole time.
+
+So `reconnect_islands` bridges every cut-off pocket of walkable ground at or
+above `min_island_tiles` (floor-ruleset config, currently 40). Reachability on
+that archetype went from 18–60% to 93–99%.
+
+Bounded on purpose. A three-tile ledge behind a waterfall is scenery, and
+reconnecting *everything* would dissolve the barriers into decoration. Where
+scenery ends and a stranded wing of the dungeon begins is a pacing judgement,
+which is why it is config rather than a constant.
+
+### Wire format note
+
+The snapshot ships `passable` per biome, **not** a per-tile blocked array. The
+client already has `biome_map` and the biome table, so it derives the blocked
+set itself. Shipping coordinates cost 161KB on a chamber floor against 52KB
+derived — "sparse" stopped being true the moment barriers covered 84% of the
+map. Crossings *are* shipped, because a carved ford is no longer water and
+nothing in the biome data marks where one is.
+
 ## Reserved tile types
 
 A tile's **biome** says what it is made of; every tile has one. A **reserved
@@ -440,7 +514,8 @@ every recomposition of existing ones is free.
 | `gep/biome_layout.py` | The three layout modes and template constraint enforcement |
 | `gep/prefabs.py` | Generic constraint-scored prefab placement |
 | `gep/roads.py`, `gep/constraints.py` | Path carving and the navigability guarantee |
-| `gep/passability.py` | Which tiles terrain forbids, and the carved crossings that keep exits reachable |
+| `gep/passability.py` | Which tiles terrain forbids, the carved crossings, and island reconnection |
+| `gep/features.py` | River pathing and the hex-room chamber carver |
 | `gep/spawner.py` | Monsters and resources — reads the finished layout, own seed root |
 | `gep/tiles.py` | Reserved tile type ids (stairs) |
 | `gep/floor_manager.py` | Floor cache, and the two player movers (stairs vs absolute) |

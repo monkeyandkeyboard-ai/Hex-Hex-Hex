@@ -65,6 +65,11 @@ class FloorLayout:
     # fords. Kept distinct from plain walkable ground because they are the
     # tiles the client should draw a crossing on.
     crossings: set[Tile] = field(default_factory=set)
+    # Tiles claimed by each feature stage (gep/features.py). Retained because
+    # later passes rewrite regions -- a carved ford is no longer water, so the
+    # region field alone can't tell the client where the river ran.
+    rivers: set[Tile] = field(default_factory=set)
+    chambers: set[Tile] = field(default_factory=set)
     # Fixed-footprint structures stamped onto the floor (gep/prefabs.py);
     # empty on the legacy path and whenever the archetype names no prefabs.
     prefabs: list[PlacedPrefab] = field(default_factory=list)
@@ -84,11 +89,13 @@ class FloorLayout:
             "safe": self.safe,
             "regions": {f"{q},{r}": bid for (q, r), bid in self.regions.items()},
             "roads": [list(t) for t in sorted(self.roads)],
-            # Sparse like tile_types rather than a packed per-tile array: the
-            # client needs this to stop drawing a move preview through a cliff,
-            # and on most floors it is a small fraction of the tiles.
+            # Debug/test view only -- the live snapshot (gep/server.py) does not
+            # ship this. The client derives it from biome_map plus each biome's
+            # `passable` flag, which costs one bool per biome instead of up to
+            # 10k coordinate pairs on a chamber floor.
             "blocked": [list(t) for t in sorted(self.blocked)],
             "crossings": [list(t) for t in sorted(self.crossings)],
+            "rivers": [list(t) for t in sorted(self.rivers)],
             "tile_types": {f"{q},{r}": t for (q, r), t in self.tile_types.items()},
             "prefabs": [
                 {
@@ -255,7 +262,7 @@ def generate_floor(
     ctx = GenContext(
         floor_seed=floor_seed, radius=radius, tiles=all_tiles, tile_set=set(all_tiles),
         up_exit=up_exit, down_exit=down_exit, params=params, prefab_defs=prefabs,
-        biome_defs=biomes,
+        biome_defs=biomes, min_island_tiles=ruleset.get("min_island_tiles", 0),
     )
     run_pipeline(ctx, params["pipeline"])
 
@@ -264,5 +271,6 @@ def generate_floor(
         up_exit=up_exit, down_exit=down_exit,
         regions=ctx.regions, roads=ctx.roads, archetype=archetype_name, safe=safe,
         elevation=ctx.elevation, roughness=ctx.roughness, prefabs=ctx.prefabs,
-        blocked=ctx.blocked, crossings=ctx.crossings, tile_types=tile_types,
+        blocked=ctx.blocked, crossings=ctx.crossings,
+        rivers=ctx.rivers, chambers=ctx.chambers, tile_types=tile_types,
     )

@@ -1,0 +1,21 @@
+{
+  "id": "mountain",
+  "display_name": "Sheer Rock",
+  "color": "#4a453f",
+  "passable": false,
+  "resource_spawn_chance": 0.0,
+  "resource_weights": [],
+  "monster_weight": 0.0,
+  "monster_weights": [],
+  "hsl": {
+    "h": 35,
+    "s": 8,
+    "l": 29
+  },
+  "texture": {
+    "style": "speckle",
+    "density": 0.9,
+    "contrast": 0.14,
+    "grain": 1.1
+  }
+}
