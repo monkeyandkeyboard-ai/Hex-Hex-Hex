@@ -1,0 +1,21 @@
+{
+  "_comment": "Gatherable resource categories. A category binds a family of nodes to the one non-combat skill that harvests it, and carries the node's map colour so the client can tell an ore vein from a herb patch from a tree without shipping a per-resource palette. Every resource config names a category; the loader checks the resource's own 'skill' agrees with the category's, so a herb that awards mineralogy is a config error rather than a quiet oddity.",
+  "mineral": {
+    "display_name": "Mineral Deposit",
+    "skill": "mineralogy",
+    "node_color": "#3a2a10",
+    "dot_color": "#c8901a"
+  },
+  "herb": {
+    "display_name": "Herb Patch",
+    "skill": "foraging",
+    "node_color": "#16301c",
+    "dot_color": "#5fd97a"
+  },
+  "tree": {
+    "display_name": "Timber",
+    "skill": "aboriculture",
+    "node_color": "#2a1d10",
+    "dot_color": "#b0713a"
+  }
+}

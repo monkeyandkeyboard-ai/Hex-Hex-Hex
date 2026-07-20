@@ -1,0 +1,11 @@
+{
+  "id": "fungal_stalk",
+  "display_name": "Fungal Stalk",
+  "skill": "aboriculture",
+  "category": "tree",
+  "gather_ticks": 5,
+  "respawn_ticks": 35,
+  "xp": { "aboriculture": 9, "strength": 2 },
+  "yield": { "min": 2, "max": 4 },
+  "grade_weights": [["crude", 6], ["common", 3], ["fine", 1]]
+}

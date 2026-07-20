@@ -309,7 +309,7 @@ def test_the_client_can_derive_blocked_tiles_without_being_sent_them():
     cfg = ConfigStore(pathlib.Path(__file__).resolve().parents[1] / "config")
     state, _ = build_floor_state(11, cfg, lambda *a: None)
     snap = floor_snapshot(state, 0, 0.6, cfg.xp_table, cfg.biomes, cfg.items,
-                          cfg.resources)
+                          cfg.resources, cfg.resource_categories)
     assert "blocked" not in snap, "the per-tile array should not be on the wire"
 
     import base64
@@ -329,3 +329,80 @@ def test_impassable_biomes_declare_no_spawns():
         assert cfg.biomes[bid]["passable"] is False
         assert not cfg.biomes[bid]["monster_weights"]
         assert not cfg.biomes[bid]["resource_weights"]
+
+
+def _snapshot_for(floor_number):
+    import pathlib
+    from gep.server import build_floor_state, floor_snapshot
+    cfg = ConfigStore(pathlib.Path(__file__).resolve().parents[1] / "config")
+    state, _ = build_floor_state(floor_number, cfg, lambda *a: None)
+    return cfg, state, floor_snapshot(
+        state, 0, 0.6, cfg.xp_table, cfg.biomes, cfg.items,
+        cfg.resources, cfg.resource_categories,
+    )
+
+
+def test_monsters_ship_the_fields_a_nameplate_needs():
+    """The client draws a plate above each monster from the snapshot alone. It
+    holds no copy of the monster registry, so name and level have to be on the
+    instance -- joining them client-side against template_id would work today
+    and break the moment two instances of one template differ."""
+    cfg, state, snap = _snapshot_for(7)
+    assert snap["monsters"], "floor 7 should be populated"
+    for mid, m in snap["monsters"].items():
+        template = cfg.monsters[m["template_id"]]
+        assert m["display_name"] == template["display_name"]
+        assert m["level"] == template["level"]
+        # The health bar needs both ends of the ratio, not just current HP.
+        assert m["max_hp"] > 0
+        assert 0 <= m["hp"] <= m["max_hp"]
+
+
+def test_respawned_monsters_carry_nameplate_fields_too():
+    """A respawn is the one path that puts a monster on screen with no
+    snapshot behind it, so the event has to carry what the snapshot would."""
+    from gep.systems import combat_system
+    cfg, state, snap = _snapshot_for(7)
+    mid, monster = next(iter(state.monsters.items()))
+    template = cfg.monsters[monster.template_id]
+
+    captured = {}
+
+    class _Engine:
+        tick = 0
+        def register_intent_handler(self, name, fn): captured[name] = fn
+        def register_action_handler(self, name, fn): captured[name] = fn
+        def schedule(self, *a, **kw): pass
+
+    combat_system.register(
+        _Engine(), state,
+        weapons=cfg.weapons, monsters_cfg=cfg.monsters,
+        combat_constants=cfg.combat_constants, xp_rates=cfg.xp_rates,
+        xp_table=cfg.xp_table, stat_scaling=cfg.stat_scaling,
+        rewards=cfg.rewards, items=cfg.items,
+        weapon_classes=cfg.weapon_classes, power_scaling=cfg.power_scaling,
+    )
+    events = captured["respawn-monster"]({
+        "monster_id": mid, "template_id": monster.template_id,
+        "tile": list(monster.tile),
+    }, _Engine())
+
+    assert len(events) == 1
+    ev = events[0]
+    assert ev["display_name"] == template["display_name"]
+    assert ev["level"] == template["level"]
+    assert ev["hp"] == ev["max_hp"] > 0
+
+
+def test_the_snapshot_names_every_resource_family_on_the_floor():
+    """Node ids alone do not tell the client whether a node is ore, herb or
+    timber -- the legend is what lets it colour the three apart without
+    hardcoding a resource table."""
+    cfg, state, snap = _snapshot_for(7)
+    for rid in snap["resource_nodes"].values():
+        entry = snap["resources"][rid]
+        assert entry["category"] in snap["resource_categories"]
+    for cid, cat in snap["resource_categories"].items():
+        assert cat["node_color"].startswith("#")
+        assert cat["dot_color"].startswith("#")
+    assert not any(c.startswith("_") for c in snap["resource_categories"])

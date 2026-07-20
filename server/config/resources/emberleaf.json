@@ -1,0 +1,11 @@
+{
+  "id": "emberleaf",
+  "display_name": "Emberleaf",
+  "skill": "foraging",
+  "category": "herb",
+  "gather_ticks": 4,
+  "respawn_ticks": 45,
+  "xp": { "foraging": 13, "dexterity": 2 },
+  "yield": { "min": 1, "max": 2 },
+  "grade_weights": [["crude", 3], ["common", 4], ["fine", 2]]
+}

@@ -63,6 +63,26 @@ export function initRenderer(canvasEl) {
   canvas.addEventListener("mousemove", onMouseMove);
   canvas.addEventListener("mouseleave", () => { hoveredTile = null; });
   canvas.addEventListener("wheel", onWheel, { passive: false });
+  canvas.addEventListener("mousedown", onMouseDown);
+  // Chrome/Windows opens its autoscroll widget on middle mousedown. The
+  // mousedown preventDefault below stops it, but the browser also fires
+  // `auxclick` on release, and a stray one over the canvas is a click the
+  // rest of the app has no reason to see.
+  canvas.addEventListener("auxclick", (e) => {
+    if (e.button === MIDDLE_BUTTON) e.preventDefault();
+  });
+  // Middle-drag is a two-handed gesture: the button goes down on the canvas
+  // but the cursor routinely leaves it mid-drag (the map is panned toward an
+  // edge, or the sidebar is in the way). Tracking on window rather than the
+  // canvas means the pan follows the cursor off the element and, more
+  // importantly, that releasing the button anywhere ends it -- bound to the
+  // canvas, a release outside it is never delivered and the map stays stuck
+  // to the cursor with no button held.
+  window.addEventListener("mousemove", onDragMove);
+  window.addEventListener("mouseup", onMouseUp);
+  // A drag interrupted by an alt-tab or a devtools break never gets its
+  // mouseup either, and would resume panning on the next unrelated move.
+  window.addEventListener("blur", endPan);
 }
 
 const ZOOM_MIN = 0.3, ZOOM_MAX = 5.0, ZOOM_STEP = 1.15;
@@ -70,20 +90,81 @@ const ZOOM_MIN = 0.3, ZOOM_MAX = 5.0, ZOOM_STEP = 1.15;
 function onWheel(e) {
   e.preventDefault();
   const rect = canvas.getBoundingClientRect();
-  const px = e.clientX - rect.left;
-  const py = e.clientY - rect.top;
 
   const oldZoom = state.zoom;
+  const zoomingIn = e.deltaY < 0;
   const newZoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN,
-    e.deltaY < 0 ? oldZoom * ZOOM_STEP : oldZoom / ZOOM_STEP));
+    zoomingIn ? oldZoom * ZOOM_STEP : oldZoom / ZOOM_STEP));
   if (newZoom === oldZoom) return;
 
-  // Keep the world point under the cursor fixed: world scale is
-  // proportional to zoom, so scale the cursor->camera offset by the ratio.
+  // The anchor is the one screen point the zoom holds still. Which point that
+  // should be differs by direction, because the two directions are asking for
+  // different things:
+  //
+  //   in  -> the cursor. Zooming in is aiming at something specific, and the
+  //          cursor is the player pointing at it.
+  //   out -> the viewport centre. Zooming out is asking for context around
+  //          where you already are. Anchored on the cursor it instead pushes
+  //          the middle of the screen toward wherever the pointer happened to
+  //          be resting, so the thing you were looking at slides off toward a
+  //          corner -- worst exactly when the pointer is near an edge, which
+  //          is where it sits after clicking a move target.
+  //
+  // The cost of splitting them is that zoom stops being its own inverse: a
+  // wheel-in then wheel-out does not land back on the original framing unless
+  // the cursor was already centred. That is a deliberate trade -- each
+  // direction reads correctly on its own, which is what the player actually
+  // experiences, and neither one is ever surprising in isolation.
+  const anchorX = zoomingIn ? e.clientX - rect.left : rect.width / 2;
+  const anchorY = zoomingIn ? e.clientY - rect.top : rect.height / 2;
+
+  // Keep the world point under the anchor fixed: world scale is proportional
+  // to zoom, so scale the anchor->camera offset by the ratio.
   const k = newZoom / oldZoom;
-  state.cameraX = px - (px - state.cameraX) * k;
-  state.cameraY = py - (py - state.cameraY) * k;
+  state.cameraX = anchorX - (anchorX - state.cameraX) * k;
+  state.cameraY = anchorY - (anchorY - state.cameraY) * k;
   state.zoom = newZoom;
+}
+
+// --- Middle-drag panning --------------------------------------------------
+// The camera offset is in screen pixels, so a pan is just the cursor delta
+// added to it -- no zoom or hex maths involved, at any zoom level.
+
+const MIDDLE_BUTTON = 1;
+let panning = false;
+let panLastX = 0, panLastY = 0;
+
+function onMouseDown(e) {
+  if (e.button !== MIDDLE_BUTTON) return;
+  // Suppresses the autoscroll widget, which would otherwise hijack the drag
+  // and scroll the page under the canvas.
+  e.preventDefault();
+  panning = true;
+  panLastX = e.clientX;
+  panLastY = e.clientY;
+  canvas.style.cursor = "grabbing";
+}
+
+function onDragMove(e) {
+  if (!panning) return;
+  // Deltas against the previous event rather than against the press origin:
+  // the camera is mutated in place (the wheel handler writes it too), so an
+  // absolute offset from a remembered start would fight anything else that
+  // moves the camera mid-drag.
+  state.cameraX += e.clientX - panLastX;
+  state.cameraY += e.clientY - panLastY;
+  panLastX = e.clientX;
+  panLastY = e.clientY;
+}
+
+function onMouseUp(e) {
+  if (e.button === MIDDLE_BUTTON) endPan();
+}
+
+function endPan() {
+  if (!panning) return;
+  panning = false;
+  canvas.style.cursor = "";
 }
 
 // Point the backing store at the current CSS box. Cheap to call every frame:
@@ -563,6 +644,17 @@ export function resetColorCache() {
   stairsPatternCache.clear();
 }
 
+// A node's colours come from its resource's category, so ore, herb and timber
+// are distinguishable on the map without the renderer knowing those three
+// exist. Falls back to the generic resource colours when the legend hasn't
+// arrived or a node cites a category the snapshot didn't carry -- an
+// unrecognised node should still draw as *a* node.
+function resourceStyle(resourceId) {
+  const resource = state.resources[resourceId];
+  const cat = resource && state.resourceCategories[resource.category];
+  return cat || { node_color: COLORS.resource, dot_color: COLORS.resourceDot };
+}
+
 function drawDot(q, r, color, size = 5) {
   const [cx, cy] = hexToPixel(q, r);
   ctx.beginPath();
@@ -705,6 +797,85 @@ function drawSprite(q, r, visual, facing, fallbackDot) {
   ctx.restore();
 }
 
+// --- Monster nameplates ---------------------------------------------------
+// Name, level and a health bar floating above each living monster.
+//
+// LOD gating is the whole design problem here, not a refinement of it. A
+// radius-64 floor holds a dozen-plus monsters, and text does not scale down
+// with the tiles: at macro zoom the plates would be the same pixel size as at
+// max zoom, overlapping each other and burying the terrain they sit on. So
+// there are two thresholds rather than one on/off switch, and the plate sheds
+// detail before it disappears:
+//
+//   >= NAMEPLATE_FULL_TILE_SIZE   name + level + health bar
+//   >= NAMEPLATE_MIN_TILE_SIZE    health bar only (a wounded monster is still
+//                                 worth spotting when the label is not)
+//   below                         nothing
+//
+// Gated on tileSize (base fit * zoom), the same quantity the terrain texture
+// and border passes gate on, so all the detail tiers drop out together as the
+// player zooms out instead of at unrelated moments.
+const NAMEPLATE_MIN_TILE_SIZE = 14;
+const NAMEPLATE_FULL_TILE_SIZE = 22;
+// Plate geometry, in fractions of tileSize so it tracks the sprites it labels.
+const PLATE_BAR_W = 1.5;
+const PLATE_BAR_H = 0.16;
+// Sprites are drawn anchored at -size * 0.72 with size = tileSize * 2.2, so
+// the art's top edge sits ~1.58 tile above centre. The bar clears it.
+const PLATE_LIFT = 1.72;
+const PLATE_COLORS = {
+  barBack:   "rgba(0, 0, 0, 0.62)",
+  barBorder: "rgba(0, 0, 0, 0.85)",
+  hpHigh:    "#4fbf4f",
+  hpMid:     "#d8c341",
+  hpLow:     "#d84f3f",
+  text:      "#e8e2d6",
+  textEdge:  "rgba(0, 0, 0, 0.9)",
+};
+// Health colour is stepped, not a gradient: three states a player can read at
+// a glance beat a continuous hue they have to interpret.
+function hpColor(frac) {
+  if (frac > 0.5) return PLATE_COLORS.hpHigh;
+  if (frac > 0.2) return PLATE_COLORS.hpMid;
+  return PLATE_COLORS.hpLow;
+}
+
+function drawNameplate(q, r, name, level, hp, maxHp, full) {
+  const [cx, cy] = hexToPixel(q, r);
+  const barW = tileSize * PLATE_BAR_W;
+  const barH = Math.max(3, tileSize * PLATE_BAR_H);
+  const barY = cy - tileSize * PLATE_LIFT;
+  const frac = maxHp > 0 ? Math.max(0, Math.min(1, hp / maxHp)) : 0;
+
+  ctx.fillStyle = PLATE_COLORS.barBack;
+  ctx.fillRect(cx - barW / 2, barY, barW, barH);
+  if (frac > 0) {
+    ctx.fillStyle = hpColor(frac);
+    ctx.fillRect(cx - barW / 2, barY, barW * frac, barH);
+  }
+  ctx.strokeStyle = PLATE_COLORS.barBorder;
+  ctx.lineWidth = 1;
+  ctx.strokeRect(cx - barW / 2 + 0.5, barY + 0.5, barW - 1, barH - 1);
+
+  if (!full) return;
+
+  // Outlined rather than boxed: a filled label plate per monster would stack
+  // opaque rectangles over the terrain, and the stroke stays legible over both
+  // the bright cel bands and the dark ones.
+  const label = level ? `${name} (${level})` : name;
+  const fontPx = Math.max(9, Math.round(tileSize * 0.42));
+  ctx.font = `${fontPx}px monospace`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "alphabetic";
+  const textY = barY - fontPx * 0.35;
+  ctx.lineWidth = Math.max(2, fontPx * 0.25);
+  ctx.strokeStyle = PLATE_COLORS.textEdge;
+  ctx.lineJoin = "round";
+  ctx.strokeText(label, cx, textY);
+  ctx.fillStyle = PLATE_COLORS.text;
+  ctx.fillText(label, cx, textY);
+}
+
 export function render() {
   if (!canvas) return;
   // Guard against any resize the observer hasn't delivered yet this frame.
@@ -738,10 +909,12 @@ export function render() {
   // Per-tile lookups that change at runtime are resolved to tile indices once
   // per frame (there are only a handful of each), so the hot loop compares
   // integers instead of building a string key for every tile on the floor.
-  const resourceIdx = new Set();
-  for (const key of state.resourceNodes.keys()) {
+  // tile index -> the node's category fill, so the hot loop reads a colour
+  // instead of re-resolving the resource -> category chain per tile.
+  const resourceIdx = new Map();
+  for (const [key, rid] of state.resourceNodes) {
     const i = state.tileIndex.get(key);
-    if (i !== undefined) resourceIdx.add(i);
+    if (i !== undefined) resourceIdx.set(i, resourceStyle(rid).node_color);
   }
   // Reserved tile types drive their own look. Resolved from the server's
   // sparse tile -> type map rather than from up_exit/down_exit, so adding a
@@ -870,7 +1043,7 @@ export function render() {
       let tb = typeBuckets.get(typeId);
       if (tb === undefined) typeBuckets.set(typeId, tb = []);
       tb.push(cx, cy);
-    } else if (resourceIdx.has(i)) { fill = COLORS.resource; texBiome = -1; }
+    } else if (resourceIdx.has(i)) { fill = resourceIdx.get(i); texBiome = -1; }
     if (i === hoveredIdx) { fill = COLORS.tileHover; texBiome = -1; }
 
     let bucket = buckets.get(fill);
@@ -1027,10 +1200,10 @@ export function render() {
     }
   }
 
-  // Resource dots
-  for (const [key] of state.resourceNodes) {
+  // Resource dots, coloured by gathering category.
+  for (const [key, rid] of state.resourceNodes) {
     const [q, rv] = key.split(",").map(Number);
-    drawDot(q, rv, COLORS.resourceDot, 3);
+    drawDot(q, rv, resourceStyle(rid).dot_color, 3);
   }
 
   // Prefab props (drawn under entities, same as tiles, so nothing is clipped
@@ -1057,6 +1230,11 @@ export function render() {
     const at = resolveMotion(`m:${mid}`, m.tile, m.facing);
     at.visual = m.visual;
     at.dot = COLORS.monsterDot;
+    // Carried on the resolved motion position, not the logical tile, so the
+    // plate glides with the sprite it belongs to rather than snapping between
+    // hex centres a step ahead of it.
+    at.plate = { name: m.display_name || m.template_id, level: m.level,
+                 hp: m.hp, maxHp: m.max_hp };
     sprites.push(at);
   }
 
@@ -1079,6 +1257,18 @@ export function render() {
   }
   for (const s of sprites) {
     drawSprite(s.q, s.r, s.visual, s.facing, s.dot);
+  }
+
+  // Nameplates last among the entity passes, so a monster standing in front
+  // never paints over the plate of one behind it -- the sprites are depth
+  // sorted, but the plates sit above every sprite and must not be.
+  if (tileSize >= NAMEPLATE_MIN_TILE_SIZE) {
+    const full = tileSize >= NAMEPLATE_FULL_TILE_SIZE;
+    for (const s of sprites) {
+      if (!s.plate) continue;
+      drawNameplate(s.q, s.r, s.plate.name, s.plate.level,
+                    s.plate.hp, s.plate.maxHp, full);
+    }
   }
 
   // Reserved-tile glyphs, drawn last so no sprite hides the stairs. Direction

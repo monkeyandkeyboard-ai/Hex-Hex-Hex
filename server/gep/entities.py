@@ -150,6 +150,13 @@ class Monster:
     damage_min: float
     damage_max: float
     speed_ticks: int
+    # Bound from the template so the wire carries what a nameplate needs
+    # without the client holding a copy of the monster registry. Both are
+    # static per template today; they live on the instance because a future
+    # per-spawn elite or level-scaled variant changes them per monster, not
+    # per template, and the client should not have to learn that later.
+    display_name: str = ""
+    level: int = 0
     # Placeholder-sprite render modifiers bound from the static template
     # (config_loader guarantees a complete block).
     visual: dict = field(default_factory=dict)
@@ -220,6 +227,8 @@ def roll_monster(
         damage_min=combat["damage_min"],
         damage_max=combat["damage_max"],
         speed_ticks=combat["speed_ticks"],
+        display_name=template["display_name"],
+        level=template["level"],
         visual=dict(template.get("visual", {})),
         reward_table_override=reward_table_override,
     )

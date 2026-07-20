@@ -3,7 +3,7 @@
   "display_name": "Scorched Fault",
   "color": "#3a2018",
   "passable": true,
-  "resource_spawn_chance": 0.005,
+  "resource_spawn_chance": 0.009,
   "resource_weights": [
     [
       "iron_ore",
@@ -12,6 +12,14 @@
     [
       "copper_ore",
       1
+    ],
+    [
+      "emberleaf",
+      3
+    ],
+    [
+      "charred_snag",
+      2
     ]
   ],
   "monster_weight": 2.5,

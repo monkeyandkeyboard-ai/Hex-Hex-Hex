@@ -283,7 +283,7 @@ def resolve_event_items(event: dict, items, resources: dict) -> dict:
 
 def floor_snapshot(
     floor: FloorState, tick: int, tick_duration: float, xp_table: dict, biomes: dict,
-    items, resources: dict,
+    items, resources: dict, resource_categories: dict,
 ) -> dict:
     layout = floor.layout
     return {
@@ -341,10 +341,33 @@ def floor_snapshot(
             for bid, b in biomes.items()
         },
         "resource_nodes": {f"{q},{r}": rid for (q, r), rid in floor.resource_nodes.items()},
+        # Resource legend: what each node id on this floor *is*. The node map
+        # above ships ids only, so without this the client can draw a node but
+        # cannot say whether it is ore, herb or timber. Categories carry the
+        # colours, so a new gathering profession is a config file plus a biome
+        # weight -- the renderer never learns its name.
+        "resources": {
+            rid: {
+                "display_name": r["display_name"],
+                "category": r["category"],
+                "skill": r["skill"],
+            }
+            for rid, r in resources.items()
+        },
+        "resource_categories": {
+            cid: c for cid, c in resource_categories.items()
+            if not cid.startswith("_")
+        },
         "monsters": {
             mid: {
                 "id": mid,
                 "template_id": m.template_id,
+                # Nameplate fields. Sent per instance rather than as a template
+                # table the client joins against, so an instance that ever
+                # diverges from its template renders correctly with no protocol
+                # change.
+                "display_name": m.display_name,
+                "level": m.level,
                 "tile": list(m.tile),
                 "hp": m.hp,
                 "max_hp": m.max_hp,
@@ -516,7 +539,7 @@ async def run_server():
         try:
             await ws.send(json.dumps(floor_snapshot(
                 floor, engine.tick, engine.tick_duration, cfg.xp_table, cfg.biomes,
-                cfg.items, cfg.resources,
+                cfg.items, cfg.resources, cfg.resource_categories,
             )))
 
             async for raw in ws:
@@ -597,7 +620,7 @@ async def run_server():
                         try:
                             await ws.send(json.dumps(floor_snapshot(
                                 fs, fe.tick, fe.tick_duration, cfg.xp_table, cfg.biomes,
-                                cfg.items, cfg.resources,
+                                cfg.items, cfg.resources, cfg.resource_categories,
                             )))
                         except websockets.exceptions.ConnectionClosed:
                             pass

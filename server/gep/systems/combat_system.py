@@ -274,8 +274,13 @@ def register(
         monster.floor_number = floor.layout.floor_number
         monster.tile = tile
         floor.monsters[monster_id] = monster
+        # hp/max_hp ride along because a respawn is the one path that puts a
+        # monster on screen without a snapshot behind it, and a nameplate with
+        # no health values to read is worse than no nameplate.
         return [{"type": "monster_spawned", "monster_id": monster_id,
                  "template_id": template_id, "tile": list(tile),
+                 "display_name": monster.display_name, "level": monster.level,
+                 "hp": monster.hp, "max_hp": monster.max_hp,
                  "visual": monster.visual, "facing": monster.facing}]
 
     engine.register_intent_handler("attack", handle_attack)

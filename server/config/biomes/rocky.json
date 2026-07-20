@@ -3,7 +3,7 @@
   "display_name": "Rocky Caverns",
   "color": "#332b22",
   "passable": true,
-  "resource_spawn_chance": 0.008,
+  "resource_spawn_chance": 0.013,
   "resource_weights": [
     [
       "iron_ore",
@@ -12,6 +12,10 @@
     [
       "copper_ore",
       2
+    ],
+    [
+      "cave_lichen",
+      3
     ]
   ],
   "monster_weight": 1.0,

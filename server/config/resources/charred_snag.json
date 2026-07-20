@@ -1,0 +1,11 @@
+{
+  "id": "charred_snag",
+  "display_name": "Charred Snag",
+  "skill": "aboriculture",
+  "category": "tree",
+  "gather_ticks": 6,
+  "respawn_ticks": 55,
+  "xp": { "aboriculture": 15, "constitution": 2 },
+  "yield": { "min": 1, "max": 3 },
+  "grade_weights": [["crude", 4], ["common", 4], ["fine", 2]]
+}

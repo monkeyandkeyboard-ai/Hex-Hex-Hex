@@ -2,6 +2,7 @@
   "id": "copper_ore",
   "display_name": "Copper Ore",
   "skill": "mineralogy",
+  "category": "mineral",
   "gather_ticks": 3,
   "respawn_ticks": 25,
   "xp": { "mineralogy": 6, "strength": 1 },

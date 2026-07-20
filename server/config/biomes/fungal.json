@@ -3,7 +3,7 @@
   "display_name": "Fungal Hollows",
   "color": "#1f3326",
   "passable": true,
-  "resource_spawn_chance": 0.007,
+  "resource_spawn_chance": 0.012,
   "resource_weights": [
     [
       "copper_ore",
@@ -12,6 +12,14 @@
     [
       "iron_ore",
       1
+    ],
+    [
+      "glowcap_moss",
+      5
+    ],
+    [
+      "fungal_stalk",
+      3
     ]
   ],
   "monster_weight": 1.2,

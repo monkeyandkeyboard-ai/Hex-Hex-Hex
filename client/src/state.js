@@ -32,6 +32,10 @@ export const state = {
 
   // tile key "q,r" -> resource_id
   resourceNodes: new Map(),
+  // resource_id -> { display_name, category, skill }
+  resources: {},
+  // category id -> { display_name, skill, node_color, dot_color }
+  resourceCategories: {},
 
   // tile key "q,r" -> prefab sprite id (town/encampment props etc.)
   prefabTiles: new Map(),

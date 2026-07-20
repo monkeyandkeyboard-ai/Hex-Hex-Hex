@@ -1,0 +1,11 @@
+{
+  "id": "glowcap_moss",
+  "display_name": "Glowcap Moss",
+  "skill": "foraging",
+  "category": "herb",
+  "gather_ticks": 2,
+  "respawn_ticks": 18,
+  "xp": { "foraging": 5, "dexterity": 1 },
+  "yield": { "min": 1, "max": 4 },
+  "grade_weights": [["crude", 6], ["common", 3], ["fine", 1]]
+}

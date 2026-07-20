@@ -41,6 +41,7 @@ _RESOURCE_REQUIRED = {
     "id",
     "display_name",
     "skill",
+    "category",
     "gather_ticks",
     "respawn_ticks",
     "xp",
@@ -454,7 +455,9 @@ class ConfigStore:
         _normalize_monster_visuals(self.monsters)
         _normalize_monster_movement(self.monsters)
 
+        self.resource_categories = _load_json(root / "resource_categories.json")
         self.resources = _load_dir(root / "resources", _RESOURCE_REQUIRED)
+        self._validate_resources()
         # Equipment filenames are organizational, not identifying: the entry
         # id is what the registry and every reference use.
         self.weapons = _load_dir(root / "weapons", _WEAPON_REQUIRED,
@@ -653,6 +656,53 @@ class ConfigStore:
             if profile_id not in self.reward_profiles or str(profile_id).startswith("_"):
                 raise ConfigError(
                     f"monster {monster_id}: unknown reward_table {profile_id!r}"
+                )
+
+    def _validate_resources(self) -> None:
+        """Every node belongs to a category, and its XP must credit the skill
+        that category is harvested with.
+
+        The category is what makes mineralogy, foraging and aboriculture three
+        gathering professions rather than one gather verb with different
+        display names on the drop: it binds the node family to its skill in
+        one place, and carries the map colour that tells a player which
+        profession a node on the ground belongs to. Checking `skill` against
+        it catches the failure this arrangement invites -- a herb copied from
+        an ore file that still awards mineralogy would gather fine, look like
+        a herb, and quietly train the wrong profession.
+        """
+        categories = {
+            cid: c for cid, c in self.resource_categories.items()
+            if not cid.startswith("_")
+        }
+        for cid, cat in categories.items():
+            for key in ("display_name", "skill", "node_color", "dot_color"):
+                if key not in cat:
+                    raise ConfigError(f"resource category {cid}: missing {key!r}")
+            if cat["skill"] not in self.skills["non_combat_skills"]:
+                raise ConfigError(
+                    f"resource category {cid}: unknown gathering skill "
+                    f"{cat['skill']!r}"
+                )
+
+        for resource_id, data in self.resources.items():
+            category = data["category"]
+            if category not in categories:
+                raise ConfigError(
+                    f"resource {resource_id}: unknown category {category!r} "
+                    f"(known: {sorted(categories)})"
+                )
+            expected = categories[category]["skill"]
+            if data["skill"] != expected:
+                raise ConfigError(
+                    f"resource {resource_id}: category {category!r} is "
+                    f"harvested with {expected!r} but the resource declares "
+                    f"skill {data['skill']!r}"
+                )
+            if expected not in data["xp"]:
+                raise ConfigError(
+                    f"resource {resource_id}: awards no {expected!r} XP, so "
+                    f"gathering it would never train the skill that harvests it"
                 )
 
     def _validate_biomes(self) -> None:

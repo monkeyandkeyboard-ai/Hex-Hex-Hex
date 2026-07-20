@@ -1,3 +1,4 @@
+import json
 import pathlib
 
 import pytest
@@ -185,3 +186,55 @@ def test_duplicate_equipment_ids_are_caught_without_the_filename_rule(tmp_path):
 
     with pytest.raises(ConfigError, match="duplicate id"):
         ConfigStore(tmp_path / "config")
+
+
+# --- Gathering categories -------------------------------------------------
+
+def test_loads_resource_categories():
+    store = ConfigStore(CONFIG_DIR)
+    assert set(store.resource_categories) - {"_comment"} == {"mineral", "herb", "tree"}
+    assert store.resource_categories["herb"]["skill"] == "foraging"
+    assert store.resources["glowcap_moss"]["category"] == "herb"
+    assert store.resources["fungal_stalk"]["category"] == "tree"
+
+
+def test_rejects_unknown_resource_category(tmp_path):
+    _mirror_config(tmp_path)
+    node = tmp_path / "resources" / "iron_ore.json"
+    data = json.loads(node.read_text(encoding="utf-8"))
+    data["category"] = "gemstone"
+    node.write_text(json.dumps(data), encoding="utf-8")
+    with pytest.raises(ConfigError, match="unknown category"):
+        ConfigStore(tmp_path)
+
+
+def test_rejects_resource_whose_skill_contradicts_its_category(tmp_path):
+    """The failure this guards is silent in play: a herb that awards mineralogy
+    still gathers, still looks like a herb, and trains the wrong profession."""
+    _mirror_config(tmp_path)
+    node = tmp_path / "resources" / "glowcap_moss.json"
+    data = json.loads(node.read_text(encoding="utf-8"))
+    data["skill"] = "mineralogy"
+    node.write_text(json.dumps(data), encoding="utf-8")
+    with pytest.raises(ConfigError, match="harvested with 'foraging'"):
+        ConfigStore(tmp_path)
+
+
+def test_rejects_resource_that_never_trains_its_own_skill(tmp_path):
+    _mirror_config(tmp_path)
+    node = tmp_path / "resources" / "charred_snag.json"
+    data = json.loads(node.read_text(encoding="utf-8"))
+    data["xp"] = {"strength": 5}
+    node.write_text(json.dumps(data), encoding="utf-8")
+    with pytest.raises(ConfigError, match="awards no 'aboriculture' XP"):
+        ConfigStore(tmp_path)
+
+
+def test_rejects_category_naming_a_skill_that_does_not_exist(tmp_path):
+    _mirror_config(tmp_path)
+    path = tmp_path / "resource_categories.json"
+    data = json.loads(path.read_text(encoding="utf-8"))
+    data["herb"]["skill"] = "herbalism"
+    path.write_text(json.dumps(data), encoding="utf-8")
+    with pytest.raises(ConfigError, match="unknown gathering skill"):
+        ConfigStore(tmp_path)

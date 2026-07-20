@@ -91,6 +91,9 @@ export function applySnapshot(msg) {
     state.crossings.add(`${t[0]},${t[1]}`);
   }
 
+  state.resources = msg.resources || {};
+  state.resourceCategories = msg.resource_categories || {};
+
   state.resourceNodes.clear();
   for (const [key, rid] of Object.entries(msg.resource_nodes || {})) {
     state.resourceNodes.set(key, rid);
@@ -204,8 +207,10 @@ function applyEvent(ev) {
       state.monsters.set(ev.monster_id, {
         id: ev.monster_id,
         template_id: ev.template_id,
+        display_name: ev.display_name,
+        level: ev.level,
         tile: ev.tile,
-        hp: 1, max_hp: 1, alive: true,
+        hp: ev.hp, max_hp: ev.max_hp, alive: true,
         visual: ev.visual,
         facing: ev.facing,
       });
