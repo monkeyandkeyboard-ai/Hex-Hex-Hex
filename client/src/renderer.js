@@ -203,6 +203,22 @@ const ROUGHNESS_AMOUNT = 7;   // lightness swing from micro-texture
 const ELEVATION_AMOUNT = 10;  // lightness swing from absolute height
 const SLOPE_AMOUNT = 30;      // directional shading strength
 
+// Cel shading: lightness is snapped to fixed steps so the three layers above
+// resolve into flat bands of colour instead of a smooth gradient. This is the
+// whole stylised look in one line -- and it pays for itself, because snapping
+// collapses ~12k distinct per-tile lightnesses down to a handful of colours,
+// which is what makes the batched fill path viable at every zoom level rather
+// than only when zoomed out.
+const CEL_STEP = 6;
+// Borders are the tile's own colour darkened, not a fixed grey, so separation
+// reads consistently against every biome (compendium §19: colour comes from
+// config, the client only derives from it).
+const BORDER_DARKEN = 14;
+
+function celStep(lightness) {
+  return Math.round(lightness / CEL_STEP) * CEL_STEP;
+}
+
 const colorCache = new Map();
 
 function tileColor(biomeIdx, lightness) {
@@ -218,8 +234,128 @@ function tileColor(biomeIdx, lightness) {
   return c;
 }
 
+// --- Procedural tile textures --------------------------------------------
+// Zero art assets: each biome's surface texture is generated into an offscreen
+// canvas once and reused as a CanvasPattern. Generating per frame would be
+// hopeless, and shipping PNGs for this is exactly what we're avoiding.
+//
+// The texture carries only alpha -- light and dark speckles over transparency
+// -- so it modulates whatever colour the cel-shaded fill already laid down.
+// That keeps one texture per biome valid across every lightness band instead
+// of needing one per (biome, band).
+//
+// Style and strength come from the biome's `texture` block in
+// server/config/biomes/*.json. A biome without one renders flat, which is a
+// fine look and keeps the field genuinely optional.
+
+// Large enough that the repeat isn't legible as a grid across a screenful of
+// hexes. At 64 the tiling read as a visible lattice of identical blobs.
+const PATTERN_SIZE = 96;
+// Below this tile size the texture is skipped entirely -- see the gate in
+// render(). Slightly under the border threshold so texture survives one zoom
+// step past where borders drop out.
+const TEXTURE_MIN_TILE_SIZE = 12;
+const patternCache = new Map();  // biome id -> CanvasPattern | null
+
+// A tiny local PRNG so a biome's speckle layout is identical every session
+// (a texture that reshuffled on reload would shimmer between visits). This is
+// cosmetic only and deliberately NOT the game's Mulberry32 -- nothing here
+// feeds simulation, so it is not bound by the determinism contract in
+// shared/prng_spec.md.
+function textureRng(seedStr) {
+  let h = 2166136261;
+  for (let i = 0; i < seedStr.length; i++) {
+    h ^= seedStr.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return function () {
+    h += 0x6D2B79F5;
+    let t = h;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function buildPattern(biomeId, tex) {
+  const off = document.createElement("canvas");
+  off.width = off.height = PATTERN_SIZE;
+  const g = off.getContext("2d");
+
+  const rand = textureRng(biomeId);
+  const density = tex.density ?? 0.4;
+  const contrast = tex.contrast ?? 0.15;
+  const grain = tex.grain ?? 2.0;
+  const style = tex.style || "speckle";
+
+  // Two tones per style -- one lighter than the fill, one darker -- so the
+  // texture reads as surface relief rather than as dirt.
+  const light = `rgba(255,255,255,${contrast})`;
+  const dark = `rgba(0,0,0,${contrast * 1.3})`;
+
+  if (style === "hatch") {
+    // Diagonal strokes. Wraps because every line is drawn twice, offset by
+    // the tile size, so the pattern tiles seamlessly across the edge.
+    g.lineWidth = grain * 0.5;
+    const step = Math.max(3, 14 - density * 12);
+    for (let d = -PATTERN_SIZE; d < PATTERN_SIZE * 2; d += step) {
+      g.strokeStyle = rand() < 0.5 ? light : dark;
+      g.beginPath();
+      g.moveTo(d, 0);
+      g.lineTo(d + PATTERN_SIZE, PATTERN_SIZE);
+      g.stroke();
+    }
+  } else if (style === "cell") {
+    // Soft blobs -- reads as fungal/organic clumping at tile scale.
+    const count = Math.round(density * 26);
+    for (let i = 0; i < count; i++) {
+      const x = rand() * PATTERN_SIZE;
+      const y = rand() * PATTERN_SIZE;
+      const rad = grain * (0.6 + rand() * 1.4);
+      // Draw each blob at all 9 wrap offsets so blobs crossing an edge
+      // continue on the far side instead of being clipped into a seam.
+      for (let ox = -1; ox <= 1; ox++) {
+        for (let oy = -1; oy <= 1; oy++) {
+          g.beginPath();
+          g.arc(x + ox * PATTERN_SIZE, y + oy * PATTERN_SIZE, rad, 0, Math.PI * 2);
+          g.fillStyle = rand() < 0.45 ? light : dark;
+          g.fill();
+        }
+      }
+    }
+  } else {
+    // speckle: scattered grains, the default stone/gravel read.
+    const count = Math.round(density * 200);
+    for (let i = 0; i < count; i++) {
+      const x = rand() * PATTERN_SIZE;
+      const y = rand() * PATTERN_SIZE;
+      const s = grain * (0.5 + rand());
+      g.fillStyle = rand() < 0.5 ? light : dark;
+      g.fillRect(x, y, s, s);
+      // Wrap grains that overhang an edge.
+      if (x + s > PATTERN_SIZE) g.fillRect(x - PATTERN_SIZE, y, s, s);
+      if (y + s > PATTERN_SIZE) g.fillRect(x, y - PATTERN_SIZE, s, s);
+    }
+  }
+
+  return ctx.createPattern(off, "repeat");
+}
+
+function biomePattern(biomeIdx) {
+  const biomeId = state.biomeLegend[biomeIdx];
+  if (biomeId === undefined) return null;
+  let p = patternCache.get(biomeId);
+  if (p === undefined) {
+    const biome = state.biomes[biomeId];
+    p = biome && biome.texture ? buildPattern(biomeId, biome.texture) : null;
+    patternCache.set(biomeId, p);
+  }
+  return p;
+}
+
 export function resetColorCache() {
   colorCache.clear();
+  patternCache.clear();
 }
 
 function drawDot(q, r, color, size = 5) {
@@ -228,6 +364,22 @@ function drawDot(q, r, color, size = 5) {
   ctx.arc(cx, cy, size, 0, Math.PI * 2);
   ctx.fillStyle = color;
   ctx.fill();
+}
+
+// Anchors a sprite to the ground. Without it, a flat-shaded terrain gives a
+// sprite nothing to sit against and it reads as floating above the grid --
+// the more so now that the tiles themselves have no gradient. Drawn under the
+// sprite pass, over the terrain, and deliberately not part of the sprite
+// pipeline itself: it draws no art and touches no sheet.
+function drawContactShadow(q, r, scale = 1) {
+  const [cx, cy] = hexToPixel(q, r);
+  ctx.save();
+  ctx.beginPath();
+  ctx.ellipse(cx, cy + tileSize * 0.10, tileSize * 0.46 * scale,
+              tileSize * 0.22 * scale, 0, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(0, 0, 0, 0.32)";
+  ctx.fill();
+  ctx.restore();
 }
 
 // --- Placeholder sprite pipeline -----------------------------------------
@@ -402,13 +554,24 @@ export function render() {
   const { ux, uy, up, road } = tileGeometry();
   const camX = state.cameraX, camY = state.cameraY;
 
-  // Below this tile size a screenful is thousands of hexes and the 1px border
-  // is visual noise, so fills are batched by colour and borders dropped.
-  // Above it, tile counts are low and per-hex fill+stroke is both cheap and
-  // better looking. Same output either way at the sizes that matter.
-  const batchFills = tileSize < BATCH_BELOW_TILE_SIZE;
-  const buckets = batchFills ? new Map() : null;
+  // Fills are always batched by colour now. Cel-quantising lightness collapses
+  // the palette to a handful of values, so bucketing wins at every zoom level
+  // rather than only when zoomed out -- and one path per colour is what makes
+  // the extra texture and border passes below affordable.
+  //
+  // Borders still only draw when zoomed in: a 1px rule on a 4px hex is moire,
+  // not a grid.
+  const drawBorders = tileSize >= BATCH_BELOW_TILE_SIZE;
+  // Texture is gated for the same reason borders are, and it matters more:
+  // scaled down with the tiles the grain goes sub-pixel and resolves into a
+  // moire mesh over the whole floor, which is worse than no texture at all.
+  const drawTexture = tileSize >= TEXTURE_MIN_TILE_SIZE;
+  const buckets = new Map();      // fill colour -> { coords, border }
+  const texBuckets = new Map();   // biome index -> coords (pattern overlay)
   const hexSize = tileSize - 1;
+  // Grain scales with the tiles so texture density reads the same at any zoom
+  // (28 is the base tile size the textures were authored against).
+  const texScale = tileSize / 28;
 
   for (let i = 0; i < n; i++) {
     // Position from precomputed unit offsets: no call, no array allocation.
@@ -418,6 +581,8 @@ export function render() {
     if (cy < -margin || cy > h + margin) continue;
 
     let fill = COLORS.tile;
+    let border = COLORS.tileBorder;
+    let texBiome = -1;
 
     if (hasStructure) {
       const e = elev[i] / 255;
@@ -432,44 +597,81 @@ export function render() {
 
       const biome = state.biomes[state.biomeLegend[bmap[i]]];
       const baseL = (biome && biome.hsl ? biome.hsl.l : 20);
-      const lightness = baseL
+      // Cel step: snap the summed lightness to a fixed band so neighbouring
+      // tiles either share a tone exactly or step to the next one, with
+      // nothing in between.
+      const lightness = celStep(baseL
         + (ro - 0.5) * ROUGHNESS_AMOUNT      // Layer 2: micro texture
         + (e - 0.5) * ELEVATION_AMOUNT       // absolute height
-        + slope * SLOPE_AMOUNT;              // Layer 3: directional
+        + slope * SLOPE_AMOUNT);             // Layer 3: directional
       fill = tileColor(bmap[i], lightness);
+      border = tileColor(bmap[i], lightness - BORDER_DARKEN);
+      texBiome = bmap[i];
     }
 
     const isRoad = road[i] === 1;
-    if (isRoad) fill = COLORS.road;
+    if (isRoad) { fill = COLORS.road; border = "#6a5636"; texBiome = -1; }
 
-    if (i === upExitIdx) fill = COLORS.upExit;
-    else if (i === downExitIdx) fill = COLORS.downExit;
-    else if (resourceIdx.has(i)) fill = COLORS.resource;
-    if (i === hoveredIdx) fill = COLORS.tileHover;
+    // Marker tiles override the procedural surface entirely -- they exist to
+    // be spotted, so they opt out of the texture pass too.
+    if (i === upExitIdx) { fill = COLORS.upExit; texBiome = -1; }
+    else if (i === downExitIdx) { fill = COLORS.downExit; texBiome = -1; }
+    else if (resourceIdx.has(i)) { fill = COLORS.resource; texBiome = -1; }
+    if (i === hoveredIdx) { fill = COLORS.tileHover; texBiome = -1; }
 
-    if (batchFills) {
-      // Zoomed out: bucket by colour and paint each colour in one path.
-      // Per-hex fill+stroke costs ~72ms for a screenful at this size, almost
-      // all of it stroking; one path per colour is ~11ms. Borders are dropped
-      // here on purpose -- a 1px rule on a 4px hex is moire, not a grid.
-      let bucket = buckets.get(fill);
-      if (bucket === undefined) buckets.set(fill, bucket = []);
-      bucket.push(cx, cy);
-    } else {
-      // Zoomed in: few enough tiles that per-hex painting is cheap, and the
-      // border genuinely reads. Layer 4: crisp fixed-width border.
-      drawTileAt(cx, cy, fill, isRoad ? "#6a5636" : COLORS.tileBorder);
+    let bucket = buckets.get(fill);
+    if (bucket === undefined) buckets.set(fill, bucket = { coords: [], border });
+    bucket.coords.push(cx, cy);
+
+    if (drawTexture && texBiome >= 0) {
+      let tb = texBuckets.get(texBiome);
+      if (tb === undefined) texBuckets.set(texBiome, tb = []);
+      tb.push(cx, cy);
     }
   }
 
-  if (batchFills) {
-    for (const [fill, coords] of buckets) {
+  // Pass 1: flat cel-shaded fills, one path per colour.
+  for (const [fill, bucket] of buckets) {
+    ctx.beginPath();
+    const coords = bucket.coords;
+    for (let k = 0; k < coords.length; k += 2) {
+      addHex(coords[k], coords[k + 1], hexSize);
+    }
+    ctx.fillStyle = fill;
+    ctx.fill();
+  }
+
+  // Pass 2: procedural surface texture, one path per biome. The pattern is
+  // transform-locked to the world rather than the canvas, so the grain stays
+  // stuck to the terrain when the camera pans instead of swimming across it.
+  for (const [biomeIdx, coords] of texBuckets) {
+    const pattern = biomePattern(biomeIdx);
+    if (!pattern) continue;
+    if (pattern.setTransform) {
+      pattern.setTransform(new DOMMatrix()
+        .translate(camX % (PATTERN_SIZE * texScale), camY % (PATTERN_SIZE * texScale))
+        .scale(texScale));
+    }
+    ctx.beginPath();
+    for (let k = 0; k < coords.length; k += 2) {
+      addHex(coords[k], coords[k + 1], hexSize);
+    }
+    ctx.fillStyle = pattern;
+    ctx.fill();
+  }
+
+  // Pass 3: cell borders. Drawn from each tile's own darkened colour, so the
+  // separation is a shade of the terrain rather than a grey rule laid over it.
+  if (drawBorders) {
+    ctx.lineWidth = BORDER_WIDTH;
+    for (const [, bucket] of buckets) {
       ctx.beginPath();
+      const coords = bucket.coords;
       for (let k = 0; k < coords.length; k += 2) {
         addHex(coords[k], coords[k + 1], hexSize);
       }
-      ctx.fillStyle = fill;
-      ctx.fill();
+      ctx.strokeStyle = bucket.border;
+      ctx.stroke();
     }
   }
 
@@ -483,6 +685,7 @@ export function render() {
   // by a later sprite).
   for (const [key, spriteId] of state.prefabTiles) {
     const [q, rv] = key.split(",").map(Number);
+    drawContactShadow(q, rv, 0.8);
     drawPropSprite(q, rv, spriteId);
   }
 
@@ -517,6 +720,11 @@ export function render() {
   }
 
   sprites.sort((a, b) => hexToPixel(a.q, a.r)[1] - hexToPixel(b.q, b.r)[1]);
+  // Every shadow first, then every sprite: drawn interleaved, a sprite standing
+  // in front would have the next entity's shadow painted over its feet.
+  for (const s of sprites) {
+    drawContactShadow(s.q, s.r, (s.visual && s.visual.scale) || 1);
+  }
   for (const s of sprites) {
     drawSprite(s.q, s.r, s.visual, s.facing, s.dot);
   }

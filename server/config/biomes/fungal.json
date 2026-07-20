@@ -28,5 +28,11 @@
     "h": 138,
     "s": 24,
     "l": 18
+  },
+  "texture": {
+    "style": "cell",
+    "density": 0.85,
+    "contrast": 0.075,
+    "grain": 2.2
   }
 }

@@ -207,6 +207,51 @@ loot table used by monsters that spawn inside `monster_rarity_radius`. Rarity
 is expressed as *which table*, not as a numeric multiplier, because tier ranges
 live in `loot/tables.json` and are selected by profile id.
 
+## Terrain look (client-side)
+
+Terrain carries **no art assets**. The client generates every surface texture
+procedurally at load and caches it, so there is nothing to author and nothing
+to download. Colour still comes from the biome's `hsl` — the client only
+derives from it, never substitutes its own palette.
+
+Three things produce the stylised look, all in `client/src/renderer.js`:
+
+- **Cel shading.** The summed lightness (base + roughness + elevation + slope)
+  is snapped to fixed steps, so terrain resolves into flat bands instead of a
+  gradient. This also collapses the palette to a handful of colours, which is
+  what makes batched drawing viable at every zoom.
+- **Procedural texture.** One `CanvasPattern` per biome, generated into an
+  offscreen canvas and locked to world space so grain stays stuck to the
+  terrain as the camera pans.
+- **Derived borders.** Each hex is outlined in its own colour darkened, rather
+  than a fixed grey rule.
+
+Texture style is config, in the biome file:
+
+```jsonc
+"texture": {
+  "style": "speckle",   // speckle | cell | hatch
+  "density": 0.75,      // how much coverage
+  "contrast": 0.085,    // strength; keep low, this is grain not decoration
+  "grain": 1.6          // feature size in pattern pixels
+}
+```
+
+The block is **optional** — a biome without one renders flat, which is a
+legitimate look rather than a broken one. Keep `contrast` low: values around
+0.2 read as bubbles or dirt sitting on top of the terrain rather than as the
+surface itself.
+
+Both texture and borders are **skipped when zoomed out** past a tile-size
+threshold. This is not an optimisation shortcut: scaled down far enough the
+grain goes sub-pixel and resolves into a moire mesh over the whole floor, and
+a 1px border on a 4px hex is noise rather than a grid.
+
+Sprites are deliberately untouched by all of this. Entities, monsters and
+prefab props keep rendering through the existing sprite pipeline; the only
+thing added underneath them is a semi-transparent contact-shadow ellipse, so
+they sit on the flat terrain instead of floating above it.
+
 ## Determinism
 
 Same seed, same floor, forever — across restarts and machines.

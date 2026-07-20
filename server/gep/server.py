@@ -313,6 +313,11 @@ def floor_snapshot(
             bid: {
                 "display_name": b["display_name"],
                 "hsl": b.get("hsl", {"h": 0, "s": 0, "l": 20}),
+                # Optional: how the client textures this biome's tiles. Purely
+                # presentational, and optional on purpose -- a biome without
+                # it still renders, just flat. Shipped rather than hardcoded
+                # client-side so terrain look stays a config decision.
+                "texture": b.get("texture"),
             }
             for bid, b in biomes.items()
         },

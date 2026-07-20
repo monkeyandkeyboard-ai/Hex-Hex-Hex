@@ -3,7 +3,7 @@
 
 import { state } from "./state.js";
 import { resetMotion } from "./motion.js";
-import { resetGeometry } from "./renderer.js";
+import { resetColorCache, resetGeometry } from "./renderer.js";
 
 const MAX_LOG = 80;
 let logEl;
@@ -92,6 +92,10 @@ export function applySnapshot(msg) {
   // per-tile geometry describes the old floor.
   resetMotion();
   resetGeometry();
+  // Colours and textures are cached by biome *index*, and the biome legend is
+  // per-floor -- index 2 is not the same biome on the next floor down. Without
+  // this the new floor paints in the old floor's palette.
+  resetColorCache();
 
   state.monsters.clear();
   for (const [mid, m] of Object.entries(msg.monsters || {})) {

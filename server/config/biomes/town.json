@@ -10,5 +10,11 @@
     "h": 222,
     "s": 14,
     "l": 26
+  },
+  "texture": {
+    "style": "speckle",
+    "density": 0.35,
+    "contrast": 0.06,
+    "grain": 1.4
   }
 }

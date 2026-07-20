@@ -28,5 +28,11 @@
     "h": 14,
     "s": 38,
     "l": 20
+  },
+  "texture": {
+    "style": "hatch",
+    "density": 0.45,
+    "contrast": 0.1,
+    "grain": 1.8
   }
 }
