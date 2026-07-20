@@ -28,7 +28,12 @@ itself rather than producing a quietly wrong floor.
 from dataclasses import dataclass, field
 from typing import Callable
 
-from gep.biome_layout import apply_constraints, build_macro_layout, flatten_elevation
+from gep.biome_layout import (
+    apply_barrier_relief,
+    apply_constraints,
+    build_macro_layout,
+    flatten_elevation,
+)
 from gep.constraints import enforce_biome_adjacency, validate_connectivity
 from gep.features import carve_chambers, carve_rivers
 from gep.noise import build_field, normalise
@@ -297,6 +302,13 @@ def run_pipeline(ctx: GenContext, stage_ids: list[str]) -> None:
         ctx.regions, ctx.blocked, ctx.tile_set, ctx.spawn_point(), fallback,
         ctx.min_island_tiles,
     )
+
+    # Last, once the regions are final and the fords are cut: give the
+    # remaining barrier tiles their height. Not a configurable stage for the
+    # same reason passability isn't -- it is a projection of the finished
+    # regions, and the only correct place to run it is after the last thing
+    # that rewrites one.
+    ctx.elevation = apply_barrier_relief(ctx.elevation, ctx.regions, ctx.biome_defs)
 
     for stage_id in TERMINAL_STAGES:
         STAGE_REGISTRY[stage_id](ctx)

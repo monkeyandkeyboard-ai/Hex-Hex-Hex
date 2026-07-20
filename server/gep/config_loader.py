@@ -665,6 +665,32 @@ class ConfigStore:
                     raise ConfigError(f"biome {biome_id}: unknown monster {pair[0]!r}")
             if not isinstance(data["passable"], bool):
                 raise ConfigError(f"biome {biome_id}: 'passable' must be true or false")
+            # Optional: how much physical height this biome's tiles gain over
+            # the noise field (gep/biome_layout.apply_barrier_relief). Absent
+            # means "sits at natural terrain height", which is right for
+            # everything the player walks on, so this is genuinely optional
+            # rather than a decision every biome has to restate.
+            if "height_boost" in data:
+                boost = data["height_boost"]
+                if not isinstance(boost, (int, float)) or isinstance(boost, bool):
+                    raise ConfigError(
+                        f"biome {biome_id}: 'height_boost' must be a number"
+                    )
+                if not 0.0 <= boost <= 1.0:
+                    raise ConfigError(
+                        f"biome {biome_id}: 'height_boost' must be between 0 and 1 "
+                        f"(elevation is a unit field), got {boost}"
+                    )
+                if data["passable"] is True:
+                    # Relief is how the client tells a barrier from open
+                    # ground. Raising ground the player can walk on would make
+                    # the cue lie, and it is the kind of lie that only shows up
+                    # as "why does the map look wrong here".
+                    raise ConfigError(
+                        f"biome {biome_id}: is passable but declares "
+                        f"'height_boost'; relief marks terrain that blocks "
+                        f"movement, so raising walkable ground would misread"
+                    )
             if data["passable"] is False:
                 # Nothing can reach these tiles to fight or gather on them, so
                 # weights there are silently dead config. Better to reject the

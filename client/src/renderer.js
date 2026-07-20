@@ -12,6 +12,10 @@ const COLORS = {
   upExit:       "#1a3a1a",
   downExit:     "#1a1a3a",
   road:         "#5a4a30",
+  // Planking on a carved crossing. Warmer and lighter than the road so a
+  // bridge stands out against both dark water and grey rock, and reads as
+  // built rather than as another shade of ground.
+  crossing:     "#a07a45",
   resource:     "#3a2a10",
   resourceDot:  "#c8901a",
   monster:      "#3a1010",
@@ -172,7 +176,25 @@ function drawTile(q, r, fill, stroke) {
 // allocation or a template-string Map key 12.5k times a frame, which cost
 // far more than the canvas drawing itself.
 
-let geometry = null;  // { order, ux, uy, up, road }
+// Axial neighbour offsets, ordered clockwise from straight up-screen. The
+// order is load-bearing, not cosmetic: the occlusion pass below weights the
+// three up-screen directions (indices 0, 1, 5) more heavily than the three
+// below, which is what turns a symmetric height difference into a light
+// direction. Renumber these and the terrain lights from the wrong side.
+const AXIAL_DIRS = [
+  [0, -1],   // 0: up
+  [1, -1],   // 1: upper-right
+  [1, 0],    // 2: lower-right
+  [0, 1],    // 3: down
+  [-1, 1],   // 4: lower-left
+  [-1, 0],   // 5: upper-left
+];
+// Per-direction weight for the occlusion term. Up-screen neighbours cast onto
+// this tile (a wall to the north shadows the ground at its foot); down-screen
+// neighbours are behind the light and contribute little.
+const OCCLUSION_WEIGHTS = [1.0, 0.75, 0.25, 0.15, 0.25, 0.75];
+
+let geometry = null;  // { order, ux, uy, up, road, crossing, nbr }
 
 function tileGeometry() {
   const order = state.tileOrder;
@@ -183,6 +205,13 @@ function tileGeometry() {
   const uy = new Float32Array(n);
   const up = new Int32Array(n);
   const road = new Uint8Array(n);
+  const crossing = new Uint8Array(n);
+  // All six axial neighbours, flattened: neighbours of tile i live at
+  // [i*6 .. i*6+5], -1 where the neighbour is off the floor edge. One flat
+  // Int32Array rather than an array of arrays because the shading pass reads
+  // it 12.5k * 6 times a frame, and n small arrays would mean n allocations
+  // and a pointer chase per sample.
+  const nbr = new Int32Array(n * 6);
   const SQRT3 = Math.sqrt(3);
 
   for (let i = 0; i < n; i++) {
@@ -191,10 +220,15 @@ function tileGeometry() {
     uy[i] = SQRT3 * (q / 2 + r);
     const iUp = state.tileIndex.get(`${q},${r - 1}`);
     up[i] = iUp === undefined ? -1 : iUp;
+    for (let d = 0; d < 6; d++) {
+      const j = state.tileIndex.get(`${q + AXIAL_DIRS[d][0]},${r + AXIAL_DIRS[d][1]}`);
+      nbr[i * 6 + d] = j === undefined ? -1 : j;
+    }
     road[i] = state.roads.has(`${q},${r}`) ? 1 : 0;
+    crossing[i] = state.crossings.has(`${q},${r}`) ? 1 : 0;
   }
 
-  geometry = { order, ux, uy, up, road };
+  geometry = { order, ux, uy, up, road, crossing, nbr };
   return geometry;
 }
 
@@ -205,9 +239,15 @@ export function resetGeometry() {
 
 // --- Procedural HSL stack -------------------------------------------------
 // Layer 1 base biome hue/sat/lightness, Layer 2 roughness micro-texture,
-// Layer 3 directional elevation shading. Colour strings are cached by
-// (biome, quantised lightness) since building 12k hsl() strings per frame
-// would dominate the frame budget.
+// Layer 3 directional elevation shading, Layer 4 ambient occlusion from all
+// six neighbours. Colour strings are cached by (biome, quantised lightness)
+// since building 12k hsl() strings per frame would dominate the frame budget.
+//
+// Every layer resolves to one number -- a lightness -- before any drawing
+// happens, which is the property that keeps the whole stack inside the
+// batched fill path. Adding occlusion widens the spread of lightnesses but
+// not the *count* of them, because celStep quantises whatever the layers sum
+// to; the bucket count is bounded by the cel steps, not by the layers.
 
 const BORDER_WIDTH = 1;
 // Below this tile size, a screenful is thousands of hexes and per-hex
@@ -217,7 +257,39 @@ const BORDER_WIDTH = 1;
 const BATCH_BELOW_TILE_SIZE = 14;
 const ROUGHNESS_AMOUNT = 7;   // lightness swing from micro-texture
 const ELEVATION_AMOUNT = 10;  // lightness swing from absolute height
-const SLOPE_AMOUNT = 30;      // directional shading strength
+// Directional shading strength. Cut from 30 when occlusion arrived: slope is
+// a one-neighbour approximation of the same height difference occlusion now
+// samples properly across six, so at their old strengths the two stacked and
+// drove the ground at the foot of any cliff to solid black. Slope earns its
+// remaining weight by being signed -- it still lifts up-facing slopes into
+// highlight, which the occlusion term deliberately never does.
+const SLOPE_AMOUNT = 13;
+// Ambient occlusion: how much a tile darkens when its neighbours stand above
+// it. Applied on top of SLOPE_AMOUNT rather than replacing it -- slope gives
+// the surface a lit face and a dark face, occlusion sinks whole hollows into
+// shadow and leaves ridges proud. Together they read as relief; either alone
+// reads as a gradient.
+const OCCLUSION_AMOUNT = 17;
+// Occlusion only, no brightening: a tile lower than everything around it is
+// in a pit and genuinely receives less light, but a tile *higher* than its
+// neighbours is not receiving extra light -- it is just unshadowed. Letting
+// the term go positive blows ridge tops out to a flat bright cap and loses
+// the surface detail the textures are drawing there.
+// Capped below the theoretical maximum (a tile ringed by full-height cliffs
+// would score ~3.1). Left uncapped, the 0.35 height boost on a wall biome is
+// on its own enough to drive the neighbouring ground to the lightness floor,
+// and a black rim reads as a hole punched in the map rather than as shadow --
+// it also swallows the surface texture the tile is drawing underneath.
+const OCCLUSION_CLAMP = 0.8;
+
+// Stepped cap drawn on impassable tiles, outermost first. Scales are fractions
+// of the hex radius; the fills are deliberately weak because they stack -- the
+// centre of a barrier tile receives both, so the visible step count is three
+// (plate, mid, cap) from two draws.
+const CONTOUR_TIERS = [
+  { scale: 0.70, fill: "rgba(255,255,255,0.055)" },
+  { scale: 0.40, fill: "rgba(255,255,255,0.075)" },
+];
 
 // Cel shading: lightness is snapped to fixed steps so the three layers above
 // resolve into flat bands of colour instead of a smooth gradient. This is the
@@ -319,6 +391,93 @@ function buildPattern(biomeId, tex) {
       g.beginPath();
       g.moveTo(d, 0);
       g.lineTo(d + PATTERN_SIZE, PATTERN_SIZE);
+      g.stroke();
+    }
+  } else if (style === "crag") {
+    // Angular chevrons -- reads as faceted rock or a wall of tangled growth,
+    // depending on the hue underneath. This is the shared visual language for
+    // impassable terrain: the biome's `passable` flag is what actually stops
+    // movement, but a barrier the player cannot distinguish from open ground
+    // is a barrier they can only find by walking into it. Every impassable
+    // land biome uses this style so the cue is one rule to learn rather than
+    // one per biome, and any future barrier gets it by adding the same block.
+    //
+    // Deliberately *not* driven off `passable` in code: the renderer reads
+    // biome appearance from config like every other visual property, so a
+    // designer can retune or restyle a barrier without touching this file.
+    const count = Math.round(density * 34);
+    g.lineWidth = grain * 0.8;
+    g.lineCap = "square";
+    for (let i = 0; i < count; i++) {
+      const x = rand() * PATTERN_SIZE;
+      const y = rand() * PATTERN_SIZE;
+      const w = grain * (2.2 + rand() * 2.6);   // half-width of the chevron
+      const h = grain * (1.6 + rand() * 2.2);   // how sharply it peaks
+      const flip = rand() < 0.35 ? -1 : 1;      // a few point downward
+      const tone = rand() < 0.5 ? light : dark;
+      // Nine wrap offsets, same reason as `cell`: a chevron crossing the
+      // pattern edge has to continue on the far side or it tiles as a seam.
+      for (let ox = -1; ox <= 1; ox++) {
+        for (let oy = -1; oy <= 1; oy++) {
+          const px = x + ox * PATTERN_SIZE;
+          const py = y + oy * PATTERN_SIZE;
+          g.strokeStyle = tone;
+          g.beginPath();
+          g.moveTo(px - w, py);
+          g.lineTo(px, py - h * flip);
+          g.lineTo(px + w, py);
+          g.stroke();
+        }
+      }
+    }
+  } else if (style === "canopy") {
+    // Overlapping domed clusters -- reads as a tree line packed too tight to
+    // walk through. Each clump is a filled arc with a lighter crown on top, so
+    // the layer has a direction (lit from above) instead of reading as flat
+    // polka dots the way plain `cell` does.
+    const count = Math.round(density * 30);
+    for (let i = 0; i < count; i++) {
+      const x = rand() * PATTERN_SIZE;
+      const y = rand() * PATTERN_SIZE;
+      const rad = grain * (1.3 + rand() * 1.5);
+      for (let ox = -1; ox <= 1; ox++) {
+        for (let oy = -1; oy <= 1; oy++) {
+          const px = x + ox * PATTERN_SIZE;
+          const py = y + oy * PATTERN_SIZE;
+          g.beginPath();
+          g.arc(px, py, rad, 0, Math.PI * 2);
+          g.fillStyle = dark;
+          g.fill();
+          // Crown: a smaller arc offset up-left, the lit face of the clump.
+          g.beginPath();
+          g.arc(px - rad * 0.3, py - rad * 0.35, rad * 0.55, 0, Math.PI * 2);
+          g.fillStyle = light;
+          g.fill();
+        }
+      }
+    }
+  } else if (style === "wave") {
+    // Horizontal ripple lines. Full-width sine strokes rather than scattered
+    // marks: water's read comes from the lines being continuous and level,
+    // which is also what makes it look like a surface rather than terrain.
+    // Wraps horizontally because each stroke spans the whole tile width, and
+    // vertically because rows are spaced evenly into PATTERN_SIZE.
+    const rows = Math.max(3, Math.round(density * 12));
+    const step = PATTERN_SIZE / rows;
+    g.lineWidth = grain * 0.5;
+    g.lineCap = "round";
+    for (let rw = 0; rw < rows; rw++) {
+      const baseY = rw * step + step * 0.5;
+      const amp = grain * (0.5 + rand() * 0.7);
+      const phase = rand() * Math.PI * 2;
+      // Integer cycle count so the sine closes on itself at the pattern edge.
+      const cycles = 1 + Math.floor(rand() * 2);
+      g.strokeStyle = rand() < 0.5 ? light : dark;
+      g.beginPath();
+      for (let x = 0; x <= PATTERN_SIZE; x += 2) {
+        const y = baseY + Math.sin(phase + (x / PATTERN_SIZE) * Math.PI * 2 * cycles) * amp;
+        if (x === 0) g.moveTo(x, y); else g.lineTo(x, y);
+      }
       g.stroke();
     }
   } else if (style === "cell") {
@@ -601,7 +760,7 @@ export function render() {
   const n = state.tileOrder.length;
   const hasStructure = bmap.length === n && n > 0;
   const margin = tileSize * 2;
-  const { ux, uy, up, road } = tileGeometry();
+  const { ux, uy, up, road, crossing, nbr } = tileGeometry();
   const camX = state.cameraX, camY = state.cameraY;
 
   // Fills are always batched by colour now. Cel-quantising lightness collapses
@@ -619,6 +778,18 @@ export function render() {
   const buckets = new Map();      // fill colour -> { coords, border }
   const texBuckets = new Map();   // biome index -> coords (pattern overlay)
   const typeBuckets = new Map();  // reserved tile type id -> coords
+  const crossCoords = [];         // carved fords/bridges, drawn over the terrain
+  const contourCoords = [];       // impassable tiles, for the stepped cap
+
+  // Which biome indices block movement. Derived from the `passable` flag the
+  // snapshot ships per biome -- the same one the client already crosses with
+  // biome_map to know where it must not path. Rebuilt per frame because it is
+  // a handful of entries, not per tile.
+  const impassableBiome = new Uint8Array(state.biomeLegend.length);
+  for (let b = 0; b < state.biomeLegend.length; b++) {
+    const def = state.biomes[state.biomeLegend[b]];
+    impassableBiome[b] = def && def.passable === false ? 1 : 0;
+  }
   const hexSize = tileSize - 1;
   // Grain scales with the tiles so texture density reads the same at any zoom
   // (28 is the base tile size the textures were authored against).
@@ -646,6 +817,30 @@ export function render() {
       const eUp = iUp >= 0 ? elev[iUp] / 255 : e;
       const slope = e - eUp;
 
+      // Layer 4: ambient occlusion across all six neighbours. Sum how far
+      // each neighbour rises above this tile, weighted by direction so the
+      // shadow falls consistently. Edge neighbours (-1) are treated as level
+      // with this tile rather than as height zero -- a floor's rim is not a
+      // cliff, and scoring it as one draws a dark ring around the whole map.
+      // Compares raw bytes and normalises once at the end rather than dividing
+      // per neighbour. Measured with the pass toggled on and off inside a
+      // single page (the only comparison that holds still -- frame times here
+      // drift several ms between reloads): 18.9/18.8ms with, 19.1/18.3ms
+      // without, i.e. no measurable cost on a full radius-64 floor. Hand
+      // unrolling the loop did not help either, so this is not a hot spot
+      // worth trading clarity for.
+      let occl = 0;
+      const nb = i * 6;
+      const eb = elev[i];
+      for (let d = 0; d < 6; d++) {
+        const j = nbr[nb + d];
+        if (j < 0) continue;
+        const rise = elev[j] - eb;
+        if (rise > 0) occl += rise * OCCLUSION_WEIGHTS[d];
+      }
+      occl /= 255;
+      if (occl > OCCLUSION_CLAMP) occl = OCCLUSION_CLAMP;
+
       const biome = state.biomes[state.biomeLegend[bmap[i]]];
       const baseL = (biome && biome.hsl ? biome.hsl.l : 20);
       // Cel step: snap the summed lightness to a fixed band so neighbouring
@@ -654,7 +849,8 @@ export function render() {
       const lightness = celStep(baseL
         + (ro - 0.5) * ROUGHNESS_AMOUNT      // Layer 2: micro texture
         + (e - 0.5) * ELEVATION_AMOUNT       // absolute height
-        + slope * SLOPE_AMOUNT);             // Layer 3: directional
+        + slope * SLOPE_AMOUNT               // Layer 3: directional
+        - occl * OCCLUSION_AMOUNT);          // Layer 4: ambient occlusion
       fill = tileColor(bmap[i], lightness);
       border = tileColor(bmap[i], lightness - BORDER_DARKEN);
       texBiome = bmap[i];
@@ -680,6 +876,20 @@ export function render() {
     let bucket = buckets.get(fill);
     if (bucket === undefined) buckets.set(fill, bucket = { coords: [], border });
     bucket.coords.push(cx, cy);
+
+    // A crossing keeps whatever terrain it was carved into and takes the
+    // plank overlay on top, so it still reads as continuous with the ground
+    // either side of it. Roads and stairs already have their own strong
+    // markers, so a crossing that coincides with one does not double up.
+    if (crossing[i] === 1 && !isRoad && typeId === undefined) {
+      crossCoords.push(cx, cy);
+    }
+
+    // Contour tiers go on barrier tiles only, and only where they are big
+    // enough to resolve -- see the pass below.
+    if (drawTexture && texBiome >= 0 && impassableBiome[texBiome] === 1) {
+      contourCoords.push(cx, cy);
+    }
 
     if (drawTexture && texBiome >= 0) {
       let tb = texBuckets.get(texBiome);
@@ -716,6 +926,63 @@ export function render() {
     }
     ctx.fillStyle = pattern;
     ctx.fill();
+  }
+
+  // Pass 2c: contour tiers on barrier terrain. Two concentric insets filled
+  // with a flat translucent white, which steps the tile up towards a bright
+  // cap and reads as a hand-drawn contour peak.
+  //
+  // Tinting rather than recolouring is what keeps this batched: the tiers are
+  // colour-independent, so every barrier tile on the floor -- mountain, dense
+  // forest, any future one -- draws in exactly two paths total, instead of one
+  // per (biome, lightness) pair. It also means the tiers compose with whatever
+  // the occlusion pass did to the base fill underneath, so a shadowed cliff
+  // steps up from a darker plate than a lit one, for free.
+  //
+  // Gated with the terrain grain and for the same reason: at 8px a 0.5-scale
+  // inset is two pixels of ring and turns to moire. The occlusion term above
+  // is what carries the relief at that zoom -- it is a colour change, so it
+  // survives where geometry cannot.
+  if (contourCoords.length) {
+    for (const tier of CONTOUR_TIERS) {
+      ctx.beginPath();
+      const r = hexSize * tier.scale;
+      for (let k = 0; k < contourCoords.length; k += 2) {
+        addHex(contourCoords[k], contourCoords[k + 1], r);
+      }
+      ctx.fillStyle = tier.fill;
+      ctx.fill();
+    }
+  }
+
+  // Pass 2a: crossings -- the bridges and fords the generator carved through
+  // barrier terrain so the exits stay reachable. Drawn after the terrain
+  // texture and before entities: the whole point of a guaranteed route is
+  // that the player can see it without walking the shoreline to find it, so
+  // it must sit on top of the water ripples rather than under them.
+  //
+  // Unlike the terrain grain this is NOT gated on zoom. Texture zoomed out is
+  // decoration and turns to moire, but a crossing is navigation -- it is most
+  // useful precisely when the player is looking at the whole floor deciding
+  // where to walk. Plank count is fixed and their spacing scales, so the mark
+  // degrades to a few legible bars instead of mush.
+  if (crossCoords.length) {
+    const planks = 3;
+    ctx.strokeStyle = COLORS.crossing;
+    ctx.lineWidth = Math.max(1, tileSize * 0.14);
+    ctx.lineCap = "butt";
+    ctx.beginPath();
+    for (let k = 0; k < crossCoords.length; k += 2) {
+      const cx = crossCoords[k], cy = crossCoords[k + 1];
+      const half = hexSize * 0.62;   // stop short of the hex corners
+      const gap = (hexSize * 1.1) / (planks + 1);
+      for (let p = 1; p <= planks; p++) {
+        const y = cy - hexSize * 0.55 + gap * p;
+        ctx.moveTo(cx - half, y);
+        ctx.lineTo(cx + half, y);
+      }
+    }
+    ctx.stroke();
   }
 
   // Pass 2b: reserved tile types (stairs). Same world-locked transform as the

@@ -23,6 +23,7 @@ export const state = {
 
   // set of tile keys "q,r" that are road tiles
   roads: new Set(),
+  crossings: new Set(),
   // tile key "q,r" -> reserved tile type id (server gep/tiles.py), e.g.
   // "tile_stairs_up". Sparse: only structurally significant tiles appear.
   tileTypes: new Map(),

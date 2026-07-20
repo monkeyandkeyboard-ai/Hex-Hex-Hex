@@ -81,6 +81,16 @@ export function applySnapshot(msg) {
     state.roads.add(`${t[0]},${t[1]}`);
   }
 
+  // Barrier tiles the generator opened so the exits stay reachable
+  // (server gep/passability.py). These arrive as coordinates rather than
+  // being derivable from biome data: carving rewrites a ford's biome to
+  // walkable ground, so by the time the client sees it, nothing in the
+  // terrain says a crossing was ever cut there.
+  state.crossings.clear();
+  for (const t of msg.crossings || []) {
+    state.crossings.add(`${t[0]},${t[1]}`);
+  }
+
   state.resourceNodes.clear();
   for (const [key, rid] of Object.entries(msg.resource_nodes || {})) {
     state.resourceNodes.set(key, rid);

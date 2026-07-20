@@ -188,6 +188,53 @@ def apply_constraints(
     return regions
 
 
+def apply_barrier_relief(
+    elevation: dict[Tile, float],
+    regions: dict[Tile, str],
+    biome_defs: dict | None,
+) -> dict[Tile, float]:
+    """Raise barrier tiles so impassable terrain has physical height.
+
+    Height and impassability are two different things, and on a chamber floor
+    they come apart completely: the wall biome is assigned by the chamber
+    carver, while elevation comes from the noise field, so a dungeon wall sits
+    at whatever height the noise happened to give it -- frequently *lower* than
+    the room beside it. Shading a floor like that reads as a flat map with
+    colours on it, because the relief and the walls are describing unrelated
+    things.
+
+    This does not replace the noise field, it adds to it: a mountain range
+    keeps the shape the noise gave it and is lifted as a mass, so natural
+    terrain still undulates instead of flattening into a plateau at the boost
+    value. The result is clamped to [0, 1] because that is the range the
+    packed wire field quantises against.
+
+    Runs after crossings are carved, which is what keeps a ford at ground
+    level: carving rewrites the ford's region to walkable ground, so by the
+    time this reads `regions` the bridge tiles are no longer barrier and are
+    not raised. A raised ford would be a bridge over nothing, standing as tall
+    as the cliff it was cut through.
+
+    Deterministic and PRNG-free: a pure function of the final regions and the
+    biome table, consuming no stream, so adding it cannot shift any existing
+    seed's terrain.
+    """
+    if not biome_defs:
+        return elevation
+    boosts = {
+        bid: data["height_boost"]
+        for bid, data in biome_defs.items()
+        if data.get("height_boost")
+    }
+    if not boosts:
+        return elevation
+    for tile, bid in regions.items():
+        boost = boosts.get(bid)
+        if boost and tile in elevation:
+            elevation[tile] = min(1.0, elevation[tile] + boost)
+    return elevation
+
+
 def flatten_elevation(
     elevation: dict[Tile, float],
     radius: int,

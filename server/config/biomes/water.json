@@ -13,9 +13,9 @@
     "l": 20
   },
   "texture": {
-    "style": "speckle",
-    "density": 0.35,
-    "contrast": 0.05,
-    "grain": 3.2
+    "style": "wave",
+    "density": 0.6,
+    "contrast": 0.13,
+    "grain": 3.0
   }
 }

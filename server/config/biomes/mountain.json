@@ -3,6 +3,7 @@
   "display_name": "Sheer Rock",
   "color": "#4a453f",
   "passable": false,
+  "height_boost": 0.35,
   "resource_spawn_chance": 0.0,
   "resource_weights": [],
   "monster_weight": 0.0,
@@ -13,9 +14,9 @@
     "l": 29
   },
   "texture": {
-    "style": "speckle",
-    "density": 0.9,
-    "contrast": 0.14,
-    "grain": 1.1
+    "style": "crag",
+    "density": 0.95,
+    "contrast": 0.2,
+    "grain": 1.8
   }
 }

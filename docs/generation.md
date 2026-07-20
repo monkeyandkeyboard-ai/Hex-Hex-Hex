@@ -431,15 +431,17 @@ procedurally at load and caches it, so there is nothing to author and nothing
 to download. Colour still comes from the biome's `hsl` — the client only
 derives from it, never substitutes its own palette.
 
-Three things produce the stylised look, all in `client/src/renderer.js`:
+Five things produce the stylised look, all in `client/src/renderer.js`:
 
-- **Cel shading.** The summed lightness (base + roughness + elevation + slope)
-  is snapped to fixed steps, so terrain resolves into flat bands instead of a
-  gradient. This also collapses the palette to a handful of colours, which is
-  what makes batched drawing viable at every zoom.
+- **Cel shading.** The summed lightness (base + roughness + elevation + slope +
+  occlusion) is snapped to fixed steps, so terrain resolves into flat bands
+  instead of a gradient. This also collapses the palette to a handful of
+  colours, which is what makes batched drawing viable at every zoom.
+- **Ambient occlusion.** See below.
 - **Procedural texture.** One `CanvasPattern` per biome, generated into an
   offscreen canvas and locked to world space so grain stays stuck to the
   terrain as the camera pans.
+- **Contour tiers** on barrier tiles. See below.
 - **Derived borders.** Each hex is outlined in its own colour darkened, rather
   than a fixed grey rule.
 
@@ -447,7 +449,7 @@ Texture style is config, in the biome file:
 
 ```jsonc
 "texture": {
-  "style": "speckle",   // speckle | cell | hatch
+  "style": "speckle",   // speckle | cell | hatch | crag | canopy | wave
   "density": 0.75,      // how much coverage
   "contrast": 0.085,    // strength; keep low, this is grain not decoration
   "grain": 1.6          // feature size in pattern pixels
@@ -463,6 +465,87 @@ Both texture and borders are **skipped when zoomed out** past a tile-size
 threshold. This is not an optimisation shortcut: scaled down far enough the
 grain goes sub-pixel and resolves into a moire mesh over the whole floor, and
 a 1px border on a 4px hex is noise rather than a grid.
+
+`crag` (angular chevrons), `canopy` (overlapping lit domes) and `wave`
+(continuous horizontal ripples) exist to separate impassable terrain from the
+walkable ground it sits next to. That ambiguity was real and was found by
+looking: `mountain` walls against `rocky` floor were two near-identical greys,
+and `dense_forest` against `fungal` two near-identical greens, so a barrier was
+something the player could only discover by walking into it.
+
+### Relief: giving barriers physical height
+
+Height and impassability are **different properties**, and on a chamber floor
+they come apart completely — the wall biome is stamped on by the carver while
+elevation comes from the noise field, so a dungeon wall routinely sits *lower*
+than the room beside it. Shading a floor like that reads as a flat map with
+colours on it.
+
+A biome may therefore declare an optional `height_boost`:
+
+```jsonc
+"passable": false,
+"height_boost": 0.35    // added to the noise field, clamped to [0, 1]
+```
+
+Rules worth knowing:
+
+- **Additive, not assigned.** A range keeps the shape the noise gave it and is
+  lifted as a mass. Assigning a height would flatten every barrier onto one
+  value and render the range as a plateau.
+- **Rejected on passable biomes** at config load. Relief is how the client says
+  "this blocks you"; raising walkable ground makes that cue lie.
+- **Optional, and water declines it.** Water is impassable but is not a peak.
+  Raising it would run rivers along ridges.
+- **Runs after crossings are carved** (`run_pipeline`, not a schedulable
+  stage). Carving rewrites a ford's region to walkable ground, so by the time
+  relief reads `regions` the bridge is no longer barrier and is not raised.
+  Move it earlier and every bridge becomes a column as tall as the cliff it was
+  cut through. Three tests cover this ordering.
+
+It is **not** a guarantee that barriers out-top their surroundings — that
+depends on the boost against the terrain the biome was stamped into. Measured
+on shipping config: 92.2% of barrier edges on `flooded_ruins` and 99.8% on
+`mountain_pass` stand above the ground they block.
+
+### Ambient occlusion and contour tiers
+
+`tileGeometry()` precomputes all six neighbour indices per tile into one flat
+`Int32Array(n*6)` (`-1` at the floor edge), built once per floor. The shading
+pass sums how far each neighbour **rises above** the tile, weighted by
+direction so shadow falls consistently, then darkens by that term.
+
+- **Darkening only.** A tile in a hollow genuinely receives less light; a ridge
+  top is not receiving *extra*, it is merely unshadowed. Letting the term go
+  positive blows ridges out to a flat bright cap and loses surface detail.
+- **`SLOPE_AMOUNT` was cut from 30 to 13** when occlusion arrived. Slope is a
+  one-neighbour approximation of the same height difference; at full strength
+  the two stacked and drove the ground at the foot of any cliff to solid black.
+  Slope keeps its remaining weight for being *signed* — it still lifts up-facing
+  slopes into highlight.
+- **Survives at any zoom**, including the 8px default on a radius-64 floor,
+  because it resolves to a lightness rather than to geometry. This matters: it
+  is the only relief cue that works at the zoom players actually navigate at.
+
+Barrier tiles additionally take two concentric **contour tiers** (0.70 and 0.40
+of the hex radius), gated with the texture grain. They are translucent tints
+rather than recolours, which is what keeps them batched — every barrier tile on
+the floor draws in exactly two paths regardless of biome, and the tiers compose
+with whatever occlusion did to the fill underneath for free.
+
+Both stay inside the batched colour-bucket pass. Measured by toggling each pass
+on and off *within a single page* — frame times here drift several ms between
+reloads, so cross-reload comparison is worthless — occlusion cost 18.9/18.8ms
+against 19.1/18.3ms without it, i.e. nothing detectable on a full floor. Hand
+unrolling the neighbour loop made it slightly worse and was reverted.
+
+### Crossings
+
+Carved fords render as timber planks, drawn after the terrain texture and
+before entities so a bridge sits on top of the water rather than under it.
+Unlike the grain this is **not** zoom-gated: texture is decoration, but a
+guaranteed route is navigation, and it is most useful precisely when the player
+is looking at the whole floor deciding where to walk.
 
 Sprites are deliberately untouched by all of this. Entities, monsters and
 prefab props keep rendering through the existing sprite pipeline; the only
@@ -511,7 +594,7 @@ every recomposition of existing ones is free.
 | --- | --- |
 | `gep/floorgen.py` | Framing only — seeding, radius, exit placement, packing the `FloorLayout` |
 | `gep/pipeline.py` | `GenContext`, the stage functions, `STAGE_REGISTRY`, `run_pipeline` |
-| `gep/biome_layout.py` | The three layout modes and template constraint enforcement |
+| `gep/biome_layout.py` | The three layout modes, template constraints, elevation flattening and barrier relief |
 | `gep/prefabs.py` | Generic constraint-scored prefab placement |
 | `gep/roads.py`, `gep/constraints.py` | Path carving and the navigability guarantee |
 | `gep/passability.py` | Which tiles terrain forbids, the carved crossings, and island reconnection |
