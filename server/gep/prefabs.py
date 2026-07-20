@@ -65,6 +65,10 @@ def _site_legal(
     for tile in footprint_tiles:
         if tile not in tile_set:
             return False
+        # A structure straddling a cliff edge would have tiles the player can
+        # see but never walk onto. Whole footprint or nowhere.
+        if tile in layout.blocked:
+            return False
 
     required = _required_biomes(placement.get("required_biome"))
     if required is not None:

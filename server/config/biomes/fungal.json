@@ -2,6 +2,7 @@
   "id": "fungal",
   "display_name": "Fungal Hollows",
   "color": "#1f3326",
+  "passable": true,
   "resource_spawn_chance": 0.007,
   "resource_weights": [
     [

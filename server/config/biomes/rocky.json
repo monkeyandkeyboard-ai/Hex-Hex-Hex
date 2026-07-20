@@ -2,6 +2,7 @@
   "id": "rocky",
   "display_name": "Rocky Caverns",
   "color": "#332b22",
+  "passable": true,
   "resource_spawn_chance": 0.008,
   "resource_weights": [
     [

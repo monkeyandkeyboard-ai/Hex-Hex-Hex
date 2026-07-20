@@ -246,6 +246,76 @@ only for the hand-built radius-6-8 rulesets in the combat and movement tests,
 which have no opinion about exits; `ConfigStore` makes the block mandatory in
 shipping config.
 
+## Impassable terrain and crossings
+
+Terrain used to be entirely cosmetic — every tile was walkable, and
+`validate_connectivity` was a tautology that existed so a future barrier
+feature would be *required* to prove it hadn't walled off an exit. This is that
+feature's foundation.
+
+**Passability is a biome property**, declared per biome as `"passable": true |
+false` and required (an omission is a startup error). It is not a parallel
+overlay: a tile already has exactly one biome, and the biome file already owns
+everything else about what that tile is, so a second source of truth for the
+same question would only create the chance for the two to disagree. Water and
+mountains are then ordinary biomes that happen to say `false`, inheriting
+colour, texture and the rest for free. An impassable biome may not declare
+spawn weights — nothing can reach those tiles, so they would be dead config.
+
+Two notions of "blocked" meet at movement time and are kept apart:
+
+| | computed | lifetime |
+| --- | --- | --- |
+| terrain | once, at generation | fixed — a cliff does not move |
+| entities | per call, in `FloorState.is_passable` | until the monster dies |
+
+Generation reasons only about the first; there are no entities yet when roads
+are carved. A floor whose exits are reachable except when a monster happens to
+be standing somewhere is still correctly generated.
+
+Enforcement is one gate. `FloorState.is_passable` is the single predicate both
+`systems/movement.py` and `systems/monster_ai.py` already routed through, so
+the terrain check goes there rather than at either call site — terrain that
+stopped players but not monsters would let a goblin swim.
+
+### Connectivity is produced, not checked
+
+Two things go wrong the moment terrain can block, and neither is rare:
+
+1. **Exits get buried.** Exits are chosen on the outer ring *before* any
+   terrain exists. Nothing stops a later stage dropping a lake on a staircase,
+   and it isn't a re-rollable unlucky draw — the exit coordinate is already
+   fixed. So structural tiles (both staircases, plus the centre) win outright
+   and are cleared back to the fallback biome. The tile's *region* is
+   rewritten, not just exempted from `blocked`, so the two agree: exempting
+   alone would render a staircase submerged in a lake the player walks across.
+   Clearing is need-driven — a structural tile on already-walkable ground is
+   left alone, or the tower entrance would stop being town biome on a town
+   floor merely because a rule about lakes exists.
+
+2. **Barriers cut the disc in two.** Measured, not assumed: a barrier biome
+   covering even ~30% of a hex disc disconnects the exits most of the time.
+   Blobby low-elevation terrain does not politely leave a corridor, and the
+   exits sit on the outer ring where a barrier touching the edge isolates them
+   completely. Rejecting those floors would mean rejecting most floors.
+
+So `carve_crossings` **produces** connectivity rather than validating it. For
+each unreachable exit it paths there ignoring barriers, then opens only the
+blocked tiles on that route. Minimal by construction — A* returns a shortest
+path, so no tile is opened that a shorter crossing would have avoided, and the
+barrier survives everywhere the player doesn't actually need to pass. The
+opened tiles are recorded as `layout.crossings`: **a crossing is the tile where
+the barrier was opened, not decoration laid over one**, which is what lets the
+client render a bridge rather than guess where one belongs.
+
+`validate_connectivity` still runs afterwards and can still fail. Carving
+widens the set of templates that generate; it does not remove the guarantee
+that a shipped floor is playable.
+
+No PRNG is consumed by any of this — A* is deterministic and exits are
+processed in a fixed order — so the carved set is a pure function of the
+layout, and adding it could not shift any existing seed's terrain.
+
 ## Reserved tile types
 
 A tile's **biome** says what it is made of; every tile has one. A **reserved
@@ -370,6 +440,7 @@ every recomposition of existing ones is free.
 | `gep/biome_layout.py` | The three layout modes and template constraint enforcement |
 | `gep/prefabs.py` | Generic constraint-scored prefab placement |
 | `gep/roads.py`, `gep/constraints.py` | Path carving and the navigability guarantee |
+| `gep/passability.py` | Which tiles terrain forbids, and the carved crossings that keep exits reachable |
 | `gep/spawner.py` | Monsters and resources — reads the finished layout, own seed root |
 | `gep/tiles.py` | Reserved tile type ids (stairs) |
 | `gep/floor_manager.py` | Floor cache, and the two player movers (stairs vs absolute) |

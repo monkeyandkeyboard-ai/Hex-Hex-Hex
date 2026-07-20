@@ -26,10 +26,17 @@ the layout mode is "elevation"). Missing prerequisites raise from the stage
 itself rather than producing a quietly wrong floor.
 """
 from dataclasses import dataclass, field
+from typing import Callable
 
 from gep.biome_layout import apply_constraints, build_macro_layout, flatten_elevation
 from gep.constraints import enforce_biome_adjacency, validate_connectivity
 from gep.noise import build_field, normalise
+from gep.passability import (
+    blocked_tiles,
+    carve_crossings,
+    clear_structural_tiles,
+    terrain_predicate,
+)
 from gep.prefabs import PlacedPrefab, place_prefabs
 from gep.roads import build_roads
 
@@ -63,6 +70,7 @@ class GenContext:
     down_exit: Tile | None
     params: dict                      # the archetype's config block
     prefab_defs: dict | None = None
+    biome_defs: dict | None = None
 
     # --- written by stages ---
     elevation: dict[Tile, float] = field(default_factory=dict)
@@ -70,6 +78,34 @@ class GenContext:
     regions: dict[Tile, str] = field(default_factory=dict)
     roads: set[Tile] = field(default_factory=set)
     prefabs: list[PlacedPrefab] = field(default_factory=list)
+    # Tiles terrain forbids entry to, derived from regions + biome passability
+    # by run_pipeline once the last region-writing stage has finished. Not a
+    # stage of its own: it is a projection of regions rather than a decision,
+    # so letting config schedule it would only create the opportunity to
+    # schedule it in the wrong place.
+    blocked: set[Tile] = field(default_factory=set)
+    # Barrier tiles opened to guarantee the exits are reachable. These are the
+    # bridges and fords: a crossing is the tile where the barrier was opened,
+    # not decoration laid over one.
+    crossings: set[Tile] = field(default_factory=set)
+
+    def spawn_point(self) -> Tile:
+        return self.down_exit if self.down_exit is not None else (0, 0)
+
+    def exits(self) -> list[Tile]:
+        return [self.up_exit] + ([self.down_exit] if self.down_exit else [])
+
+    def passable(self) -> Callable[[Tile], bool]:
+        return terrain_predicate(self.tile_set, self.blocked)
+
+    def structural_tiles(self) -> list[Tile]:
+        """Tiles whose position is fixed before terrain exists and which must
+        stay walkable: both staircases, plus the centre, which is floor 1's
+        entrance and every respawning character's arrival point."""
+        tiles = [self.up_exit, (0, 0)]
+        if self.down_exit is not None:
+            tiles.append(self.down_exit)
+        return tiles
 
 
 # --- Stages ---------------------------------------------------------------
@@ -146,13 +182,22 @@ def stage_prefabs(ctx: GenContext) -> None:
 
 
 def stage_roads(ctx: GenContext) -> None:
-    ctx.roads = build_roads(ctx.tile_set, ctx.up_exit, ctx.down_exit)
+    """The predicate here is defensive rather than currently load-bearing, and
+    it is worth being honest about which: carving already opened the shortest
+    route between the same two endpoints using the same A*, so the road follows
+    that corridor and would not cross a barrier even without it. Removing the
+    argument passes every test today. It stays because that agreement is a
+    coincidence of the two using identical endpoints -- the moment roads route
+    via a waypoint, or carving optimises for anything but path length, an
+    unconstrained road draws itself across a lake.
+    """
+    ctx.roads = build_roads(ctx.tile_set, ctx.up_exit, ctx.down_exit, ctx.passable())
 
 
 def stage_connectivity(ctx: GenContext) -> None:
-    exits = [ctx.up_exit] + ([ctx.down_exit] if ctx.down_exit else [])
-    spawn_point = ctx.down_exit if ctx.down_exit is not None else (0, 0)
-    validate_connectivity(ctx.tile_set, spawn_point, exits)
+    validate_connectivity(
+        ctx.tile_set, ctx.spawn_point(), ctx.exits(), ctx.passable()
+    )
 
 
 STAGE_REGISTRY = {
@@ -176,6 +221,30 @@ def run_pipeline(ctx: GenContext, stage_ids: list[str]) -> None:
     configured = [s for s in stage_ids if s != "prefabs"]
     for stage_id in configured:
         STAGE_REGISTRY[stage_id](ctx)
+
+    # Terrain passability is resolved here, between the configured stages and
+    # the terminal pair: after everything that may still rewrite a region
+    # (biome_adjacency repairs tiles), and before the two stages whose whole
+    # job is to guarantee the player can get across it.
+    #
+    # The structural tiles are cleared first so that terrain can never bury a
+    # staircase or the tower entrance. Those coordinates are fixed before any
+    # terrain exists and cannot be re-rolled once it does, so this is the only
+    # point at which the conflict can be resolved rather than merely detected.
+    clear_structural_tiles(
+        ctx.regions, ctx.structural_tiles(),
+        ctx.params.get("fallback_biome"), ctx.biome_defs,
+    )
+    ctx.blocked = blocked_tiles(ctx.regions, ctx.biome_defs)
+
+    # Then open the minimum number of barrier tiles needed to reach every exit.
+    # This runs before `roads` so the road spine can use the crossings, and
+    # before `connectivity` so that check validates the carved result rather
+    # than the raw terrain.
+    ctx.crossings = carve_crossings(
+        ctx.regions, ctx.blocked, ctx.tile_set,
+        ctx.spawn_point(), ctx.exits(), ctx.params.get("fallback_biome"),
+    )
 
     for stage_id in TERMINAL_STAGES:
         STAGE_REGISTRY[stage_id](ctx)

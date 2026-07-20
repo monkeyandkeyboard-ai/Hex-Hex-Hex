@@ -66,6 +66,11 @@ _BIOME_REQUIRED = {
     "resource_weights",
     "monster_weight",
     "monster_weights",
+    # Whether the player can stand on this biome's tiles. Required rather than
+    # defaulted to True: a biome that omits it is a biome whose author never
+    # decided, and "water you can walk across" is the kind of wrong that looks
+    # like a rendering bug for a week before anyone reads the config.
+    "passable",
 }
 
 _PREFAB_REQUIRED = {
@@ -652,6 +657,19 @@ class ConfigStore:
             for pair in data["monster_weights"]:
                 if pair[0] not in self.monsters:
                     raise ConfigError(f"biome {biome_id}: unknown monster {pair[0]!r}")
+            if not isinstance(data["passable"], bool):
+                raise ConfigError(f"biome {biome_id}: 'passable' must be true or false")
+            if data["passable"] is False:
+                # Nothing can reach these tiles to fight or gather on them, so
+                # weights there are silently dead config. Better to reject the
+                # contradiction than to load it and have someone wonder why
+                # their lake never spawns the fish they weighted into it.
+                for key in ("resource_weights", "monster_weights"):
+                    if data[key]:
+                        raise ConfigError(
+                            f"biome {biome_id}: is impassable but declares {key!r}; "
+                            f"nothing can reach those tiles to spawn on them"
+                        )
 
     def _validate_spawn_ruleset(self) -> None:
         """Every archetype the spawner names must exist, and vice versa isn't

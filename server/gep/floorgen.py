@@ -57,6 +57,14 @@ class FloorLayout:
     # Per-tile structural fields in [0, 1]; empty on the legacy path.
     elevation: dict[Tile, float] = field(default_factory=dict)
     roughness: dict[Tile, float] = field(default_factory=dict)
+    # Tiles whose biome forbids entry (gep/passability.py). Empty means every
+    # tile is walkable, which is the legacy path and was true of every floor
+    # before impassable terrain existed.
+    blocked: set[Tile] = field(default_factory=set)
+    # Barrier tiles opened so the exits stay reachable -- the bridges and
+    # fords. Kept distinct from plain walkable ground because they are the
+    # tiles the client should draw a crossing on.
+    crossings: set[Tile] = field(default_factory=set)
     # Fixed-footprint structures stamped onto the floor (gep/prefabs.py);
     # empty on the legacy path and whenever the archetype names no prefabs.
     prefabs: list[PlacedPrefab] = field(default_factory=list)
@@ -76,6 +84,11 @@ class FloorLayout:
             "safe": self.safe,
             "regions": {f"{q},{r}": bid for (q, r), bid in self.regions.items()},
             "roads": [list(t) for t in sorted(self.roads)],
+            # Sparse like tile_types rather than a packed per-tile array: the
+            # client needs this to stop drawing a move preview through a cliff,
+            # and on most floors it is a small fraction of the tiles.
+            "blocked": [list(t) for t in sorted(self.blocked)],
+            "crossings": [list(t) for t in sorted(self.crossings)],
             "tile_types": {f"{q},{r}": t for (q, r), t in self.tile_types.items()},
             "prefabs": [
                 {
@@ -242,6 +255,7 @@ def generate_floor(
     ctx = GenContext(
         floor_seed=floor_seed, radius=radius, tiles=all_tiles, tile_set=set(all_tiles),
         up_exit=up_exit, down_exit=down_exit, params=params, prefab_defs=prefabs,
+        biome_defs=biomes,
     )
     run_pipeline(ctx, params["pipeline"])
 
@@ -250,5 +264,5 @@ def generate_floor(
         up_exit=up_exit, down_exit=down_exit,
         regions=ctx.regions, roads=ctx.roads, archetype=archetype_name, safe=safe,
         elevation=ctx.elevation, roughness=ctx.roughness, prefabs=ctx.prefabs,
-        tile_types=tile_types,
+        blocked=ctx.blocked, crossings=ctx.crossings, tile_types=tile_types,
     )

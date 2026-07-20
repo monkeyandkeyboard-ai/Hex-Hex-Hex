@@ -303,6 +303,12 @@ def floor_snapshot(
         "elevation": pack_unit_field(layout.elevation, layout.tiles),
         "roughness": pack_unit_field(layout.roughness, layout.tiles),
         "roads": [list(t) for t in layout.roads],
+        # Terrain the player cannot enter, and the tiles carved through it so
+        # the exits stay reachable (gep/passability.py). Movement is validated
+        # server-side regardless; these ship so the client can stop drawing a
+        # move preview into a cliff, and so a crossing can render as a bridge.
+        "blocked": [list(t) for t in layout.blocked],
+        "crossings": [list(t) for t in layout.crossings],
         # Reserved tile types (gep/tiles.py): sparse tile -> id. up_exit and
         # down_exit above are the same two tiles, kept because the exit intent
         # and pathing address them by coordinate; this is how they render.

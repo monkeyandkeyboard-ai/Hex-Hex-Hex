@@ -63,6 +63,12 @@ def spawn_floor(
         # may occupy it, or a player can spawn standing on a monster.
         reserved.add((0, 0))
 
+    # Impassable terrain is reserved for the same reason the exits are: a
+    # monster or an ore vein inside a mountain is unreachable, and an
+    # unreachable aggro monster is worse than a missing one -- it can still
+    # pull, and the player has no way to answer it.
+    reserved |= layout.blocked
+
     root_seed = seed_for_spawner(layout.tower_id, layout.floor_number, spawn_seed)
 
     if not layout.regions:

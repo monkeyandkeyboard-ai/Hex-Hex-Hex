@@ -57,11 +57,19 @@ class FloorState:
         return tile in self.tile_set
 
     def is_passable(self, tile: Tile) -> bool:
-        """A tile is passable if it exists on the floor and is not occupied
-        by a blocking entity. Resource nodes are not blocking (player walks
-        onto the same tile to gather). Monsters block movement.
+        """A tile is passable if it exists on the floor, terrain permits entry,
+        and it is not occupied by a blocking entity. Resource nodes are not
+        blocking (player walks onto the same tile to gather). Monsters block
+        movement.
+
+        This is the single gate both player movement (gep/systems/movement.py)
+        and monster pursuit (gep/systems/monster_ai.py) route through, which is
+        why the terrain check goes here rather than at either call site --
+        terrain that stopped players but not monsters would let a goblin swim.
         """
         if not self.is_valid_tile(tile):
+            return False
+        if tile in self.layout.blocked:
             return False
         for monster in self.monsters.values():
             if monster.tile == tile and monster.alive:

@@ -2,6 +2,7 @@
   "id": "hazard",
   "display_name": "Scorched Fault",
   "color": "#3a2018",
+  "passable": true,
   "resource_spawn_chance": 0.005,
   "resource_weights": [
     [

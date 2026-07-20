@@ -9,9 +9,10 @@ a live-floor bug report.
 
 Two constraints:
   - connectivity: every exit tile must be reachable from the floor's spawn
-    point over passable tiles. Every tile is passable today (terrain is
-    cosmetic), so this always holds now -- it exists so a future impassable
-    terrain feature is required to prove it hasn't walled off an exit.
+    point over passable tiles. This was a tautology while all terrain was
+    cosmetic; now that a biome can declare itself impassable (see
+    gep/passability.py) it is load-bearing, and a template whose terrain walls
+    off an exit fails generation instead of shipping an unplayable floor.
   - biome adjacency: archetype-declared forbidden biome pairs may not sit on
     neighbouring tiles. Violations are repaired in place (the offending tile
     falls back to the template's fallback biome) rather than failing the
@@ -20,6 +21,8 @@ Two constraints:
     violation the floor is rejected -- that means the template's own rules
     conflict with each other, which is a config bug, not bad luck on a roll.
 """
+from typing import Callable
+
 from gep.pathfinding import find_path, hex_neighbors
 
 Tile = tuple[int, int]
@@ -33,11 +36,33 @@ def validate_connectivity(
     tile_set: set[Tile],
     spawn_point: Tile,
     exits: list[Tile],
+    is_passable: Callable[[Tile], bool] | None = None,
 ) -> None:
+    """Every exit must be reachable from spawn over passable terrain.
+
+    An exit or the spawn point sitting *on* blocked terrain is reported
+    separately from an exit merely being cut off, because they are different
+    config bugs: the first means a feature was stamped over a fixed structural
+    tile, the second means a barrier closed the only route between them.
+    """
+    if is_passable is None:
+        def is_passable(t: Tile) -> bool:
+            return t in tile_set
+
+    if not is_passable(spawn_point):
+        raise GenerationError(
+            f"spawn {spawn_point} is on impassable terrain -- a feature was "
+            f"placed over the floor's entrance"
+        )
     for exit_tile in exits:
         if exit_tile not in tile_set:
             raise GenerationError(f"exit {exit_tile} is not on the floor")
-        if find_path(spawn_point, exit_tile, lambda t: t in tile_set) is None:
+        if not is_passable(exit_tile):
+            raise GenerationError(
+                f"exit {exit_tile} is on impassable terrain -- a feature was "
+                f"placed over it"
+            )
+        if find_path(spawn_point, exit_tile, is_passable) is None:
             raise GenerationError(
                 f"exit {exit_tile} is not reachable from spawn {spawn_point}"
             )
