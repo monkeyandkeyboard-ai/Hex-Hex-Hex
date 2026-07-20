@@ -68,6 +68,11 @@ _BIOME_REQUIRED = {
     "monster_weights",
 }
 
+_PREFAB_REQUIRED = {
+    "id",
+    "footprint",
+}
+
 
 class ConfigError(Exception):
     pass
@@ -410,6 +415,7 @@ class ConfigStore:
         self.world = _load_json(root / "world.json")
         self.floor_ruleset = _load_json(root / "floor_ruleset.json")
         self.floor_archetypes = _load_json(root / "floor_archetypes.json")
+        self.spawn_ruleset = _load_json(root / "spawn_ruleset.json")
         self.skills = _load_json(root / "skills.json")
         self.combat_constants = _load_json(root / "combat_scaling_constants.json")
         self.xp_rates = _load_json(root / "xp_rates.json")
@@ -453,8 +459,14 @@ class ConfigStore:
 
         self.biomes = _load_dir(root / "biomes", _BIOME_REQUIRED)
         self._validate_biomes()
+
+        prefabs_dir = root / "prefabs"
+        self.prefabs = _load_dir(prefabs_dir, _PREFAB_REQUIRED) if prefabs_dir.is_dir() else {}
+        self._validate_prefabs()
+
         self._validate_archetypes()
         self._validate_loot_tables()
+        self._validate_spawn_ruleset()
 
     def _resolve_default_equipment_state(self) -> str:
         """The equipment id a player holds when main_hand is empty.
@@ -596,12 +608,80 @@ class ConfigStore:
                 if pair[0] not in self.monsters:
                     raise ConfigError(f"biome {biome_id}: unknown monster {pair[0]!r}")
 
+    def _validate_spawn_ruleset(self) -> None:
+        """Every archetype the spawner names must exist, and vice versa isn't
+        required -- an archetype with no entry simply spawns nothing (the
+        spawner's default), which is how safe/town floors stay unpopulated
+        without a redundant zero entry.
+        """
+        counts = self.spawn_ruleset.get("archetype_monster_counts", {})
+        archetypes = self.floor_archetypes.get("archetypes", {})
+        for name, count in counts.items():
+            if name not in archetypes:
+                raise ConfigError(
+                    f"spawn_ruleset.json: unknown archetype {name!r} in archetype_monster_counts"
+                )
+            if not isinstance(count, int) or count < 0:
+                raise ConfigError(
+                    f"spawn_ruleset.json: archetype_monster_counts[{name!r}] must be an integer >= 0"
+                )
+        factor = self.spawn_ruleset.get("road_danger_factor", 0.1)
+        if not isinstance(factor, (int, float)) or factor < 0:
+            raise ConfigError("spawn_ruleset.json: 'road_danger_factor' must be a number >= 0")
+
+    def _validate_prefabs(self) -> None:
+        for prefab_id, data in self.prefabs.items():
+            footprint = data["footprint"]
+            if not isinstance(footprint, list) or not footprint:
+                raise ConfigError(f"prefab {prefab_id}: 'footprint' must be a non-empty list")
+            offsets = set()
+            for offset in footprint:
+                key = tuple(offset)
+                if key in offsets:
+                    raise ConfigError(f"prefab {prefab_id}: duplicate footprint offset {offset!r}")
+                offsets.add(key)
+
+            tile_sprites = data.get("tile_sprites", {})
+            for key in tile_sprites:
+                offset = tuple(int(p) for p in key.split(","))
+                if offset not in offsets:
+                    raise ConfigError(
+                        f"prefab {prefab_id}: tile_sprites key {key!r} is not in 'footprint'"
+                    )
+
+            placement = data.get("placement", {})
+            required_biome = placement.get("required_biome")
+            if required_biome is not None:
+                refs = [required_biome] if isinstance(required_biome, str) else required_biome
+                for biome_id in refs:
+                    if biome_id not in self.biomes:
+                        raise ConfigError(
+                            f"prefab {prefab_id}: unknown required_biome {biome_id!r}"
+                        )
+
+            count = data.get("count", {"min": 1, "max": 1})
+            if count["min"] > count["max"] or count["min"] < 0:
+                raise ConfigError(f"prefab {prefab_id}: invalid 'count' range {count!r}")
+
+            effects = data.get("effects")
+            if effects:
+                override = effects.get("reward_table_override")
+                if override and override not in self.reward_profiles:
+                    raise ConfigError(
+                        f"prefab {prefab_id}: effects.reward_table_override "
+                        f"references unknown reward profile {override!r}"
+                    )
+
     def _validate_archetypes(self) -> None:
         archetypes = self.floor_archetypes.get("archetypes", {})
         for name, params in archetypes.items():
             for biome_id in self._archetype_biome_refs(params):
                 if biome_id not in self.biomes:
                     raise ConfigError(f"archetype {name}: unknown biome {biome_id!r}")
+            for prefab_id in params.get("prefabs", []):
+                if prefab_id not in self.prefabs:
+                    raise ConfigError(f"archetype {name}: unknown prefab {prefab_id!r}")
+            self._validate_pipeline(name, params)
             layout = params.get("layout", {})
             mode = layout.get("mode")
             if mode not in ("radial", "elevation", "cluster"):
@@ -612,12 +692,74 @@ class ConfigStore:
                 raise ConfigError(f"archetype {name}: elevation layout needs 'strata'")
             if mode == "cluster" and not layout.get("biome_weights"):
                 raise ConfigError(f"archetype {name}: cluster layout needs 'biome_weights'")
+            self._validate_generation_params(name, params)
         for rule in self.floor_archetypes.get("overrides", []):
             if rule["archetype"] not in archetypes:
                 raise ConfigError(f"archetype override references unknown archetype {rule['archetype']!r}")
         default = self.floor_archetypes.get("default_archetype")
         if default not in archetypes:
             raise ConfigError(f"default_archetype {default!r} is not defined")
+
+    @staticmethod
+    def _validate_generation_params(name: str, params: dict) -> None:
+        """Every number the generator reads must be declared here.
+
+        These used to have defaults baked into gep/biome_layout.py and
+        gep/pipeline.py. A default that every real archetype overrides is
+        dead weight; a default that some archetype silently relies on is
+        worse -- the floor gets generated from a value nobody chose, and the
+        only symptom is that the terrain quietly changes shape when the
+        default is later edited. Requiring them makes an omission a startup
+        error instead.
+        """
+        for field in ("elevation", "roughness"):
+            cfg = params.get(field)
+            if not isinstance(cfg, dict):
+                raise ConfigError(f"archetype {name}: '{field}' block is required")
+            for key in ("octaves", "scale"):
+                if cfg.get(key) is None:
+                    raise ConfigError(f"archetype {name}: '{field}.{key}' is required")
+
+        layout = params.get("layout", {})
+        if layout.get("mode") == "cluster" and layout.get("region_count") is None:
+            raise ConfigError(f"archetype {name}: cluster layout needs 'region_count'")
+
+        extremity = layout.get("extremity")
+        if extremity:
+            for key in ("beyond_radius_pct", "elevation_above"):
+                if extremity.get(key) is None:
+                    raise ConfigError(f"archetype {name}: 'layout.extremity.{key}' is required")
+
+    @staticmethod
+    def _validate_pipeline(name: str, params: dict) -> None:
+        """An archetype's generation stack must name real, runnable stages.
+
+        An unknown stage id would otherwise surface as a KeyError midway
+        through generating a live floor. The terminal stages are rejected
+        rather than ignored: a config that lists them reads as though it
+        controls when they run, and it does not (gep/pipeline.py runs them
+        last unconditionally) -- silently accepting the line would leave a
+        false impression of control in the config file.
+        """
+        from gep.pipeline import STAGE_REGISTRY, TERMINAL_STAGES
+
+        stages = params.get("pipeline")
+        if not stages:
+            raise ConfigError(f"archetype {name}: 'pipeline' is required and must be non-empty")
+        for stage_id in stages:
+            if stage_id in TERMINAL_STAGES:
+                raise ConfigError(
+                    f"archetype {name}: stage {stage_id!r} is always run last and "
+                    f"must not be listed in 'pipeline'"
+                )
+            if stage_id not in STAGE_REGISTRY:
+                raise ConfigError(f"archetype {name}: unknown pipeline stage {stage_id!r}")
+        if len(set(stages)) != len(stages):
+            raise ConfigError(f"archetype {name}: 'pipeline' lists a stage more than once")
+        if params.get("prefabs") and "prefabs" not in stages:
+            raise ConfigError(
+                f"archetype {name}: declares prefabs but its pipeline omits the 'prefabs' stage"
+            )
 
     @staticmethod
     def _archetype_biome_refs(params: dict) -> list[str]:
@@ -633,6 +775,8 @@ class ConfigStore:
         if extremity:
             refs.append(extremity["biome"])
         refs += params.get("forbid_biomes", [])
+        for pair in params.get("forbid_adjacent_biomes", []):
+            refs += pair
         if params.get("fallback_biome"):
             refs.append(params["fallback_biome"])
         return refs

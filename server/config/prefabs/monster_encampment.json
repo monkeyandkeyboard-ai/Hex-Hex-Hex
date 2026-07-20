@@ -1,0 +1,20 @@
+{
+  "id": "monster_encampment",
+  "display_name": "Monster Encampment",
+  "footprint": [[0, 0], [1, 0], [0, 1]],
+  "tile_sprites": {
+    "0,0": "prefab_encampment_fire",
+    "1,0": "prefab_encampment_tent",
+    "0,1": "prefab_encampment_tent"
+  },
+  "placement": {
+    "required_biome": ["rocky", "fungal", "hazard"],
+    "forbid_road_adjacent": true,
+    "min_spacing": 8
+  },
+  "count": {"min": 0, "max": 2},
+  "effects": {
+    "monster_rarity_radius": 4,
+    "monster_weight_multiplier": 1.5
+  }
+}

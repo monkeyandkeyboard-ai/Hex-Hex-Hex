@@ -29,6 +29,9 @@ export const state = {
   // tile key "q,r" -> resource_id
   resourceNodes: new Map(),
 
+  // tile key "q,r" -> prefab sprite id (town/encampment props etc.)
+  prefabTiles: new Map(),
+
   // monster_id -> monster object
   monsters: new Map(),
 

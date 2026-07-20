@@ -80,6 +80,13 @@ export function applySnapshot(msg) {
     state.resourceNodes.set(key, rid);
   }
 
+  state.prefabTiles.clear();
+  for (const prefab of msg.prefabs || []) {
+    for (const [key, sprite] of Object.entries(prefab.tile_sprites || {})) {
+      state.prefabTiles.set(key, sprite);
+    }
+  }
+
   // A snapshot is a fresh floor (or a resync): nothing should glide in from
   // wherever it happened to be standing on the previous one, and the cached
   // per-tile geometry describes the old floor.

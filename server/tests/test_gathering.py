@@ -27,9 +27,8 @@ def make_floor_with_node(node_tile=NODE_TILE, resource_id=RESOURCE_ID):
         tiles=[(q, r) for q in range(-8, 9) for r in range(-8, 9)
                if abs(q) <= 8 and abs(r) <= 8 and abs(q + r) <= 8],
         up_exit=(8, 0), down_exit=(-8, 0),
-        resource_nodes={node_tile: resource_id},
     )
-    floor = FloorState.from_layout(layout)
+    floor = FloorState.from_layout(layout, resource_nodes={node_tile: resource_id})
     return floor
 
 

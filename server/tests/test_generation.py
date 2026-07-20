@@ -61,7 +61,6 @@ def test_every_25th_floor_is_a_safe_town():
     assert name == "town_hub"
     town = _gen(25)
     assert town.safe is True
-    assert town.monster_spawns == []
     assert town.archetype == "town_hub"
 
 
@@ -132,9 +131,39 @@ def test_packed_elevation_quantises_within_one_step():
         assert abs(raw[i] / 255.0 - layout.elevation[tile]) <= 1 / 255.0
 
 
-def test_dungeon_floor_has_monsters_biased_off_road():
-    layout = _gen(6)
-    assert len(layout.monster_spawns) > 0
-    on_road = sum(1 for s in layout.monster_spawns if tuple(s["tile"]) in layout.roads)
-    # Off-road danger: with road_danger_factor 0.1, most spawns avoid roads.
-    assert on_road <= len(layout.monster_spawns) // 2
+# --- Hard constraints ------------------------------------------------------
+
+def test_exits_are_reachable_from_spawn():
+    from gep.constraints import validate_connectivity
+
+    layout = _gen(5)
+    tile_set = set(layout.tiles)
+    spawn = layout.down_exit  # floor 5 has both exits
+    validate_connectivity(tile_set, spawn, [layout.up_exit, layout.down_exit])  # no raise
+
+
+def test_forbidden_adjacent_biomes_are_repaired():
+    from gep.constraints import enforce_biome_adjacency
+
+    regions = {(0, 0): "a", (1, 0): "b", (2, 0): "a"}
+    repaired = enforce_biome_adjacency(
+        regions, forbidden_adjacent_biomes=[["a", "b"]], fallback_biome="c"
+    )
+    assert repaired[(0, 0)] == "c" or repaired[(1, 0)] == "c"
+    # No forbidden pair remains adjacent.
+    from gep.pathfinding import hex_neighbors
+    for tile, biome in repaired.items():
+        for n in hex_neighbors(*tile):
+            other = repaired.get(n)
+            assert not (other is not None and {biome, other} == {"a", "b"})
+
+
+def test_adjacency_violation_without_fallback_raises():
+    from gep.constraints import GenerationError, enforce_biome_adjacency
+
+    regions = {(0, 0): "a", (1, 0): "b"}
+    try:
+        enforce_biome_adjacency(regions, forbidden_adjacent_biomes=[["a", "b"]], fallback_biome=None)
+        assert False, "expected GenerationError"
+    except GenerationError:
+        pass

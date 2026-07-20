@@ -31,7 +31,9 @@ def _layout_rng(floor_seed: int) -> Mulberry32:
     return Mulberry32(fnv1a32(f"{floor_seed}:layout".encode("utf-8")))
 
 
-def _radial_fraction(tile: Tile, radius: int) -> float:
+def radial_fraction(tile: Tile, radius: int) -> float:
+    """Distance from centre as a fraction of floor radius. Public -- reused by
+    gep/prefabs.py for the same radial-band constraint vocabulary."""
     if radius <= 0:
         return 0.0
     return hex_distance(CENTER, tile) / radius
@@ -39,7 +41,7 @@ def _radial_fraction(tile: Tile, radius: int) -> float:
 
 def _warped_fraction(tile: Tile, radius: int, floor_seed: int, warp: dict | None) -> float:
     """Radial position with a noise-warped boundary, so band edges are organic."""
-    frac = _radial_fraction(tile, radius)
+    frac = radial_fraction(tile, radius)
     if not warp:
         return frac
     x, y = axial_to_cartesian(*tile)
@@ -81,9 +83,9 @@ def _layout_elevation(
         # Optional pockets at the floor's extremities (e.g. hazard only far
         # out and high up).
         if extremity:
-            frac = _radial_fraction(tile, radius)
-            if (frac >= extremity.get("beyond_radius_pct", 0.8)
-                    and e >= extremity.get("elevation_above", 0.6)):
+            frac = radial_fraction(tile, radius)
+            if (frac >= extremity["beyond_radius_pct"]
+                    and e >= extremity["elevation_above"]):
                 biome = extremity["biome"]
         out[tile] = biome
     return out
@@ -93,7 +95,7 @@ def _layout_cluster(
     tiles: list[Tile], radius: int, floor_seed: int, cfg: dict
 ) -> dict[Tile, str]:
     rng = _layout_rng(floor_seed)
-    count = min(cfg.get("region_count", 6), len(tiles))
+    count = min(cfg["region_count"], len(tiles))
     weights = cfg["biome_weights"]
     constraints = cfg.get("radial_constraints", {})
 
@@ -112,7 +114,7 @@ def _layout_cluster(
     # so e.g. hazard cells only ever anchor in the outer ring.
     seed_biomes: list[str] = []
     for seed in seeds:
-        frac = _radial_fraction(seed, radius)
+        frac = radial_fraction(seed, radius)
         legal = [
             (bid, w) for bid, w in weights
             if _radius_ok(bid, frac, constraints)
@@ -180,7 +182,7 @@ def apply_constraints(
             regions[tile] = fallback
             continue
         if constraints:
-            frac = _radial_fraction(tile, radius)
+            frac = radial_fraction(tile, radius)
             if not _radius_ok(biome, frac, constraints):
                 regions[tile] = fallback
     return regions
@@ -199,7 +201,7 @@ def flatten_elevation(
     if not rules:
         return elevation
     for tile, e in elevation.items():
-        frac = _radial_fraction(tile, radius)
+        frac = radial_fraction(tile, radius)
         for rule in rules:
             if frac <= rule["to"]:
                 target = rule.get("target", 0.5)

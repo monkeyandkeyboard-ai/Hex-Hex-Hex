@@ -239,6 +239,10 @@ function drawDot(q, r, color, size = 5) {
 const SPRITE_SHEETS = {
   monster_placeholder: "/art/monsters/Orc%20Captain.png",
   character_placeholder: "/art/Character/character.png",
+  prefab_market_well: "/art/prefabs/market_well.png",
+  prefab_market_stall: "/art/prefabs/market_stall.png",
+  prefab_encampment_fire: "/art/prefabs/encampment_fire.png",
+  prefab_encampment_tent: "/art/prefabs/encampment_tent.png",
 };
 
 // Frame column order, left to right, shared by every sheet. The art is
@@ -276,6 +280,26 @@ function getSheet(spriteId) {
     spriteCache.set(spriteId, entry);
   }
   return entry;
+}
+
+// Prefab props (market stalls, campfires, ...) are static single-frame
+// images, not directional sheets -- no facing/frame-column logic needed.
+function drawPropSprite(q, r, spriteId) {
+  const sheet = getSheet(spriteId);
+  if (!sheet || !sheet.loaded) return;
+
+  const [cx, cy] = hexToPixel(q, r);
+  const size = tileSize * 1.6;
+
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(
+    sheet.img,
+    0, 0, sheet.img.width, sheet.img.height,
+    -size / 2, -size * 0.72, size, size,
+  );
+  ctx.restore();
 }
 
 function drawSprite(q, r, visual, facing, fallbackDot) {
@@ -453,6 +477,13 @@ export function render() {
   for (const [key] of state.resourceNodes) {
     const [q, rv] = key.split(",").map(Number);
     drawDot(q, rv, COLORS.resourceDot, 3);
+  }
+
+  // Prefab props (drawn under entities, same as tiles, so nothing is clipped
+  // by a later sprite).
+  for (const [key, spriteId] of state.prefabTiles) {
+    const [q, rv] = key.split(",").map(Number);
+    drawPropSprite(q, rv, spriteId);
   }
 
   // Monsters and players share one sprite pass.

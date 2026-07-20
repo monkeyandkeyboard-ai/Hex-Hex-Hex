@@ -1,0 +1,9 @@
+{
+  "_comment": "Spawner-owned tuning, independent of the map generator's floor_archetypes.json. Population density is a spawner decision even though it's keyed by archetype id (the archetype is metadata the spawner reads off the layout, not something it derives its seed from).",
+  "road_danger_factor": 0.1,
+  "archetype_monster_counts": {
+    "town_hub": 0,
+    "fungal_cavern": 14,
+    "rocky_depths": 12
+  }
+}

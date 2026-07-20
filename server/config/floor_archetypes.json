@@ -8,9 +8,17 @@
     "town_hub": {
       "display_name": "Waystation",
       "safe": true,
-      "monster_spawn_count": 0,
       "fallback_biome": "rocky",
       "forbid_biomes": ["hazard"],
+      "prefabs": ["town_market"],
+      "pipeline": [
+        "noise_fields",
+        "macro_layout",
+        "template_constraints",
+        "flatten_elevation",
+        "biome_adjacency",
+        "prefabs"
+      ],
       "layout": {
         "mode": "radial",
         "warp": { "scale": 0.04, "amount": 0.06 },
@@ -34,8 +42,16 @@
     "fungal_cavern": {
       "display_name": "Fungal Cavern",
       "safe": false,
-      "monster_spawn_count": 14,
       "fallback_biome": "rocky",
+      "prefabs": ["monster_encampment"],
+      "pipeline": [
+        "noise_fields",
+        "macro_layout",
+        "template_constraints",
+        "flatten_elevation",
+        "biome_adjacency",
+        "prefabs"
+      ],
       "layout": {
         "mode": "elevation",
         "strata": [
@@ -56,8 +72,16 @@
     "rocky_depths": {
       "display_name": "Rocky Depths",
       "safe": false,
-      "monster_spawn_count": 12,
       "fallback_biome": "rocky",
+      "prefabs": ["monster_encampment"],
+      "pipeline": [
+        "noise_fields",
+        "macro_layout",
+        "template_constraints",
+        "flatten_elevation",
+        "biome_adjacency",
+        "prefabs"
+      ],
       "layout": {
         "mode": "cluster",
         "region_count": 6,

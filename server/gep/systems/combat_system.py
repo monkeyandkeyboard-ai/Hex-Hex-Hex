@@ -143,7 +143,8 @@ def register(
                 events.extend(award_xp(player, "constitution", xp_base * 0.1, xp_table))
                 events.append({"type": "monster_died", "monster_id": target_id,
                                "tile": list(monster.tile)})
-                events.extend(award_rewards(player, template["reward_table"], rewards))
+                reward_table = monster.reward_table_override or template["reward_table"]
+                events.extend(award_rewards(player, reward_table, rewards))
                 respawn_ticks = template.get("respawn_ticks", 60)
                 eng.schedule(respawn_ticks, "respawn-monster", {
                     "monster_id": target_id,

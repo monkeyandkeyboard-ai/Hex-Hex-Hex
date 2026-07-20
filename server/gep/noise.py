@@ -6,6 +6,32 @@ stream: noise must be sampleable at an arbitrary (x, y) independently of
 iteration order, which a sequential PRNG cannot provide.
 
 Output of `fbm` is normalised to [0, 1].
+
+--- Dual-paradigm standard for all generation modules (immutable) ---
+
+Map generation deliberately uses two distinct, non-interchangeable sources of
+determinism, chosen per access pattern rather than uniformly:
+
+  1. Stateless hash sampling (this module): keyed by (seed, x, y), for any
+     value that must be evaluated at an arbitrary coordinate independent of
+     visitation order -- spatial noise fields, and anything sampled off of
+     them at non-sequential points (e.g. biome_layout.py's boundary warp and
+     radial-constraint checks). Forcing these onto a mutated PRNG stream
+     would impose an artificial tile-visitation order on what is conceptually
+     a pure function of position, and would make sampling at a new point
+     depend on how many prior points happened to be sampled first.
+
+  2. Mutated PRNG stream (gep/prng.py's Mulberry32): for sequential
+     generation logic where "what comes next" legitimately depends on
+     consumption order -- exit placement, Voronoi seed placement
+     (biome_layout.py's _layout_cluster), A* tie-breaking, prefab/variant
+     selection. These are inherently ordered decisions, so a stream is the
+     correct (and simpler) tool.
+
+Do not collapse these into a single paradigm. Both are 100% deterministic
+given the same seed; the choice between them is about access pattern, not
+about determinism strength. New generation modules should pick whichever of
+the two matches how their values are accessed, not default to one.
 """
 import math
 

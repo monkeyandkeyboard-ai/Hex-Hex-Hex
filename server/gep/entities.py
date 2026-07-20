@@ -162,6 +162,10 @@ class Monster:
     threat_table: dict[str, float] = field(default_factory=dict)
     weapon_ready_tick: int = 0
     alive: bool = True
+    # Set only for spawns inside a prefab's rarity radius (gep/prefabs.py +
+    # gep/spawner.py); combat_system.py prefers this over the template's own
+    # reward_table when present. None means "use the template's table".
+    reward_table_override: str | None = None
 
     @property
     def threat_target(self) -> str | None:
@@ -188,7 +192,10 @@ class Monster:
         return self.damage_min + random.random() * (self.damage_max - self.damage_min)
 
 
-def roll_monster(monster_id: str, template: dict, stat_scaling: dict) -> Monster:
+def roll_monster(
+    monster_id: str, template: dict, stat_scaling: dict,
+    reward_table_override: str | None = None,
+) -> Monster:
     """One instance of a monster template. Stats use the real schema:
     final_stat = skill_block["base"] + roll(minrandom..maxrandom).
     """
@@ -214,4 +221,5 @@ def roll_monster(monster_id: str, template: dict, stat_scaling: dict) -> Monster
         damage_max=combat["damage_max"],
         speed_ticks=combat["speed_ticks"],
         visual=dict(template.get("visual", {})),
+        reward_table_override=reward_table_override,
     )

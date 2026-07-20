@@ -18,17 +18,24 @@ class FloorState:
     monsters: dict[str, Monster] = field(default_factory=dict)
 
     # Tiles with an active resource node (tile -> resource_id).
-    # Starts from layout.resource_nodes; nodes removed on harvest, re-added on respawn.
+    # Seeded from the spawner's SpawnPlan at construction; nodes removed on
+    # harvest, re-added on respawn.
     resource_nodes: dict[Tile, str] = field(default_factory=dict)
 
     # tile -> tick at which it respawns (for dormancy catch-up; §7)
     depleted_nodes: dict[Tile, int] = field(default_factory=dict)
 
     @classmethod
-    def from_layout(cls, layout: FloorLayout) -> "FloorState":
+    def from_layout(cls, layout: FloorLayout, resource_nodes: dict[Tile, str] | None = None) -> "FloorState":
+        """Build live state from a physical layout plus the spawner's output.
+
+        `resource_nodes` comes from gep/spawner.py, not from the layout --
+        map generation carries no entity data. Omitted for floors with
+        nothing to gather (e.g. tests that only need tiles/exits).
+        """
         return cls(
             layout=layout,
-            resource_nodes=dict(layout.resource_nodes),
+            resource_nodes=dict(resource_nodes) if resource_nodes else {},
         )
 
     @property

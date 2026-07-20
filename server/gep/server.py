@@ -28,6 +28,7 @@ from gep.items import is_instance
 from gep.floorgen import generate_floor, pack_biome_map, pack_unit_field
 from gep.floor_state import FloorState
 from gep.floor_manager import FloorManager
+from gep.spawner import spawn_floor
 from gep.stats import compute_max_hp, compute_max_mana
 from gep.systems import combat_system, floor_exits, gathering, movement
 from gep.systems import inventory_system, monster_ai, regeneration, respawn
@@ -170,14 +171,25 @@ def build_floor_state(floor_number: int, cfg: ConfigStore, on_change_floor) -> t
         ruleset=cfg.floor_ruleset,
         archetypes=cfg.floor_archetypes,
         biomes=cfg.biomes,
+        prefabs=cfg.prefabs,
     )
-    floor = FloorState.from_layout(layout)
+    plan = spawn_floor(
+        layout,
+        biomes=cfg.biomes,
+        spawn_ruleset=cfg.spawn_ruleset,
+        spawn_seed=cfg.world["spawn_seed"],
+        prefabs=cfg.prefabs,
+    )
+    floor = FloorState.from_layout(layout, resource_nodes=plan.resource_nodes)
 
-    for i, spawn in enumerate(layout.monster_spawns):
+    for i, spawn in enumerate(plan.monster_spawns):
         template_id = spawn["template_id"]
         template = cfg.monsters[template_id]
         monster_id = f"{template_id}_{floor_number}_{i}"
-        monster = roll_monster(monster_id, template, cfg.stat_scaling)
+        monster = roll_monster(
+            monster_id, template, cfg.stat_scaling,
+            reward_table_override=spawn.get("reward_table_override"),
+        )
         monster.floor_number = floor_number
         monster.tile = spawn["tile"]
         floor.monsters[monster_id] = monster
@@ -290,6 +302,13 @@ def floor_snapshot(
         "elevation": pack_unit_field(layout.elevation, layout.tiles),
         "roughness": pack_unit_field(layout.roughness, layout.tiles),
         "roads": [list(t) for t in layout.roads],
+        "prefabs": [
+            {
+                "prefab_id": p.prefab_id,
+                "tile_sprites": {f"{q},{r}": s for (q, r), s in p.tile_sprites.items()},
+            }
+            for p in layout.prefabs
+        ],
         "biomes": {
             bid: {
                 "display_name": b["display_name"],

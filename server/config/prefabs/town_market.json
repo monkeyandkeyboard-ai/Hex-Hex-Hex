@@ -1,0 +1,20 @@
+{
+  "id": "town_market",
+  "display_name": "Market Square",
+  "footprint": [[0, 0], [1, 0], [0, 1], [-1, 1], [-1, 0], [0, -1], [1, -1]],
+  "tile_sprites": {
+    "0,0": "prefab_market_well",
+    "1,0": "prefab_market_stall",
+    "0,1": "prefab_market_stall",
+    "-1,1": "prefab_market_stall",
+    "-1,0": "prefab_market_stall",
+    "0,-1": "prefab_market_stall",
+    "1,-1": "prefab_market_stall"
+  },
+  "placement": {
+    "required_biome": "town",
+    "forbid_road_adjacent": false,
+    "max_radial_pct": 0.4
+  },
+  "count": {"min": 1, "max": 1}
+}
