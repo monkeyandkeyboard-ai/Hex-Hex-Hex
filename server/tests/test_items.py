@@ -6,10 +6,13 @@ import pytest
 from gep.config_loader import ConfigStore
 from gep.items import (
     MAX_MOD_VALUE,
+    MAX_TIER,
     PREFIX,
     SUFFIX,
     ItemError,
+    ItemRegistry,
     encode_instance,
+    family_of,
     is_instance,
     parse_instance,
 )
@@ -138,17 +141,137 @@ def test_stats_are_distinct_within_an_item(items):
         assert len(stats) == len(set(stats)), f"{code} rolled a duplicate stat: {stats}"
 
 
-def test_modifier_tier_never_exceeds_item_tier(items):
-    """Default policy is modifier_tier_cap = item_tier: a Crude base must not
-    be able to roll an Apex-magnitude stat."""
+# --- affix families --------------------------------------------------------
+#
+# A family is the exclusion unit when rolling. No modifier in the shipped
+# config declares one yet, so these build registries with families injected:
+# the mechanism has to be proven before content leans on it, and the
+# defaulting behaviour has to be proven so that adding a family to one
+# modifier cannot disturb every other.
+
+def _with_families(items, assignment):
+    """A registry whose modifiers carry the given stat -> family mapping."""
+    modifiers = [
+        {**m, "family": assignment[m["stat"]]} if m["stat"] in assignment else m
+        for m in items.modifiers
+    ]
+    return ItemRegistry(items.bases, modifiers, items.generation,
+                        items.known_stats, items.item_names)
+
+
+def test_family_defaults_to_the_stat(items):
+    """With no families declared, every stat is its own family -- which is
+    what makes today's config behave exactly as it did before families."""
+    assert family_of({"stat": "strength", "tier": 1}) == "strength"
+    assert family_of({"stat": "strength", "family": "offense"}) == "offense"
+    assert set(items.modifiers_by_family) == {m["stat"] for m in items.modifiers}
+
+
+def test_grouped_stats_compete_for_one_slot(items):
+    """The opportunity cost. Strength, arcana and precision share a family, so
+    an item may carry at most one of the three no matter how many slots it
+    has."""
+    grouped = _with_families(items, {
+        "strength": "offense", "arcana": "offense", "precision": "offense",
+    })
+    rng = random.Random(202)
+    for code in list(grouped.bases)[:60]:
+        stats = [m["stat"] for m in grouped.runtime_stats(grouped.roll_instance(code, rng))["mods"]]
+        offense = [s for s in stats if s in ("strength", "arcana", "precision")]
+        assert len(offense) <= 1, f"{code} rolled {offense} from one family"
+
+
+def test_ungrouped_stats_are_unaffected_by_someone_elses_family(items):
+    """Declaring a family must not change how unrelated modifiers roll."""
+    grouped = _with_families(items, {"strength": "offense", "arcana": "offense"})
+    rng = random.Random(203)
+    for code in list(grouped.bases)[:60]:
+        stats = [m["stat"] for m in grouped.runtime_stats(grouped.roll_instance(code, rng))["mods"]]
+        others = [s for s in stats if s not in ("strength", "arcana")]
+        assert len(others) == len(set(others)), f"{code} duplicated {others}"
+
+
+def test_families_shrink_the_number_of_modifiers_an_item_can_carry(items):
+    """Collapsing every stat into one family leaves exactly one slot usable --
+    the exclusion is real, not cosmetic."""
+    one_family = _with_families(items, {s: "everything" for s in items.known_stats})
+    rng = random.Random(204)
+    for code in list(one_family.bases)[:40]:
+        mods = parse_instance(one_family.roll_instance(code, rng))["mods"]
+        assert len(mods) <= 1
+
+
+def test_distinct_families_off_allows_repeats(items):
+    one_family = ItemRegistry(
+        items.bases, items.modifiers,
+        {**items.generation, "distinct_families": False},
+        items.known_stats, items.item_names,
+    )
+    rng = random.Random(205)
+    repeated = False
+    for code in list(one_family.bases)[:60]:
+        stats = [m["stat"] for m in
+                 one_family.runtime_stats(one_family.roll_instance(code, rng))["mods"]]
+        if len(stats) != len(set(stats)):
+            repeated = True
+            break
+    assert repeated, "distinct_families=False never produced a repeat"
+
+
+def test_modifier_tier_respects_the_configured_cap_policy(items):
+    """Which tiers a base may roll is `modifier_tier_cap`, so this asserts
+    whichever invariant the configured policy promises rather than assuming
+    one. Hardcoding `item_tier` here meant flipping a documented, supported
+    config value turned the suite red without anything being wrong.
+    """
+    policy = items.generation.get("modifier_tier_cap", "item_tier")
     rng = random.Random(103)
     for code, base in items.bases.items():
         item_tier = int(base["Tier"])
+        ceiling = item_tier if policy == "item_tier" else MAX_TIER
         for _ in range(4):
             for mod in items.runtime_stats(items.roll_instance(code, rng))["mods"]:
-                assert mod["tier"] <= item_tier, (
-                    f"{code} (tier {item_tier}) rolled a tier {mod['tier']} modifier"
+                assert mod["tier"] <= ceiling, (
+                    f"{code} (tier {item_tier}, policy {policy}) rolled a "
+                    f"tier {mod['tier']} modifier"
                 )
+
+
+def test_item_tier_policy_actually_caps(items):
+    """The policy the config is not currently set to still has to work, or
+    switching back would be a change nobody had tested."""
+    capped = ItemRegistry(
+        items.bases, items.modifiers,
+        {**items.generation, "modifier_tier_cap": "item_tier"},
+        items.known_stats, items.item_names,
+    )
+    rng = random.Random(103)
+    for code, base in capped.bases.items():
+        item_tier = int(base["Tier"])
+        for _ in range(4):
+            for mod in capped.runtime_stats(capped.roll_instance(code, rng))["mods"]:
+                assert mod["tier"] <= item_tier
+
+
+def test_unrestricted_policy_reaches_tiers_above_the_base_tier(items):
+    """The point of the configured policy: a low base can jackpot.
+
+    Without this, `unrestricted` could silently behave like `item_tier` and
+    only the absence of rare drops would ever hint at it.
+    """
+    unrestricted = ItemRegistry(
+        items.bases, items.modifiers,
+        {**items.generation, "modifier_tier_cap": "unrestricted"},
+        items.known_stats, items.item_names,
+    )
+    tier_1_bases = [c for c, b in unrestricted.bases.items() if int(b["Tier"]) == 1]
+    rng = random.Random(9)
+    seen = []
+    for _ in range(300):
+        for code in tier_1_bases:
+            seen += [m["tier"] for m in
+                     unrestricted.runtime_stats(unrestricted.roll_instance(code, rng))["mods"]]
+    assert max(seen) > 1, "a tier 1 base never exceeded tier 1 under 'unrestricted'"
 
 
 def test_modifier_values_stay_within_declared_range(items):

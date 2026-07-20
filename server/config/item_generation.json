@@ -16,9 +16,10 @@
   "max_prefixes": 3,
   "max_suffixes": 3,
 
-  "_modifier_tier_cap": "Which modifier tiers a base may roll. 'item_tier' caps modifier tier at the base's own Tier, so a Crude base can never roll an Apex-magnitude stat. 'unrestricted' lets any base roll any tier, weights alone deciding -- a Tier 1 base could then roll a tier 9 modifier at 0.09% odds.",
-  "modifier_tier_cap": "item_tier",
+  "_modifier_tier_cap": "Which modifier tiers a base may roll. 'item_tier' caps modifier tier at the base's own Tier, so a Crude base can never roll an Apex-magnitude stat. 'unrestricted' lets any base roll any tier, weights alone deciding -- a Tier 1 base can roll a tier 9 modifier at its weighted odds (~0.06% after normalising modifiers.json).",
+  "_modifier_tier_cap_note": "Set to 'unrestricted': every tier is reachable from every base, and rarity is enforced purely by the weight column in modifiers.json rather than by a hard gate. Note that those weights do not vary by floor depth or item level, so a floor-1 drop and a deep-floor drop currently roll IDENTICAL tier odds -- depth changes which bases drop (and so how many affix slots they have), not how well those slots roll.",
+  "modifier_tier_cap": "unrestricted",
 
-  "_distinct_stats": "When true a single item never rolls the same stat twice, so six modifiers means six different stats rather than a stack of strength rolls.",
-  "distinct_stats": true
+  "_distinct_families": "When true a single item never rolls two modifiers from the same family, so six modifiers means six different families. A modifier's family is its optional 'family' field in modifiers.json, defaulting to its stat -- so with no families declared this is exactly the old 'never roll the same stat twice' rule. Grouping several stats under one family is how competing affixes are made to fight for a slot.",
+  "distinct_families": true
 }

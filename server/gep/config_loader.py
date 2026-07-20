@@ -418,6 +418,10 @@ def _validate_modifiers(modifiers: list) -> None:
         if low > high:
             raise ConfigError(f"modifier {code}: min_value > max_value")
 
+        family = entry.get("family")
+        if family is not None and (not isinstance(family, str) or not family):
+            raise ConfigError(f"modifier {code}: 'family' must be a non-empty string")
+
 
 class ConfigStore:
     def __init__(self, config_dir: str | Path):
@@ -582,6 +586,19 @@ class ConfigStore:
             raise ConfigError(
                 f"item_generation.json: 'modifier_tier_cap' must be 'item_tier' or "
                 f"'unrestricted', got {cap!r}"
+            )
+
+        if not isinstance(gen.get("distinct_families", True), bool):
+            raise ConfigError("item_generation.json: 'distinct_families' must be a boolean")
+
+        # The key was `distinct_stats` before families existed. Silently
+        # ignoring it would leave a config that reads as if exclusion were
+        # configured while the default quietly decided it.
+        if "distinct_stats" in gen:
+            raise ConfigError(
+                "item_generation.json: 'distinct_stats' was replaced by "
+                "'distinct_families' (a modifier's family defaults to its stat, "
+                "so `\"distinct_families\": true` preserves the old behaviour)"
             )
 
     def _validate_loot_tables(self) -> None:

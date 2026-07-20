@@ -68,6 +68,18 @@ class ItemError(Exception):
     pass
 
 
+def family_of(modifier: dict) -> str:
+    """The exclusion group a modifier belongs to.
+
+    Defaults to the modifier's stat, so a modifiers.json with no `family`
+    fields at all behaves exactly as it did when the rule was "never roll the
+    same stat twice". Declaring a family is how two different stats are made
+    to compete for the same slot -- which is the opportunity cost that stops
+    an item rolling every desirable modifier at once.
+    """
+    return modifier.get("family") or modifier["stat"]
+
+
 # --- codec -----------------------------------------------------------------
 
 def encode_instance(base_code: str, mods: list[dict]) -> str:
@@ -203,9 +215,15 @@ class ItemRegistry:
         self.modifier_index = {m["modifier_code"]: m for m in modifiers}
 
         # stat -> [(modifier_code, weight, tier)], for tier-capped rolling.
-        self.modifiers_by_stat: dict[str, list[dict]] = {}
+        # family -> [modifier entries]. A family is the exclusion unit when
+        # rolling: an item takes at most one modifier from each. `family` is
+        # optional in config and defaults to the modifier's own stat, which
+        # makes "one roll per stat" the degenerate case of "one roll per
+        # family" rather than a second, separate rule -- and means grouping
+        # stats into a family is purely additive to existing config.
+        self.modifiers_by_family: dict[str, list[dict]] = {}
         for mod in modifiers:
-            self.modifiers_by_stat.setdefault(mod["stat"], []).append(mod)
+            self.modifiers_by_family.setdefault(family_of(mod), []).append(mod)
 
         self.slots: dict[str, list[str]] = {}
         for code, base in bases.items():
@@ -260,26 +278,32 @@ class ItemRegistry:
 
         ceiling = self._modifier_tier_ceiling(tier)
         pool = {
-            stat: [m for m in entries if int(m["tier"]) <= ceiling]
-            for stat, entries in self.modifiers_by_stat.items()
+            family: [m for m in entries if int(m["tier"]) <= ceiling]
+            for family, entries in self.modifiers_by_family.items()
         }
-        pool = {stat: entries for stat, entries in pool.items() if entries}
+        pool = {family: entries for family, entries in pool.items() if entries}
         if not pool:
             return encode_instance(base_code, [])
 
         wanted = n_prefix + n_suffix
-        stat_names = sorted(pool)
+        family_names = sorted(pool)
 
-        if self.generation.get("distinct_stats", True):
-            # Fewer stats than slots means fewer modifiers, not a repeat: a
-            # duplicate stat on one item reads as a bug to a player.
-            chosen = roll.sample(stat_names, min(wanted, len(stat_names)))
+        if self.generation.get("distinct_families", True):
+            # Fewer families than slots means fewer modifiers, not a repeat:
+            # two rolls from one family on one item read as a bug to a player,
+            # and the exclusion is the opportunity cost that makes a slot a
+            # decision rather than a wishlist.
+            chosen = roll.sample(family_names, min(wanted, len(family_names)))
         else:
-            chosen = [roll.choice(stat_names) for _ in range(wanted)]
+            chosen = [roll.choice(family_names) for _ in range(wanted)]
 
         mods = []
-        for index, stat in enumerate(chosen):
-            entries = pool[stat]
+        for index, family in enumerate(chosen):
+            # Weighted across every modifier in the family at once, so a
+            # family spanning several stats picks the stat and the tier in one
+            # draw -- the weights already encode tier rarity, and a two-step
+            # draw would let family size quietly distort it.
+            entries = pool[family]
             code = weighted_pick(
                 roll.random(),
                 [(m["modifier_code"], float(m["weight"])) for m in entries],
