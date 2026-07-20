@@ -108,6 +108,8 @@ def register(
         elif any(slot == "main_hand" for slot, _ in displaced):
             player.weapon_id = default_equipment_state
 
+        player.refresh_stats(items)
+
         return [{
             "type": "equipment_update",
             "player_id": player_id,
@@ -138,6 +140,8 @@ def register(
             # state rather than into "no weapon" -- combat resolves it through
             # the registry like any other, so there is no unarmed branch.
             player.weapon_id = default_equipment_state
+
+        player.refresh_stats(items)
 
         return [{
             "type": "equipment_update",

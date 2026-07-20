@@ -6,8 +6,9 @@ on a malformed file rather than partway through a tick.
 import json
 from pathlib import Path
 
-from gep.items import BASE_REQUIRED_KEYS, MAX_TIER, MIN_TIER, PERCENT_SUFFIX, ItemRegistry
+from gep.items import BASE_REQUIRED_KEYS, MAX_TIER, MIN_TIER, ItemRegistry
 from gep.rewards import RewardService
+from gep.statblock import parse_modifier_key
 
 COMBAT_SKILLS = (
     "precision",
@@ -375,7 +376,11 @@ def _validate_item_bases(bases: dict[str, dict]) -> None:
         if not isinstance(implicits, dict):
             raise ConfigError(f"item base {code}: 'implicits' must be an object")
         for stat, value in implicits.items():
-            root_stat = stat[: -len(PERCENT_SUFFIX)] if stat.endswith(PERCENT_SUFFIX) else stat
+            # Parsed by the aggregator's own grammar rather than by a second
+            # copy of the suffix rules here: a key that passes validation is
+            # then by construction a key the aggregator pools the way the
+            # content author meant.
+            root_stat, _, _ = parse_modifier_key(stat)
             if root_stat not in ITEM_STATS:
                 raise ConfigError(f"item base {code}: implicit names unknown stat {stat!r}")
             if not isinstance(value, (int, float)) or isinstance(value, bool):

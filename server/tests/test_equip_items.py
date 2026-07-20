@@ -196,3 +196,60 @@ def test_identical_instance_strings_still_do_not_stack(store):
     player.add_item(instance, 1)
     held = [s for s in player.inventory_snapshot() if s]
     assert len(held) == 2
+
+
+# --- equipment reaching combat ---------------------------------------------
+#
+# These guard the wiring rather than the arithmetic (test_statblock.py owns
+# that). Before the aggregation layer existed, affixes were rolled, stored and
+# displayed but never read by combat -- gear was cosmetic. Nothing failed when
+# that was true, which is exactly why it went unnoticed, so the assertions
+# below exist to fail loudly if a `refresh_stats` call is ever dropped.
+
+def _strength_mod(store, base_code, seed):
+    """Roll instances until one carries a strength affix, and report by how
+    much. Rolling is weighted, so a fixed seed is not guaranteed to produce
+    the stat this test needs."""
+    for n in range(seed, seed + 200):
+        instance = store.items.roll_instance(base_code, random.Random(n))
+        bonus = store.items.runtime_stats(instance)["stats"].get("strength", 0)
+        if bonus:
+            return instance, bonus
+    raise AssertionError(f"no {base_code} roll in 200 produced a strength affix")
+
+
+def test_equipping_an_item_raises_the_stat_it_modifies(store):
+    floor, player, engine = setup(store)
+    instance, bonus = _strength_mod(store, "PH1", 1)
+    before = player.combat_stat("strength")
+
+    equip(engine, give(player, instance))
+
+    assert player.combat_stat("strength") == before + bonus
+
+
+def test_unequipping_gives_the_stat_back(store):
+    floor, player, engine = setup(store)
+    instance, _ = _strength_mod(store, "PH1", 1)
+    before = player.combat_stat("strength")
+
+    equip(engine, give(player, instance))
+    unequip(engine, "head")
+
+    assert player.combat_stat("strength") == before
+
+
+def test_swapping_one_item_for_another_does_not_keep_the_old_bonus(store):
+    """The stale-cache failure this layer is most exposed to: a swap replaces
+    a slot's contents without ever emptying it."""
+    floor, player, engine = setup(store)
+    first, first_bonus = _strength_mod(store, "PH1", 1)
+    second, second_bonus = _strength_mod(store, "PH1", 500)
+    if first_bonus == second_bonus:
+        pytest.skip("needs two head rolls with different strength values")
+
+    before = player.combat_stat("strength")
+    equip(engine, give(player, first))
+    equip(engine, give(player, second))
+
+    assert player.combat_stat("strength") == before + second_bonus

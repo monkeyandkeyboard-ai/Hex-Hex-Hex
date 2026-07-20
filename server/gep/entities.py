@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 
 from gep.config_loader import COMBAT_SKILLS
 from gep.items import is_instance
+from gep.statblock import EMPTY, ResolvedStats, build_stats
 from gep.stats import compute_max_hp, compute_max_mana
 
 # Slot names are the same vocabulary the item bases use (config/items/), so an
@@ -107,9 +108,29 @@ class Player:
     # starts or ends, so a swing queued by a previous engagement drops
     # instead of landing on the new target.
     attack_seq: int = 0
+    # Equipment modifiers, aggregated. Rebuilt by `refresh_stats` whenever
+    # what the player is wearing changes; never persisted, because it is
+    # derived entirely from the equipment ids that are.
+    stats: ResolvedStats = field(default_factory=lambda: EMPTY)
+
+    def refresh_stats(self, items) -> None:
+        """Re-aggregate equipment after an equip, unequip, or load.
+
+        Must be called at every point equipment changes. That it is a
+        separate call rather than a property is a deliberate trade: combat
+        resolves stats several times per swing and the registry is not
+        reachable from here, so the alternative is threading the item
+        registry through `combat_stat` and every one of its callers.
+        """
+        self.stats = build_stats(self.equipment.to_dict().values(), items)
 
     def combat_stat(self, skill: str) -> float:
-        return self.skills.combat.get(skill, 1)
+        """The skill level, with equipment modifiers applied.
+
+        The level is the baseline (phase 1); everything gear contributes
+        resolves on top of it through the ordered pipeline in statblock.py.
+        """
+        return self.stats.resolve(skill, self.skills.combat.get(skill, 1))
 
     def add_item(self, item_id: str, quantity: int) -> bool:
         """Stack with existing slot first, then find an empty slot.

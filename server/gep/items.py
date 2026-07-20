@@ -57,10 +57,11 @@ MAX_MOD_VALUE = 10 ** MOD_VALUE_DIGITS - 1
 
 _COUNTS_RE = re.compile(r"^(\d+)P(\d+)S$")
 
-# Percent-bonus implicits are named `<stat>_percent`. They are kept separate
-# from flat bonuses all the way through: a caller that sums them together
-# would silently turn "+2% constitution" into "+2 constitution".
-PERCENT_SUFFIX = "_percent"
+# Note on modifier keys: `runtime_stats()` returns the stats dict keyed
+# exactly as config wrote it (`strength`, `strength_percent`, `local_armor`),
+# and deliberately does not sum across those classes -- doing so would
+# silently turn "+2% constitution" into "+2 constitution". What each key
+# means, and the order the classes combine in, is gep/statblock.py's job.
 
 
 class ItemError(Exception):

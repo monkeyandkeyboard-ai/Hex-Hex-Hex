@@ -78,7 +78,7 @@ def build_player(player_id: str, username: str, saved: dict | None, cfg) -> Play
     hp = _restore_vitality(saved.get("hp") if saved else None, max_hp, player_id, "hp")
     mana = _restore_vitality(saved.get("mana") if saved else None, max_mana, player_id, "mana")
 
-    return Player(
+    player = Player(
         id=player_id,
         name=username,
         tower_id="tower-a",
@@ -96,6 +96,11 @@ def build_player(player_id: str, username: str, saved: dict | None, cfg) -> Play
         equipment=equipment,
         inventory=inventory,
     )
+    # Saved equipment only becomes stats once it is aggregated. Without this
+    # a returning player's gear would grant nothing until they re-equipped
+    # something -- the same silent nothing this whole layer exists to fix.
+    player.refresh_stats(cfg.items)
+    return player
 
 
 def _restore_vitality(saved_value, maximum: float, player_id: str, what: str) -> float:
