@@ -57,6 +57,11 @@ def spawn_floor(
     reserved = {layout.up_exit}
     if layout.down_exit:
         reserved.add(layout.down_exit)
+    else:
+        # Floor 1 has no down exit, so the centre is the tower entrance --
+        # where every new and every respawning character materialises. Nothing
+        # may occupy it, or a player can spawn standing on a monster.
+        reserved.add((0, 0))
 
     root_seed = seed_for_spawner(layout.tower_id, layout.floor_number, spawn_seed)
 

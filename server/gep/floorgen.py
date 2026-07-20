@@ -36,6 +36,7 @@ from gep.hexgrid import ring_tiles, tiles_in_radius
 from gep.pipeline import GenContext, run_pipeline
 from gep.prefabs import PlacedPrefab
 from gep.prng import Mulberry32, seed_from_floor
+from gep.tiles import STAIRS_DOWN, STAIRS_UP
 
 Tile = tuple[int, int]
 
@@ -58,6 +59,10 @@ class FloorLayout:
     # Fixed-footprint structures stamped onto the floor (gep/prefabs.py);
     # empty on the legacy path and whenever the archetype names no prefabs.
     prefabs: list[PlacedPrefab] = field(default_factory=list)
+    # Reserved tile types (gep/tiles.py), keyed by tile. Sparse: only the
+    # handful of tiles that carry a structural identity appear here, so this
+    # ships as a plain dict rather than a packed per-tile array.
+    tile_types: dict[Tile, str] = field(default_factory=dict)
 
     def to_dict(self) -> dict:
         return {
@@ -70,6 +75,7 @@ class FloorLayout:
             "safe": self.safe,
             "regions": {f"{q},{r}": bid for (q, r), bid in self.regions.items()},
             "roads": [list(t) for t in sorted(self.roads)],
+            "tile_types": {f"{q},{r}": t for (q, r), t in self.tile_types.items()},
             "prefabs": [
                 {
                     "prefab_id": p.prefab_id,
@@ -153,6 +159,13 @@ def generate_floor(
     all_tiles = tiles_in_radius(radius)
     up_exit, down_exit = _place_exits(floor_rng, radius, floor_number)
 
+    # The exits are not just coordinates the client happens to colour in: they
+    # are tiles with an identity, assigned here at the moment they are chosen
+    # so there is exactly one place that decides where stairs are.
+    tile_types = {up_exit: STAIRS_UP}
+    if down_exit:
+        tile_types[down_exit] = STAIRS_DOWN
+
     reserved = {up_exit}
     if down_exit:
         reserved.add(down_exit)
@@ -161,7 +174,7 @@ def generate_floor(
     if archetypes is None or biomes is None:
         return FloorLayout(
             tower_id=tower_id, floor_number=floor_number, radius=radius, tiles=all_tiles,
-            up_exit=up_exit, down_exit=down_exit,
+            up_exit=up_exit, down_exit=down_exit, tile_types=tile_types,
         )
 
     # ---- Template path: hierarchical generation ----
@@ -184,4 +197,5 @@ def generate_floor(
         up_exit=up_exit, down_exit=down_exit,
         regions=ctx.regions, roads=ctx.roads, archetype=archetype_name, safe=safe,
         elevation=ctx.elevation, roughness=ctx.roughness, prefabs=ctx.prefabs,
+        tile_types=tile_types,
     )

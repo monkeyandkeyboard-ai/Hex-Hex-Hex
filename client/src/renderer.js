@@ -22,6 +22,22 @@ const COLORS = {
   otherDot:     "#5050e0",
 };
 
+// Reserved tile types (server gep/tiles.py). These are placeholders and are
+// meant to look like placeholders: a stark two-tone checkerboard reads as
+// "deliberately unfinished" at a glance and is impossible to miss against the
+// muted procedural terrain, which is exactly what stairs need until real art
+// exists. When art lands, replace the pattern -- the lookup, the wire field,
+// and the draw pass all stay.
+const TILE_TYPE_STYLE = {
+  tile_stairs_up:   { base: "#0f2a0f", light: "#7dffa0", dark: "#0a1f0a",
+                      border: "#9dffb8", glyph: "▲", glyphColor: "#eaffee" },
+  tile_stairs_down: { base: "#0f0f2a", light: "#8fb4ff", dark: "#0a0a1f",
+                      border: "#b0c8ff", glyph: "▼", glyphColor: "#eef3ff" },
+};
+// Checker square size in pattern space, at the base tile size the terrain
+// textures were authored against. Scaled with the tiles like the others.
+const CHECKER_SIZE = 7;
+
 let canvas, ctx;
 let tileSize = 28;
 let hoveredTile = null;
@@ -353,9 +369,39 @@ function biomePattern(biomeIdx) {
   return p;
 }
 
+const stairsPatternCache = new Map();  // tile type id -> CanvasPattern
+
+// Two-square checkerboard. Unlike the biome textures this is not seeded or
+// randomised -- a marker wants to be recognisable and identical everywhere,
+// which is the opposite of what the terrain grain is for.
+function tileTypePattern(typeId) {
+  let p = stairsPatternCache.get(typeId);
+  if (p !== undefined) return p;
+
+  const style = TILE_TYPE_STYLE[typeId];
+  if (!style) { stairsPatternCache.set(typeId, null); return null; }
+
+  const off = document.createElement("canvas");
+  off.width = off.height = CHECKER_SIZE * 2;
+  const g = off.getContext("2d");
+  g.fillStyle = style.dark;
+  g.fillRect(0, 0, CHECKER_SIZE * 2, CHECKER_SIZE * 2);
+  g.fillStyle = style.light;
+  g.fillRect(0, 0, CHECKER_SIZE, CHECKER_SIZE);
+  g.fillRect(CHECKER_SIZE, CHECKER_SIZE, CHECKER_SIZE, CHECKER_SIZE);
+
+  p = ctx.createPattern(off, "repeat");
+  stairsPatternCache.set(typeId, p);
+  return p;
+}
+
 export function resetColorCache() {
   colorCache.clear();
   patternCache.clear();
+  // Not strictly per-floor (the checkerboard never varies), but the patterns
+  // are bound to the current context and this is the one place that drops
+  // cached paint. Leaving them behind would be a stale handle waiting to bite.
+  stairsPatternCache.clear();
 }
 
 function drawDot(q, r, color, size = 5) {
@@ -538,10 +584,14 @@ export function render() {
     const i = state.tileIndex.get(key);
     if (i !== undefined) resourceIdx.add(i);
   }
-  const upExitIdx = state.upExit
-    ? state.tileIndex.get(`${state.upExit[0]},${state.upExit[1]}`) ?? -1 : -1;
-  const downExitIdx = state.downExit
-    ? state.tileIndex.get(`${state.downExit[0]},${state.downExit[1]}`) ?? -1 : -1;
+  // Reserved tile types drive their own look. Resolved from the server's
+  // sparse tile -> type map rather than from up_exit/down_exit, so adding a
+  // reserved type server-side needs a style entry here and nothing else.
+  const typeIdx = new Map();   // tile index -> type id
+  for (const [key, typeId] of state.tileTypes) {
+    const i = state.tileIndex.get(key);
+    if (i !== undefined && TILE_TYPE_STYLE[typeId]) typeIdx.set(i, typeId);
+  }
   const hoveredIdx = hoveredTile
     ? state.tileIndex.get(`${hoveredTile[0]},${hoveredTile[1]}`) ?? -1 : -1;
 
@@ -568,6 +618,7 @@ export function render() {
   const drawTexture = tileSize >= TEXTURE_MIN_TILE_SIZE;
   const buckets = new Map();      // fill colour -> { coords, border }
   const texBuckets = new Map();   // biome index -> coords (pattern overlay)
+  const typeBuckets = new Map();  // reserved tile type id -> coords
   const hexSize = tileSize - 1;
   // Grain scales with the tiles so texture density reads the same at any zoom
   // (28 is the base tile size the textures were authored against).
@@ -614,9 +665,16 @@ export function render() {
 
     // Marker tiles override the procedural surface entirely -- they exist to
     // be spotted, so they opt out of the texture pass too.
-    if (i === upExitIdx) { fill = COLORS.upExit; texBiome = -1; }
-    else if (i === downExitIdx) { fill = COLORS.downExit; texBiome = -1; }
-    else if (resourceIdx.has(i)) { fill = COLORS.resource; texBiome = -1; }
+    const typeId = typeIdx.get(i);
+    if (typeId !== undefined) {
+      const style = TILE_TYPE_STYLE[typeId];
+      fill = style.base;
+      border = style.border;
+      texBiome = -1;
+      let tb = typeBuckets.get(typeId);
+      if (tb === undefined) typeBuckets.set(typeId, tb = []);
+      tb.push(cx, cy);
+    } else if (resourceIdx.has(i)) { fill = COLORS.resource; texBiome = -1; }
     if (i === hoveredIdx) { fill = COLORS.tileHover; texBiome = -1; }
 
     let bucket = buckets.get(fill);
@@ -658,6 +716,33 @@ export function render() {
     }
     ctx.fillStyle = pattern;
     ctx.fill();
+  }
+
+  // Pass 2b: reserved tile types (stairs). Same world-locked transform as the
+  // terrain texture so the checker sits on the tile instead of sliding across
+  // it while the camera pans.
+  //
+  // Gated at the same zoom threshold as the terrain grain, and for the same
+  // reason: scaled down, the squares go sub-pixel and turn to mush. The solid
+  // base fill underneath is already a stark green/blue against the terrain, so
+  // zoomed out the stairs stay findable -- they just stop being checkered.
+  if (drawTexture) {
+    for (const [typeId, coords] of typeBuckets) {
+      const pattern = tileTypePattern(typeId);
+      if (!pattern) continue;
+      if (pattern.setTransform) {
+        const period = CHECKER_SIZE * 2 * texScale;
+        pattern.setTransform(new DOMMatrix()
+          .translate(camX % period, camY % period)
+          .scale(texScale));
+      }
+      ctx.beginPath();
+      for (let k = 0; k < coords.length; k += 2) {
+        addHex(coords[k], coords[k + 1], hexSize);
+      }
+      ctx.fillStyle = pattern;
+      ctx.fill();
+    }
   }
 
   // Pass 3: cell borders. Drawn from each tile's own darkened colour, so the
@@ -729,20 +814,23 @@ export function render() {
     drawSprite(s.q, s.r, s.visual, s.facing, s.dot);
   }
 
-  // Exit labels
-  if (state.upExit) {
-    const [cx, cy] = hexToPixel(...state.upExit);
-    ctx.fillStyle = "#50c850";
-    ctx.font = `${Math.max(8, tileSize * 0.4)}px monospace`;
-    ctx.textAlign = "center";
-    ctx.fillText("▲", cx, cy + 4);
-  }
-  if (state.downExit) {
-    const [cx, cy] = hexToPixel(...state.downExit);
-    ctx.fillStyle = "#5050c8";
-    ctx.font = `${Math.max(8, tileSize * 0.4)}px monospace`;
-    ctx.textAlign = "center";
-    ctx.fillText("▼", cx, cy + 4);
+  // Reserved-tile glyphs, drawn last so no sprite hides the stairs. Direction
+  // is the one thing the checkerboard cannot convey on its own.
+  ctx.font = `${Math.max(8, tileSize * 0.4)}px monospace`;
+  ctx.textAlign = "center";
+  for (const [key, typeId] of state.tileTypes) {
+    const style = TILE_TYPE_STYLE[typeId];
+    if (!style) continue;
+    const [q, rv] = key.split(",").map(Number);
+    const [cx, cy] = hexToPixel(q, rv);
+    // Backing disc: the glyph is the only thing distinguishing up from down,
+    // and drawn bare it disappears into the checker's light squares.
+    ctx.beginPath();
+    ctx.arc(cx, cy, Math.max(5, tileSize * 0.30), 0, Math.PI * 2);
+    ctx.fillStyle = style.base;
+    ctx.fill();
+    ctx.fillStyle = style.glyphColor;
+    ctx.fillText(style.glyph, cx, cy + 4);
   }
 
   endFrame();

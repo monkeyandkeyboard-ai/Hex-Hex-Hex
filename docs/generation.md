@@ -207,6 +207,40 @@ loot table used by monsters that spawn inside `monster_rarity_radius`. Rarity
 is expressed as *which table*, not as a numeric multiplier, because tier ranges
 live in `loot/tables.json` and are selected by profile id.
 
+## Reserved tile types
+
+A tile's **biome** says what it is made of; every tile has one. A **reserved
+tile type** says what it is *for*, and almost no tiles have one. They are two
+separate overlays: the stairs on a fungal floor are still standing on fungal
+ground, and making "stairs" a biome would mean inventing a biome with no
+terrain, no colour, and no spawn rules.
+
+The vocabulary lives in `gep/tiles.py` and is deliberately **not
+config-declared**:
+
+| Id | Assigned by |
+| --- | --- |
+| `tile_stairs_up` | `floorgen._place_exits` — every floor |
+| `tile_stairs_down` | `floorgen._place_exits` — floors above 1 only |
+
+These are structural, not content. A config file cannot rename
+`tile_stairs_up` without breaking the exit-placement code that assigns it, so
+they are Python constants. **Anything a config author should be able to invent
+belongs in `config/prefabs/` instead** — that is the extension point.
+
+They ship in the snapshot as `tile_types`, a sparse `"q,r" -> id` map rather
+than a packed per-tile array, because only a couple of tiles per floor carry
+one. `up_exit` / `down_exit` still ship alongside: the exit intent and
+pathfinding address those tiles by coordinate, while `tile_types` is how they
+*render*.
+
+Client-side, `TILE_TYPE_STYLE` in `renderer.js` maps each id to its look.
+Adding a reserved type server-side needs one style entry there and nothing
+else. The current stairs art is a **placeholder that is meant to look like
+one** — a stark two-tone checkerboard, plus a directional glyph on a backing
+disc, since the glyph is the only thing distinguishing up from down and it
+vanishes against the checker's light squares when drawn bare.
+
 ## Terrain look (client-side)
 
 Terrain carries **no art assets**. The client generates every surface texture
@@ -298,6 +332,8 @@ every recomposition of existing ones is free.
 | `gep/prefabs.py` | Generic constraint-scored prefab placement |
 | `gep/roads.py`, `gep/constraints.py` | Path carving and the navigability guarantee |
 | `gep/spawner.py` | Monsters and resources — reads the finished layout, own seed root |
+| `gep/tiles.py` | Reserved tile type ids (stairs) |
+| `gep/floor_manager.py` | Floor cache, and the two player movers (stairs vs absolute) |
 
 Note the split between `floorgen.py` and `spawner.py`: map generation and
 entity population run off **unrelated seed roots** (`seed_from_floor` vs

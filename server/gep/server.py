@@ -163,7 +163,8 @@ def _skills_payload(player: Player, xp_table: dict) -> dict:
     return out
 
 
-def build_floor_state(floor_number: int, cfg: ConfigStore, on_change_floor) -> tuple[FloorState, TickEngine]:
+def build_floor_state(floor_number: int, cfg: ConfigStore, on_change_floor,
+                      on_relocate=None) -> tuple[FloorState, TickEngine]:
     layout = generate_floor(
         tower_id="tower-a",
         floor_number=floor_number,
@@ -204,7 +205,7 @@ def build_floor_state(floor_number: int, cfg: ConfigStore, on_change_floor) -> t
     # Each system is handed a function and knows nothing else about the other.
     regeneration.register(engine, floor, cfg.stat_scaling)
     respawn.register(engine, floor, save_player=db.save_player,
-                     on_change_floor=None)
+                     on_relocate=on_relocate)
     notify_threat = monster_ai.register(engine, floor, monsters_cfg=cfg.monsters)
     break_engagement = combat_system.register(
         engine, floor,
@@ -302,6 +303,10 @@ def floor_snapshot(
         "elevation": pack_unit_field(layout.elevation, layout.tiles),
         "roughness": pack_unit_field(layout.roughness, layout.tiles),
         "roads": [list(t) for t in layout.roads],
+        # Reserved tile types (gep/tiles.py): sparse tile -> id. up_exit and
+        # down_exit above are the same two tiles, kept because the exit intent
+        # and pathing address them by coordinate; this is how they render.
+        "tile_types": {f"{q},{r}": t for (q, r), t in layout.tile_types.items()},
         "prefabs": [
             {
                 "prefab_id": p.prefab_id,
@@ -358,9 +363,9 @@ async def run_server():
     # Floors are built on demand and cached. Each floor owns its own tick
     # engine (its own action queue), so a respawn scheduled on floor 3 never
     # touches floor 1. Every instantiated floor is stepped each tick.
-    def _build(floor_number, on_change_floor):
+    def _build(floor_number, on_change_floor, on_relocate):
         log.info("Built floor %d", floor_number)
-        return build_floor_state(floor_number, cfg, on_change_floor)
+        return build_floor_state(floor_number, cfg, on_change_floor, on_relocate)
 
     manager = FloorManager(_build)
     floors = manager.floors

@@ -27,11 +27,16 @@ def register(
     engine: TickEngine,
     floor: FloorState,
     save_player=None,
-    on_change_floor=None,
+    on_relocate=None,
 ) -> None:
-    """`save_player(player)` performs the blocking write; `on_change_floor`
-    is the server's floor-mover, needed only when the anchor is on a
-    different floor than where the player fell."""
+    """`save_player(player)` performs the blocking write; `on_relocate` is
+    `FloorManager.move_to_floor(player_id, floor_number, tile)`, needed only
+    when the anchor is on a different floor than where the player fell.
+
+    Note this is the *absolute* mover, not the stairs mover: an anchor is a
+    destination, and dying on floor 7 with an anchor on floor 1 is one
+    relocation rather than six descents.
+    """
 
     def handle_player_defeated(payload: dict, eng: TickEngine) -> list[dict]:
         player_id = payload["player_id"]
@@ -72,9 +77,10 @@ def register(
             "max_hp": player.max_hp,
         }]
 
-        if moved_floor and on_change_floor is not None:
+        if moved_floor and on_relocate is not None:
             # The anchor is on another floor; the server owns floor movement.
-            on_change_floor(player_id, anchor_floor)
+            # It re-sends a full snapshot, so no position_update is needed.
+            on_relocate(player_id, anchor_floor, anchor_tile)
         else:
             events.append({
                 "type": "position_update",

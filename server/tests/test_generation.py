@@ -13,6 +13,7 @@ from gep.floorgen import (
 )
 from gep.hexgrid import hex_distance
 from gep.pathfinding import hex_neighbors
+from gep.tiles import STAIRS_DOWN, STAIRS_UP
 
 CONFIG_DIR = pathlib.Path(__file__).resolve().parents[1] / "config"
 cfg = ConfigStore(CONFIG_DIR)
@@ -54,6 +55,26 @@ def test_floor_1_road_starts_at_center():
     assert layout.down_exit is None
     assert (0, 0) in layout.roads
     assert layout.up_exit in layout.roads
+
+
+def test_exits_carry_reserved_tile_types():
+    layout = _gen(5)
+    assert layout.tile_types[layout.up_exit] == STAIRS_UP
+    assert layout.tile_types[layout.down_exit] == STAIRS_DOWN
+    # Sparse by design: a reserved type is an identity, not a per-tile field.
+    assert len(layout.tile_types) == 2
+
+
+def test_floor_1_has_only_up_stairs():
+    layout = _gen(1)
+    assert list(layout.tile_types.values()) == [STAIRS_UP]
+    assert STAIRS_DOWN not in layout.tile_types.values()
+
+
+def test_tile_types_ship_in_the_payload():
+    layout = _gen(5)
+    q, r = layout.up_exit
+    assert layout.to_dict()["tile_types"][f"{q},{r}"] == STAIRS_UP
 
 
 def test_every_25th_floor_is_a_safe_town():

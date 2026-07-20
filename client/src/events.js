@@ -70,6 +70,12 @@ export function applySnapshot(msg) {
     state.tileIndex.set(`${q},${r}`, i);
   }
 
+  // Reserved tile types (server gep/tiles.py): sparse "q,r" -> type id.
+  state.tileTypes.clear();
+  for (const [key, tid] of Object.entries(msg.tile_types || {})) {
+    state.tileTypes.set(key, tid);
+  }
+
   state.roads.clear();
   for (const t of msg.roads || []) {
     state.roads.add(`${t[0]},${t[1]}`);
