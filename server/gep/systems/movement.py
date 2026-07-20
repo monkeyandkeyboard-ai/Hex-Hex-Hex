@@ -11,6 +11,7 @@ Move model:
 Movement speed is a property of the player (or their active transport).
 Base speed = 1 tile/tick. Transport can grant speed 2+.
 """
+from gep import crossdomain
 from gep.floor_state import FloorState
 from gep.hexgrid import facing_from_delta
 from gep.pathfinding import find_path
@@ -23,13 +24,30 @@ def _tile_from_intent(intent: dict, q_key: str = "target_q", r_key: str = "targe
     return (int(intent[q_key]), int(intent[r_key]))
 
 
-def register(engine: TickEngine, floor: FloorState, on_move=None) -> None:
+def register(engine: TickEngine, floor: FloorState, on_move=None,
+             conversions: list | None = None) -> None:
     """`on_move(player) -> events` is called when a move intent is accepted.
 
     It exists so that issuing a movement command can break auto-combat
     without this module knowing what combat is. Movement decides "the player
     chose to move"; whatever else cares about that decides what it means.
     """
+    conversions = conversions or []
+
+    def move_speed(player) -> int:
+        """Tiles per tick, after utility modifiers.
+
+        Truncated to a whole number of tiles: the step loop advances tile by
+        tile, so a speed of 1.8 is a speed of 1 until it reaches 2. That
+        makes the stat lumpy by nature, which is a property of the movement
+        model rather than something to smooth over here.
+        """
+        base = getattr(player, "move_speed", 1)
+        resolved = crossdomain.resolve(
+            player, floor.layout.floor_number, conversions, "move_speed", base
+        )
+        return max(1, int(resolved))
+
     def handle_move_intent(intent: dict, eng: TickEngine) -> list[dict]:
         player_id = intent.get("player_id")
         player = floor.players.get(player_id)
@@ -75,7 +93,7 @@ def register(engine: TickEngine, floor: FloorState, on_move=None) -> None:
         eng.schedule(0, "move-step", {
             "player_id": player_id,
             "remaining": remaining,
-            "speed": getattr(player, "move_speed", 1),
+            "speed": move_speed(player),
             "seq": player.move_seq,
         })
 

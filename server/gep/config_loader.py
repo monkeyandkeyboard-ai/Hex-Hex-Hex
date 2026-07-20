@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 
 from gep.items import BASE_REQUIRED_KEYS, MAX_TIER, MIN_TIER, ItemRegistry
+from gep.crossdomain import validate_conversions
 from gep.rewards import RewardService
 from gep.statblock import parse_modifier_key
 
@@ -387,6 +388,27 @@ def _validate_item_bases(bases: dict[str, dict]) -> None:
                 raise ConfigError(f"item base {code}: implicit {stat!r} must be a number")
 
 
+def _validate_conversion_sources(conversions: list, skills: dict) -> None:
+    """Every named skill must be a real non-combat skill.
+
+    crossdomain.py validates the shape of a conversion but deliberately does
+    not know the skill list, so the name check lives here where skills.json
+    is loaded. A misspelled skill would otherwise contribute a magnitude of
+    zero forever -- a conversion that silently does nothing, which is the
+    failure this whole seam was built to stop repeating.
+    """
+    known = set(skills.get("non_combat_skills") or {})
+    for index, conversion in enumerate(conversions):
+        source = conversion["source"]
+        if source["kind"] != "non_combat_skill":
+            continue
+        if source["name"] not in known:
+            raise ConfigError(
+                f"cross_domain.json: conversion {index} names unknown non-combat "
+                f"skill {source['name']!r}. Known: {sorted(known)}"
+            )
+
+
 def _validate_modifiers(modifiers: list) -> None:
     if not isinstance(modifiers, list) or not modifiers:
         raise ConfigError("modifiers.json: must be a non-empty list")
@@ -456,6 +478,14 @@ class ConfigStore:
             self.item_bases, self.modifiers, self.item_generation, ITEM_STATS, self.item_names
         )
         self._validate_item_generation()
+
+        self.cross_domain = _load_json(root / "cross_domain.json")
+        self.conversions = self.cross_domain.get("conversions", [])
+        # ITEM_STATS is passed in rather than imported by crossdomain, so the
+        # "conversions may not target combat stats" rule is checked against
+        # the real combat vocabulary and cannot drift from it.
+        validate_conversions(self.conversions, ITEM_STATS)
+        _validate_conversion_sources(self.conversions, self.skills)
         # One service, built once, handed to every payout site.
         self.rewards = RewardService(self.reward_profiles, self.loot_tables, self.items)
 

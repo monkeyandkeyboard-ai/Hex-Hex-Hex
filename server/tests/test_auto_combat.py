@@ -5,6 +5,7 @@ import pytest
 
 from gep.config_loader import ConfigStore
 from gep.entities import Player, Skills, roll_monster
+from gep.stats import xp_for_level
 from gep.floorgen import generate_floor
 from gep.floor_state import FloorState
 from gep.systems import combat_system, movement
@@ -42,6 +43,16 @@ def make_player(tile=(0, 0)):
 
 def setup(store, floor, player, tanky=True):
     """Wire combat + movement exactly as server.py does."""
+    # Back-fill XP to match the levels make_player set. Levels are DERIVED
+    # from cumulative XP on every award (gep/xp.py), so a level set without
+    # its XP is a time bomb: the first hit that awards XP recomputes the
+    # level from ~0 XP and silently resets 400 back to 1 mid-test. That was
+    # a real flake -- when the opening swing rolled low damage instead of
+    # one-shotting the rat, the collapsed stats could not finish it in the
+    # remaining budget (~1 damage a hit through a 70% dodge rate).
+    for skill, level in player.skills.combat.items():
+        player.skills.combat_xp[skill] = xp_for_level(int(level), store.xp_table)
+
     monster = roll_monster("m1", store.monsters["cave_rat"], store.stat_scaling)
     monster.tile = (0, 1)
     monster.floor_number = 5

@@ -11,10 +11,12 @@ gathering node. It lives outside `systems/` precisely so that a container
 system never has to import from `systems/combat_system.py` to hand a player
 an item.
 """
+from gep import crossdomain
 from gep.rewards import KIND_EQUIPMENT
 
 
-def award_rewards(player, profile_id: str, rewards, rng=None) -> list[dict]:
+def award_rewards(player, profile_id: str, rewards, rng=None,
+                  conversions: list | None = None) -> list[dict]:
     """Roll a reward profile and move the result into a player's inventory.
 
     A full pack is reported as a reward the player didn't receive rather than
@@ -24,9 +26,17 @@ def award_rewards(player, profile_id: str, rewards, rng=None) -> list[dict]:
     Equipment arrives as a serialized instance string. The resolved stats ride
     along on the event so the client can name and describe it without learning
     to parse the encoding -- the GEP stays the only thing that does.
+
+    This is where the player's `item_rarity` is applied, rather than inside
+    the roller: `rewards.py` stays pure and knows nothing about who is
+    looting, which is what lets a drop-rate audit roll the authored odds by
+    simply not passing a player's.
     """
+    rarity = crossdomain.resolve(
+        player, player.floor_number, conversions or [], "item_rarity", 1.0
+    )
     events: list[dict] = []
-    for reward in rewards.generate(profile_id, rng):
+    for reward in rewards.generate(profile_id, rng, rarity):
         item_id = reward["item_id"]
         quantity = reward["quantity"]
         received = player.add_item(item_id, quantity)

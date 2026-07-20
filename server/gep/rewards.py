@@ -68,12 +68,17 @@ class RewardService:
 
     # -- entry point -------------------------------------------------------
 
-    def generate(self, profile_id: str, rng: random.Random | None = None) -> list[dict]:
+    def generate(self, profile_id: str, rng: random.Random | None = None,
+                 rarity: float = 1.0) -> list[dict]:
         """Roll a reward profile and return everything it produced.
 
         Raises on an unknown profile rather than returning nothing: a typo'd
         id that silently pays out empty is indistinguishable from bad luck,
         and would survive testing.
+
+        `rarity` scales equipment drop chance and defaults to 1.0, so a
+        caller with no player in hand (a test, a chest opened by script)
+        rolls exactly the authored odds.
         """
         profile = self.profiles.get(profile_id)
         if profile is None or profile_id.startswith("_"):
@@ -83,7 +88,7 @@ class RewardService:
         rewards: list[dict] = []
         for slot in profile.get("slots") or []:
             rewards.extend(self.roll_table(
-                slot.get("table"), int(slot.get("rolls", 1)), roll
+                slot.get("table"), int(slot.get("rolls", 1)), roll, rarity
             ))
         return rewards
 
@@ -92,6 +97,7 @@ class RewardService:
         table_id: str,
         rolls: int = 1,
         rng: random.Random | None = None,
+        rarity: float = 1.0,
     ) -> list[dict]:
         """Roll one table directly, bypassing profiles.
 
@@ -109,7 +115,7 @@ class RewardService:
 
         roll = rng or random
         if table.get("kind", KIND_ITEMS) == KIND_EQUIPMENT:
-            return self._roll_equipment(table, rolls, roll)
+            return self._roll_equipment(table, rolls, roll, rarity)
         return self._roll_items(table, rolls, roll)
 
     # -- table kinds -------------------------------------------------------
@@ -145,13 +151,21 @@ class RewardService:
                 })
         return rewards
 
-    def _roll_equipment(self, table: dict, rolls: int, roll: random.Random) -> list[dict]:
+    def _roll_equipment(self, table: dict, rolls: int, roll: random.Random,
+                        rarity: float = 1.0) -> list[dict]:
         if self.items is None:
             raise RewardError("equipment table rolled without an item registry")
 
         chance = float(table.get("drop_chance", 0.0))
         if chance <= 0:
             return []
+
+        # Rarity raises how often equipment drops, never which base is picked.
+        # Weighting the candidates instead would let a high-rarity player pull
+        # bases their floor's table never meant to offer, which is depth's job
+        # to control, not the player's. Clamped so a chest at drop_chance 1.0
+        # cannot exceed certainty and start rolling twice.
+        chance = min(1.0, chance * max(0.0, rarity))
 
         candidates = self.items.drop_candidates(
             slots=table.get("slots"),

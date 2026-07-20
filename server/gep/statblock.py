@@ -182,10 +182,13 @@ class ResolvedStats:
         return self.globals.resolve(target, base + self.local_totals.get(target, 0.0))
 
 
-# An empty result, used as the default on an entity that has not had its
-# equipment resolved yet. Resolving through it returns the baseline unchanged,
-# so an unrefreshed entity behaves exactly as it did before this layer
-# existed rather than losing its stats.
+# A shared "no modifiers" result, for callers that need to resolve something
+# against nothing. Resolving through it returns the baseline unchanged.
+#
+# NOT a default for entities. `ResolvedStats` is mutable, so handing this
+# instance to every player would make one player's modifiers everyone's --
+# entities build their own (see `Player.stats`). It is exported for tests and
+# for read-only callers, and mutating it is a bug.
 EMPTY = ResolvedStats()
 
 

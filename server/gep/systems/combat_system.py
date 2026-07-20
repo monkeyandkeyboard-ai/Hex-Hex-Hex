@@ -50,6 +50,7 @@ def register(
     weapon_classes: dict,
     power_scaling: dict,
     on_threat=None,
+    conversions: list | None = None,
 ) -> None:
     def weapon_profile(item_id: str) -> dict | None:
         """damage_min/max, speed_ticks and archetype for whatever is
@@ -144,7 +145,8 @@ def register(
                 events.append({"type": "monster_died", "monster_id": target_id,
                                "tile": list(monster.tile)})
                 reward_table = monster.reward_table_override or template["reward_table"]
-                events.extend(award_rewards(player, reward_table, rewards))
+                events.extend(award_rewards(player, reward_table, rewards,
+                                            conversions=conversions))
                 respawn_ticks = template.get("respawn_ticks", 60)
                 eng.schedule(respawn_ticks, "respawn-monster", {
                     "monster_id": target_id,

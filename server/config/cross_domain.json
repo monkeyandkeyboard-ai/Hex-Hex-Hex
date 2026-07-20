@@ -1,0 +1,52 @@
+{
+  "_comment": "Cross-domain conversions: non-combat progression turning into character power. Each entry reads as 'per level of <source>, add <per_level> to <target> as a <class> modifier'. Sources are a non_combat_skill (by name) or floor_depth (the floor the player is on). Classes are the same three the stat pipeline uses everywhere else: flat, increased (percentages sum into one pool), more (each source multiplies separately).",
+
+  "_constraint": "Conversions may only target UTILITY stats, never combat stats. This is enforced at load in gep/crossdomain.py, not left to reviewer discipline: if mining raised damage, mining would become a prerequisite for raiding no matter how it were framed. Targets currently wireable: gather_yield, gather_speed, item_rarity, move_speed. Declared but refused until a system reads them: craft_quality, resource_tier_access.",
+
+  "_tuning": "Every per_level below is a placeholder shape, not a balance pass. At 0.5 increased per level a level-99 miner gathers +49.5% ore, which is deliberately noticeable rather than tuned.",
+
+  "conversions": [
+    {
+      "_note": "A miner pulls more from a vein. The obvious one, and the reason the seam exists.",
+      "source": { "kind": "non_combat_skill", "name": "mineralogy" },
+      "target": "gather_yield",
+      "class": "increased",
+      "per_level": 0.5
+    },
+    {
+      "_note": "Foraging and aboriculture work the same nodes from the other end -- they speed the swing rather than deepen the haul, so specialising in one is not strictly worse than the other.",
+      "source": { "kind": "non_combat_skill", "name": "foraging" },
+      "target": "gather_speed",
+      "class": "increased",
+      "per_level": 0.4
+    },
+    {
+      "_note": "aboriculture, spelled as skills.json spells it.",
+      "source": { "kind": "non_combat_skill", "name": "aboriculture" },
+      "target": "gather_speed",
+      "class": "increased",
+      "per_level": 0.4
+    },
+    {
+      "_note": "Craftsmanship reads the market rather than the rock: it improves what drops, not what is dug.",
+      "source": { "kind": "non_combat_skill", "name": "craftsmanship" },
+      "target": "item_rarity",
+      "class": "increased",
+      "per_level": 0.3
+    },
+    {
+      "_note": "Depth is the one non-skill source. Descending is progression too, and it should pay in find rather than in power -- this is what makes a deep floor worth farming when its bases are no better.",
+      "source": { "kind": "floor_depth" },
+      "target": "item_rarity",
+      "class": "increased",
+      "per_level": 0.25
+    },
+    {
+      "_note": "Farming is stamina work. Sideways into traversal, which is utility with no combat edge.",
+      "source": { "kind": "non_combat_skill", "name": "farming" },
+      "target": "move_speed",
+      "class": "increased",
+      "per_level": 0.2
+    }
+  ]
+}

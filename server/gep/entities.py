@@ -111,7 +111,10 @@ class Player:
     # Equipment modifiers, aggregated. Rebuilt by `refresh_stats` whenever
     # what the player is wearing changes; never persisted, because it is
     # derived entirely from the equipment ids that are.
-    stats: ResolvedStats = field(default_factory=lambda: EMPTY)
+    # A fresh block per player, never the shared EMPTY sentinel: that object
+    # is mutable, so handing the same instance to every player would let one
+    # player's modifiers leak into all of them.
+    stats: ResolvedStats = field(default_factory=ResolvedStats)
 
     def refresh_stats(self, items) -> None:
         """Re-aggregate equipment after an equip, unequip, or load.

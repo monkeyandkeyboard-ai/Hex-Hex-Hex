@@ -15,6 +15,7 @@ the resource config -- no hardcoded numbers here.
 """
 import random
 
+from gep import crossdomain
 from gep.floor_state import FloorState
 from gep.tick import TickEngine
 from gep.xp import award_xp_block
@@ -22,7 +23,21 @@ from gep.xp import award_xp_block
 Tile = tuple[int, int]
 
 
-def register(engine: TickEngine, floor: FloorState, resources: dict, xp_table: dict) -> None:
+def register(engine: TickEngine, floor: FloorState, resources: dict, xp_table: dict,
+             conversions: list | None = None) -> None:
+    conversions = conversions or []
+
+    def utility(player, target: str, base: float) -> float:
+        """This player's current value for a utility stat.
+
+        Built fresh rather than read off a cache -- see gep/crossdomain.py
+        for why. The floor number comes from the floor this system was
+        registered against, which is the one the player is standing on.
+        """
+        return crossdomain.resolve(
+            player, floor.layout.floor_number, conversions, target, base
+        )
+
     def handle_gather_intent(intent: dict, eng: TickEngine) -> list[dict]:
         player_id = intent.get("player_id")
         player = floor.players.get(player_id)
@@ -44,7 +59,11 @@ def register(engine: TickEngine, floor: FloorState, resources: dict, xp_table: d
         if player.tile != tile:
             return [{"type": "error", "reason": "player is not on the resource tile", "player_id": player_id}]
 
-        gather_ticks = resource["gather_ticks"]
+        # Gather speed shortens the swing rather than adding to it, so it
+        # divides the configured duration. Floored at one tick: a fast enough
+        # gatherer must still take a turn, or the action stops existing.
+        speed = utility(player, "gather_speed", 1.0)
+        gather_ticks = max(1, round(resource["gather_ticks"] / speed)) if speed > 0 else resource["gather_ticks"]
         eng.schedule(gather_ticks, "gather-complete", {
             "player_id": player_id,
             "tile": list(tile),
@@ -69,9 +88,13 @@ def register(engine: TickEngine, floor: FloorState, resources: dict, xp_table: d
         if resource is None:
             return events
 
-        # Roll yield count
+        # Roll yield count, then scale it by the player's gathering power.
+        # The roll happens first so proficiency widens the whole range rather
+        # than raising the floor -- a lucky novice and an unlucky expert
+        # should still be able to trade places.
         yield_cfg = resource["yield"]
         yield_count = random.randint(yield_cfg["min"], yield_cfg["max"])
+        yield_count = max(1, round(utility(player, "gather_yield", yield_count)))
 
         # Add item to player inventory; emit item_gained regardless (for log)
         player.add_item(resource_id, yield_count)

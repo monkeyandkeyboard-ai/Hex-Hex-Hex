@@ -202,7 +202,7 @@ def build_floor_state(floor_number: int, cfg: ConfigStore, on_change_floor,
 
     engine = TickEngine(tick_duration=1.0 / TICK_HZ)
 
-    gathering.register(engine, floor, cfg.resources, cfg.xp_table)
+    gathering.register(engine, floor, cfg.resources, cfg.xp_table, cfg.conversions)
 
     # Registration order follows the callback seams, not preference:
     #   monster_ai -> combat  (combat reports damage, behaviour reacts)
@@ -220,13 +220,15 @@ def build_floor_state(floor_number: int, cfg: ConfigStore, on_change_floor,
         xp_rates=cfg.xp_rates,
         xp_table=cfg.xp_table,
         rewards=cfg.rewards,
+        conversions=cfg.conversions,
         stat_scaling=cfg.stat_scaling,
         items=cfg.items,
         weapon_classes=cfg.weapon_classes,
         power_scaling=cfg.power_scaling,
         on_threat=notify_threat,
     )
-    movement.register(engine, floor, on_move=break_engagement)
+    movement.register(engine, floor, on_move=break_engagement,
+                      conversions=cfg.conversions)
     floor_exits.register(engine, floor, on_change_floor)
     inventory_system.register(engine, floor, cfg.weapons,
                               cfg.default_equipment_state, cfg.items)
