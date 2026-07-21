@@ -42,7 +42,17 @@ DERIVED_STATS = frozenset({
     "cooldown_reduction",         # % shorter ability cooldowns
     "attack_speed",               # % faster weapon swings
 })
+# Per-damage-type resistances (physical_resistance, fire_resistance, ...) are
+# NOT listed here: their names derive from the damage types in
+# combat_scaling_constants.json, so ConfigStore mints them at load
+# (self.item_stats) and combat reads `f"{damage_type}_resistance"`. Adding a
+# damage type therefore adds its resistance stat with no code change.
 ITEM_STATS = frozenset(COMBAT_SKILLS) | DERIVED_STATS
+
+
+def resistance_stats(combat_constants: dict) -> frozenset:
+    """The resistance stat name for every configured damage type."""
+    return frozenset(f"{t}_resistance" for t in combat_constants["damage_type_weighting"])
 
 _MONSTER_REQUIRED = {
     "id",
@@ -384,7 +394,7 @@ def _load_item_bases(path: Path) -> dict[str, dict]:
     return bases
 
 
-def _validate_item_bases(bases: dict[str, dict]) -> None:
+def _validate_item_bases(bases: dict[str, dict], item_stats=ITEM_STATS) -> None:
     for code, base in bases.items():
         missing = BASE_REQUIRED_KEYS - base.keys()
         if missing:
@@ -421,7 +431,7 @@ def _validate_item_bases(bases: dict[str, dict]) -> None:
             # then by construction a key the aggregator pools the way the
             # content author meant.
             root_stat, _, _ = parse_modifier_key(stat)
-            if root_stat not in ITEM_STATS:
+            if root_stat not in item_stats:
                 raise ConfigError(f"item base {code}: implicit names unknown stat {stat!r}")
             if not isinstance(value, (int, float)) or isinstance(value, bool):
                 raise ConfigError(f"item base {code}: implicit {stat!r} must be a number")
@@ -448,7 +458,7 @@ def _validate_conversion_sources(conversions: list, skills: dict) -> None:
             )
 
 
-def _validate_modifiers(modifiers: list) -> None:
+def _validate_modifiers(modifiers: list, item_stats=ITEM_STATS) -> None:
     if not isinstance(modifiers, list) or not modifiers:
         raise ConfigError("modifiers.json: must be a non-empty list")
 
@@ -461,7 +471,7 @@ def _validate_modifiers(modifiers: list) -> None:
             raise ConfigError(f"modifier {code!r}: duplicate modifier_code")
         seen.add(code)
 
-        if entry.get("stat") not in ITEM_STATS:
+        if entry.get("stat") not in item_stats:
             raise ConfigError(f"modifier {code}: unknown stat {entry.get('stat')!r}")
 
         tier = entry.get("tier")
@@ -635,12 +645,15 @@ class ConfigStore:
         self.item_generation = _load_json(root / "item_generation.json")
         self.item_names = _load_json(root / "item_names.json")
         _validate_item_names(self.item_names)
+        # The full stat vocabulary items may grant: the static set plus the
+        # per-damage-type resistances derived from the loaded combat constants.
+        self.item_stats = ITEM_STATS | resistance_stats(self.combat_constants)
         self.item_bases = _load_item_bases(root / "items")
-        _validate_item_bases(self.item_bases)
+        _validate_item_bases(self.item_bases, self.item_stats)
         _validate_weapon_types(self.item_bases, self.weapon_classes)
-        _validate_modifiers(self.modifiers)
+        _validate_modifiers(self.modifiers, self.item_stats)
         self.items = ItemRegistry(
-            self.item_bases, self.modifiers, self.item_generation, ITEM_STATS, self.item_names
+            self.item_bases, self.modifiers, self.item_generation, self.item_stats, self.item_names
         )
         self._validate_item_generation()
 
@@ -659,7 +672,7 @@ class ConfigStore:
         # ITEM_STATS is passed in rather than imported by crossdomain, so the
         # "conversions may not target combat stats" rule is checked against
         # the real combat vocabulary and cannot drift from it.
-        validate_conversions(self.conversions, ITEM_STATS)
+        validate_conversions(self.conversions, self.item_stats)
         _validate_conversion_sources(self.conversions, self.skills)
         # One service, built once, handed to every payout site.
         self.rewards = RewardService(self.reward_profiles, self.loot_tables, self.items)

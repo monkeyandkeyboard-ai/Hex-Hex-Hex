@@ -43,7 +43,19 @@ def power_from(entity, scaling: dict) -> float:
     return sum(entity.combat_stat(stat) * coeff for stat, coeff in scaling.items())
 
 
-def resolve_attack(attacker, target, weapon_damage: float, damage_type: str, constants: dict) -> dict:
+def resolve_attack(attacker, target, weapon_damage: float, damage_type: str,
+                   constants: dict, apply_stat_scaling: bool = True) -> dict:
+    """Resolve one hit. `weapon_damage` is the pre-mitigation damage.
+
+    `apply_stat_scaling` says whether this function should still scale that
+    number by the attacker's strength/arcana. A player swing and every ability
+    already fold the driving stat in through `power_from`, so they pass False --
+    scaling again here is the double-count that made damage rise with the stat
+    squared. A monster's *basic* strike hands over a flat roll and passes True,
+    so its strength/arcana still matter. The type routing below is unchanged;
+    only whether it multiplies damage (vs merely picking a mitigation weight)
+    depends on the flag.
+    """
     dex_t = target.combat_stat("dexterity")
     prec_a = attacker.combat_stat("precision")
     str_a = attacker.combat_stat("strength")
@@ -56,9 +68,9 @@ def resolve_attack(attacker, target, weapon_damage: float, damage_type: str, con
         constants["hit_chance_cap"],
         constants["hit_chance_base"] + prec_a / (prec_a + constants["constant_c"]),
     )
-    a_damage_multiplier = 1 + str_a / constants["constant_divisor"]
-    a_potency = 1 + (arcana_a ** 1.1) / constants["constant_divisor"]
-    t_raw_mitigation = con_t
+    # Armor folds into raw mitigation alongside constitution -- a real defence
+    # now that build_stats banks an item's base armor (was previously inert).
+    t_raw_mitigation = con_t + target.derived_stat("armor", 0.0)
 
     # Step 2: evasion check
     denom = t_evasion_rating + prec_a
@@ -70,14 +82,20 @@ def resolve_attack(attacker, target, weapon_damage: float, damage_type: str, con
     if random.random() >= a_hit_chance:
         return {"type": "combat_result", "result": "miss", "attacker": attacker.id, "target": target.id}
 
-    # Step 4: base damage (weapon_damage already rolled by caller).
-    # Which types scale off Arcana rather than Strength is config, not a
-    # hardcoded name check -- a new elemental type joins the magic scaling by
-    # being listed, without touching this line.
+    # Step 4: base damage (weapon_damage already rolled by caller). Which types
+    # scale off Arcana rather than Strength is config, not a hardcoded name
+    # check. The stat multiplier applies only when the caller has NOT already
+    # folded the stat in (a monster basic strike); pre-scaled sources take the
+    # roll as-is so the driving stat is counted exactly once.
     damage_type = normalize_damage_type(damage_type, constants)
-    arcana_scaled = constants.get("arcana_scaled_damage_types", [])
-    type_multiplier = a_potency if damage_type in arcana_scaled else a_damage_multiplier
-    base_damage = weapon_damage * type_multiplier
+    if apply_stat_scaling:
+        arcana_scaled = constants.get("arcana_scaled_damage_types", [])
+        a_damage_multiplier = 1 + str_a / constants["constant_divisor"]
+        a_potency = 1 + (arcana_a ** 1.1) / constants["constant_divisor"]
+        type_multiplier = a_potency if damage_type in arcana_scaled else a_damage_multiplier
+        base_damage = weapon_damage * type_multiplier
+    else:
+        base_damage = weapon_damage
 
     # Step 4b: critical strike. Chance and bonus multiplier are non-skill stats
     # (0 unless gear grants them), read through the same stable accessor buffs
@@ -97,10 +115,14 @@ def resolve_attack(attacker, target, weapon_damage: float, damage_type: str, con
     effective_mitigation = t_raw_mitigation * weighting
     mitigation_pct = effective_mitigation / (effective_mitigation + constants["defense_soft_cap_factor"])
 
-    # Step 6: final damage. Applied through take_damage so any absorb shield on
-    # the target is spent before HP -- the one entity method combat calls into,
-    # keeping shield bookkeeping out of the resolution math here.
+    # Step 6: final damage. A per-type resistance (dormant at 0) reduces this
+    # hit's damage type specifically, on top of the flat mitigation above -- so
+    # fire_resistance blunts fire and nothing else. Then take_damage spends any
+    # absorb shield before HP; it is the one entity method combat calls into.
     final_damage = base_damage * (1 - mitigation_pct)
+    resist = target.derived_stat(f"{damage_type}_resistance", 0.0)
+    if resist:
+        final_damage *= max(0.0, 1 - resist / 100.0)
 
     absorbed = target.take_damage(final_damage)
 

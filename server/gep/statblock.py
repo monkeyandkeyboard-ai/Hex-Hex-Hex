@@ -241,13 +241,16 @@ def build_stats(equipment_ids, registry) -> ResolvedStats:
         # Resolve this item's locals against its own base values, then bank
         # the total.
         #
-        # Driven by the local modifiers present, NOT by the numeric fields the
-        # base declares: an item's raw `armor` is deliberately not folded in
-        # here, because nothing mitigates with it yet (combat.py mitigates off
-        # constitution alone). Summing it into a total no one reads would look
-        # like armor works. Making armor a real defence is its own change, and
-        # this is the layer it will plug into when it happens.
-        for target in local.targets():
+        # `armor` is always banked, even with no local modifier, because an
+        # item's raw `armor` field IS its baseline for that target and combat
+        # now mitigates with it (combat.py step 5). Resolving armor against its
+        # base with an empty local block just returns the base, so this folds
+        # plain-armor items in and lets a local_armor% roll scale the base --
+        # both through the one ordered pipeline.
+        targets = local.targets()
+        if float(base.get("armor", 0.0) or 0.0) > 0:
+            targets = targets | {"armor"}
+        for target in targets:
             item_base = float(base.get(target, 0.0) or 0.0)
             result.local_totals[target] = (
                 result.local_totals.get(target, 0.0) + local.resolve(target, item_base)

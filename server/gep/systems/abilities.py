@@ -198,7 +198,9 @@ def register(
         roll = spec["damage_min"] + random.random() * (spec["damage_max"] - spec["damage_min"])
         weapon_damage = power_from(caster, spec["power"]) * roll
         damage_type = normalize_damage_type(spec["damage_type"], combat_constants)
-        result = resolve_attack(caster, target, weapon_damage, damage_type, combat_constants)
+        # power_from already folded the caster's stats in; do not double-scale.
+        result = resolve_attack(caster, target, weapon_damage, damage_type,
+                                combat_constants, apply_stat_scaling=False)
         events = [result]
         if result["result"] != "hit":
             return events

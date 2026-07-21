@@ -132,7 +132,10 @@ def register(
         weapon_damage = power * roll
         damage_type = normalize_damage_type(power_scaling[weapon_class]["damage_type"], combat_constants)
 
-        result = resolve_attack(player, monster, weapon_damage, damage_type, combat_constants)
+        # power already folded the driving stat in (compute_power), so combat
+        # must not scale by it again -- pass apply_stat_scaling=False.
+        result = resolve_attack(player, monster, weapon_damage, damage_type,
+                                combat_constants, apply_stat_scaling=False)
         events.append(result)
 
         if result["result"] == "hit":

@@ -30,11 +30,26 @@ class FloorManager:
                 floor_number, self.change_floor, self.move_to_floor)
         return self.floors[floor_number]
 
+    @staticmethod
+    def _record_town(player, floor: FloorState) -> None:
+        """If this floor is a town (safe), make it the player's respawn anchor.
+
+        "Last visited town" is therefore just the most recent safe floor a
+        player set foot on; a character who has never entered one keeps the
+        Player default of floor 1, which is the fallback the owner asked for.
+        The town's up-exit is the anchor tile -- a stable, always-passable spot
+        rather than wherever the player happened to arrive.
+        """
+        if getattr(floor.layout, "safe", False):
+            player.spawn_floor = floor.layout.floor_number
+            player.spawn_tile = tuple(floor.layout.up_exit)
+
     def add_player(self, player, floor_number: int = 1) -> FloorState:
         floor = self.get_or_build(floor_number)[0]
         floor.players[player.id] = player
         player.floor_number = floor_number
         self.player_floor[player.id] = floor_number
+        self._record_town(player, floor)
         return floor
 
     def remove_player(self, player_id: str) -> None:
@@ -99,4 +114,9 @@ class FloorManager:
             player.tile = tile
         self.player_floor[player_id] = floor_number
         self.pending_snapshots.add(player_id)
+        # Arriving in a town updates the respawn anchor. This runs on the
+        # relocate path too, which is harmless: a respawn sends a defeated
+        # player to their anchor town, and re-recording the same town is a
+        # no-op that keeps the rule in one place.
+        self._record_town(player, target_floor)
         return floor_number

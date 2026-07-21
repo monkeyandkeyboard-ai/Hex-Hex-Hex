@@ -12,11 +12,11 @@ Sequence, in order:
     3. restore pools to maximum
     4. flush to disk synchronously, so the relocation survives a crash
 
-Compendium §14 leaves death severity and the mechanic for *setting* an anchor
-[OPEN]. This implements the minimum that keeps a killed player playable:
-every character's anchor is their starting node until something is built to
-move it, and nothing is dropped or lost on death. Item loss is deliberately
-not invented here.
+Compendium §14 leaves death *severity* [OPEN] -- nothing is dropped or lost on
+death, and item loss is deliberately not invented here. The anchor-setting
+mechanic is now decided: a player's anchor is the last town (safe floor) they
+visited, recorded on arrival by FloorManager and persisted, falling back to
+floor 1 for a character who has never entered one.
 """
 from gep.actions import CLEAR_THREAT, PLAYER_DEFEATED
 from gep.floor_state import FloorState

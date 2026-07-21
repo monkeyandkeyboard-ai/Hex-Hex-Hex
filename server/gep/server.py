@@ -99,6 +99,11 @@ def build_player(player_id: str, username: str, saved: dict | None, cfg) -> Play
         equipment=equipment,
         inventory=inventory,
     )
+    # Restore the respawn anchor (last town visited). Absent -> the Player
+    # default of floor 1 stands, which is exactly "no town yet -> floor 1".
+    if saved and saved.get("spawn_floor") is not None:
+        player.spawn_floor = saved["spawn_floor"]
+        player.spawn_tile = tuple(saved["spawn_tile"])
     # Saved equipment only becomes stats once it is aggregated. Without this
     # a returning player's gear would grant nothing until they re-equipped
     # something -- the same silent nothing this whole layer exists to fix.

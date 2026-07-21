@@ -93,6 +93,52 @@ def test_damage_reduction_lowers_damage_taken(store):
     assert p.hp == 1000 - 40
 
 
+def test_armor_reduces_damage_taken(store):
+    const = store.combat_constants
+    bare = a_monster(store)
+    armored = a_monster(store)
+    grant(armored, "armor", 2000)                        # folds into mitigation
+    random.seed(2)
+    d1 = resolve_attack(make_player(store, strength=50), bare, 500, "physical", const)
+    random.seed(2)
+    d2 = resolve_attack(make_player(store, strength=50), armored, 500, "physical", const)
+    assert d1["result"] == "hit" and d2["result"] == "hit"
+    assert d2["damage"] < d1["damage"]
+
+
+def test_resistance_reduces_only_its_damage_type(store):
+    # One player and one monster throughout, so constitution variance can't
+    # skew the before/after comparison -- only the resistance changes.
+    const = store.combat_constants
+    p = make_player(store, arcana=50, strength=50)
+    m = a_monster(store)
+    random.seed(5); phys_before = resolve_attack(p, m, 400, "physical", const)
+    random.seed(5); fire_before = resolve_attack(p, m, 400, "fire", const)
+    grant(m, "fire_resistance", 50)                       # -50% fire only
+    random.seed(5); fire_after = resolve_attack(p, m, 400, "fire", const)
+    random.seed(5); phys_after = resolve_attack(p, m, 400, "physical", const)
+    assert fire_after["damage"] == pytest.approx(fire_before["damage"] * 0.5, rel=1e-6)
+    assert phys_after["damage"] == pytest.approx(phys_before["damage"], rel=1e-6)
+
+
+def test_pre_scaled_attacks_do_not_double_count_the_stat(store):
+    """A player swing/ability passes apply_stat_scaling=False (power already
+    folded the stat in); the same weapon_damage then lands the same regardless
+    of attacker strength. A monster basic strike (True) still scales."""
+    const = store.combat_constants
+    weak = make_player(store, strength=1)
+    strong = make_player(store, strength=999)
+    random.seed(7)
+    d_weak = resolve_attack(weak, a_monster(store), 100, "physical", const, apply_stat_scaling=False)
+    random.seed(7)
+    d_strong = resolve_attack(strong, a_monster(store), 100, "physical", const, apply_stat_scaling=False)
+    assert d_weak["damage"] == pytest.approx(d_strong["damage"], rel=1e-6)
+    # With scaling on (a monster strike), strength does raise damage.
+    random.seed(7)
+    d_scaled = resolve_attack(strong, a_monster(store), 100, "physical", const, apply_stat_scaling=True)
+    assert d_scaled["damage"] > d_strong["damage"]
+
+
 def test_cooldown_reduction_shortens_ability_cooldown(store):
     floor = FloorState.from_layout(generate_floor("tower-a", 5, "test", RULESET))
     p = make_player(store, arcana=10)                     # knows fireburst (cd 8)

@@ -67,6 +67,12 @@ def _migrate(c: sqlite3.Connection) -> None:
     for col in ("hp", "mana"):
         if col not in existing:
             c.execute(f"ALTER TABLE players ADD COLUMN {col} REAL")
+    # Respawn anchor: the last town the player visited. NULL until they set foot
+    # in one, which the caller reads as "no town yet -> start on floor 1".
+    if "spawn_floor" not in existing:
+        c.execute("ALTER TABLE players ADD COLUMN spawn_floor INTEGER")
+    if "spawn_tile" not in existing:
+        c.execute("ALTER TABLE players ADD COLUMN spawn_tile TEXT")
 
 
 # ---------------------------------------------------------------------------
@@ -164,7 +170,7 @@ def load_player(player_id: str) -> dict | None:
     with _conn() as c:
         row = c.execute(
             "SELECT name, combat_xp, non_combat_xp, combat_levels, non_combat_levels, "
-            "inventory, equipment, hp, mana FROM players WHERE id = ?",
+            "inventory, equipment, hp, mana, spawn_floor, spawn_tile FROM players WHERE id = ?",
             (player_id,),
         ).fetchone()
     if row is None:
@@ -180,6 +186,9 @@ def load_player(player_id: str) -> dict | None:
         # None when the character predates vitality persistence, or is new.
         "hp": row[7],
         "mana": row[8],
+        # None until the player has visited a town.
+        "spawn_floor": row[9],
+        "spawn_tile": json.loads(row[10]) if row[10] else None,
     }
 
 
@@ -190,8 +199,9 @@ def save_player(player) -> None:
         c.execute(
             """INSERT INTO players
                    (id, name, combat_xp, non_combat_xp, combat_levels,
-                    non_combat_levels, inventory, equipment, hp, mana)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    non_combat_levels, inventory, equipment, hp, mana,
+                    spawn_floor, spawn_tile)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                ON CONFLICT(id) DO UPDATE SET
                    name              = excluded.name,
                    combat_xp         = excluded.combat_xp,
@@ -201,7 +211,9 @@ def save_player(player) -> None:
                    inventory         = excluded.inventory,
                    equipment         = excluded.equipment,
                    hp                = excluded.hp,
-                   mana              = excluded.mana""",
+                   mana              = excluded.mana,
+                   spawn_floor       = excluded.spawn_floor,
+                   spawn_tile        = excluded.spawn_tile""",
             (
                 player.id,
                 player.name,
@@ -213,5 +225,7 @@ def save_player(player) -> None:
                 json.dumps(equip),
                 player.hp,
                 player.mana,
+                player.spawn_floor,
+                json.dumps(list(player.spawn_tile)),
             ),
         )
