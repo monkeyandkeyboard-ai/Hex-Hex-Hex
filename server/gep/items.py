@@ -229,6 +229,14 @@ class ItemRegistry:
         for code, base in bases.items():
             self.slots.setdefault(base["equipment_slot"], []).append(code)
 
+        # runtime_stats is a pure function of the instance string and this
+        # registry's (immutable) bases and modifiers, yet it was recomputed --
+        # reparsing the string and reseeding a fresh random.Random for the
+        # flavour name -- for every inventory and equipment slot of every
+        # connected player, every tick (see server.build_broadcasts). The
+        # string is a stable identifier, so the result is cached against it.
+        self._runtime_cache: dict[str, dict] = {}
+
     # -- selection ---------------------------------------------------------
 
     def drop_candidates(
@@ -371,9 +379,19 @@ class ItemRegistry:
     def runtime_stats(self, serialized: str) -> dict:
         """Fully resolved, transient stats for an instance (items.md §3.A.5).
 
-        Recomputed from the string on every load and never persisted, so the
-        string stays the single stored truth about an item.
+        Recomputed from the string on first sight and never persisted, so the
+        string stays the single stored truth about an item. Cached against the
+        string thereafter: the result is a pure function of it, so a returned
+        dict is shared and read-only -- callers describe items from it and must
+        not mutate it (none do).
         """
+        cached = self._runtime_cache.get(serialized)
+        if cached is None:
+            cached = self._compute_runtime_stats(serialized)
+            self._runtime_cache[serialized] = cached
+        return cached
+
+    def _compute_runtime_stats(self, serialized: str) -> dict:
         parsed = parse_instance(serialized)
         base = self.bases.get(parsed["base_code"])
         if base is None:

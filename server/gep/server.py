@@ -33,6 +33,7 @@ from gep.stats import compute_max_hp, compute_max_mana
 from gep.systems import combat_system, floor_exits, gathering, movement
 from gep.systems import inventory_system, monster_ai, regeneration, respawn
 from gep.tick import TickEngine
+from gep import xp
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
@@ -146,13 +147,12 @@ def save_players(players) -> int:
 
 
 def _xp_next_level(current_xp: float, xp_table: dict) -> float:
-    """Cumulative XP required to reach the next level above current_xp."""
-    sorted_levels = sorted(int(k) for k in xp_table)
-    for lvl in sorted_levels:
-        threshold = xp_table[str(lvl)]
-        if threshold > current_xp:
-            return threshold
-    return xp_table[str(sorted_levels[-1])]
+    """Cumulative XP required to reach the next level above current_xp.
+
+    Delegates to the shared cache in gep.xp so the 2000-key table is sorted
+    once rather than on every skill of every player_update, each tick.
+    """
+    return xp.next_level_threshold(current_xp, xp_table)
 
 
 def _skills_payload(player: Player, xp_table: dict) -> dict:
