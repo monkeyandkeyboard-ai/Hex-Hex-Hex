@@ -79,6 +79,16 @@ def resolve_attack(attacker, target, weapon_damage: float, damage_type: str, con
     type_multiplier = a_potency if damage_type in arcana_scaled else a_damage_multiplier
     base_damage = weapon_damage * type_multiplier
 
+    # Step 4b: critical strike. Chance and bonus multiplier are non-skill stats
+    # (0 unless gear grants them), read through the same stable accessor buffs
+    # use, so crit is dormant until an item rolls it -- no balance shift today.
+    crit_chance = attacker.derived_stat("critical_strike_chance", 0.0)
+    crit = crit_chance > 0 and random.random() < crit_chance
+    if crit:
+        crit_mult = (constants.get("critical_strike_multiplier_base", 1.5)
+                     + attacker.derived_stat("critical_strike_multiplier", 0.0))
+        base_damage *= crit_mult
+
     # Step 5: mitigation. The type weight is the coefficient on effective
     # mitigation *before* the soft-cap divisor, so a 0.5-weight type meets
     # half the defence a physical hit does:
@@ -87,12 +97,22 @@ def resolve_attack(attacker, target, weapon_damage: float, damage_type: str, con
     effective_mitigation = t_raw_mitigation * weighting
     mitigation_pct = effective_mitigation / (effective_mitigation + constants["defense_soft_cap_factor"])
 
-    # Step 6: final damage
+    # Step 6: final damage. Applied through take_damage so any absorb shield on
+    # the target is spent before HP -- the one entity method combat calls into,
+    # keeping shield bookkeeping out of the resolution math here.
     final_damage = base_damage * (1 - mitigation_pct)
 
-    target.hp = max(0.0, target.hp - final_damage)
-    if target.hp <= 0:
-        target.alive = False
+    absorbed = target.take_damage(final_damage)
+
+    # Step 7: on-hit stat effects, all dormant at 0. Leech and life-on-hit heal
+    # the attacker off the blow; thorns reflects a flat hit back. Thorns routes
+    # through take_damage (not resolve_attack), so it cannot re-trigger itself.
+    leech_pct = attacker.derived_stat("life_leech", 0.0)
+    life_on_hit = attacker.derived_stat("life_on_hit", 0.0)
+    healed = attacker.heal(final_damage * leech_pct / 100.0 + life_on_hit)
+    thorns = target.derived_stat("thorns", 0.0)
+    if thorns > 0:
+        attacker.take_damage(thorns)
 
     return {
         "type": "combat_result",
@@ -100,6 +120,10 @@ def resolve_attack(attacker, target, weapon_damage: float, damage_type: str, con
         "attacker": attacker.id,
         "target": target.id,
         "damage": final_damage,
+        "absorbed": absorbed,
+        "crit": crit,
+        "leeched": healed,
+        "thorns": thorns,
         "target_hp": target.hp,
         "target_alive": target.alive,
     }

@@ -1,27 +1,34 @@
-"""Abilities: player casts and monster casts, single-target and AoE.
+"""Abilities: the full cast pipeline for players and monsters.
 
-This is the delivery vehicle for area-of-effect. It sits on the combat side of
-the monster_ai <-> combat seam (gep/actions.py): monster ability *requests*
-arrive as scheduled MONSTER_ABILITY actions exactly like MONSTER_STRIKE, and
-this module owns the cooldown gate and resolution -- monster_ai never resolves
-damage, and this module never decides where a monster goes.
+An ability is a *cost*, a *targeting/delivery* mode, and a list of *effects*
+(gep/effects.py). The config is normalised to that one shape at load
+(config_loader._normalize_abilities), so this module never sees the legacy
+top-level damage form -- every ability is `{cost, targeting, effects:[...]}`.
 
-What a player *knows* is derived, never stored: a core ability is known once its
-skill requirement is met; an item ability is known only while an item granting
-it is equipped (and item abilities have no other source -- that is the whole
-point of the item-only tier). `known_abilities` is a pure function of skills +
-equipment, recomputed on demand.
+Pipeline for a cast:
 
-Resolution reuses the single combat pipeline: `resolve_attack` per target,
-`power_from` for stat scaling, and `monster_death_payout` for loot/XP/respawn,
-so an AoE that kills three monsters pays out exactly as three swings would.
-Friendly fire is off: a player ability's target set is monsters only, a
-monster ability's is players only.
+    validate -> pay cost, start cooldowns -> (optional cast time) ->
+    (optional projectile travel) -> resolve at the impact tile
+
+Resolution walks the effect list. Each effect goes to the pool its kind implies
+-- offensive kinds (damage, dot, debuff, stun, root, slow) hit the caster's
+enemies, friendly kinds (heal, hot, buff, shield) hit the caster's friends --
+so friendly fire stays off without the author choosing sides per effect. Damage
+routes through the one combat pipeline (`resolve_attack`) exactly as a swing
+does; timed effects are attached for systems/effects.py to tick.
+
+The seams match the rest of the engine: monster casts arrive as scheduled
+MONSTER_ABILITY actions (monster_ai decides *when*, this owns resolution),
+cast-time resolutions are scheduled named actions guarded by a staleness seq,
+and control gating is read from the pure effects module, not wired in here.
 """
+import math
 import random
 
+from gep import effects
 from gep.actions import MONSTER_ABILITY, PLAYER_DEFEATED
 from gep.combat import normalize_damage_type, power_from, resolve_attack
+from gep.effects import Effect
 from gep.floor_state import FloorState
 from gep.hexgrid import hex_distance
 from gep.payout import monster_death_payout
@@ -29,6 +36,14 @@ from gep.tick import TickEngine
 from gep.xp import award_xp
 
 USE_ABILITY_INTENT = "use_ability"
+CAST_COMPLETE = "ability-cast-complete"   # cast time elapsed -> deliver
+ABILITY_IMPACT = "ability-impact"         # projectile arrived -> resolve
+CHARGE_REFILL = "ability-charge-refill"   # one charge returns to the pool
+
+OFFENSIVE_KINDS = frozenset({"damage", "dot", "debuff", "stun", "root", "slow",
+                             "silence", "disarm", "vulnerability", "taunt"})
+FRIENDLY_KINDS = frozenset({"heal", "hot", "buff", "shield", "cleanse",
+                            "invulnerable", "fortify", "haste"})
 
 
 def known_abilities(player, abilities: dict, items) -> set[str]:
@@ -63,24 +78,197 @@ def register(
     items,
     on_threat=None,
     conversions: list | None = None,
-) -> None:
-    def roll_damage(ability, caster) -> tuple[float, str]:
-        """The pre-mitigation damage of one hit and its type. `power` scales off
-        the caster's stats the same way a weapon class does; the ability's
-        damage_min/max is a multiplier on that ceiling (weapon model)."""
-        power = power_from(caster, ability["power"])
-        roll = ability["damage_min"] + random.random() * (
-            ability["damage_max"] - ability["damage_min"])
-        damage_type = normalize_damage_type(ability["damage_type"], combat_constants)
-        return power * roll, damage_type
+):
+    dealt_rate = xp_rates["combat"]["damage_dealt_rate"]
 
-    def targets_in_area(pool, impact, radius) -> list:
-        """Live entities from `pool` within `radius` of the impact tile. radius
-        0 collapses to just whatever stands on the tile."""
-        return [
-            e for e in pool.values()
-            if e.alive and hex_distance(e.tile, impact) <= radius
-        ]
+    # ---- cost / gating -----------------------------------------------------
+
+    def charge_pool(caster, ability_id: str, ability: dict) -> int:
+        """Current charges for a charge-gated ability, lazily initialised to
+        full the first time it is asked about."""
+        pool = caster.ability_charges
+        if ability_id not in pool:
+            pool[ability_id] = ability["cost"]["charges"]
+        return pool[ability_id]
+
+    def gate(caster, ability_id: str, ability: dict, tick: int) -> str | None:
+        """Return a rejection reason, or None if the cast may proceed."""
+        if effects.is_stunned(caster.active_effects):
+            return "stunned"
+        if effects.is_silenced(caster.active_effects):
+            return "silenced"
+        cost = ability["cost"]
+        if getattr(caster, "global_cooldown_until", 0) > tick:
+            return "global cooldown"
+        # Charge-gated abilities gate on the pool (cooldown_ticks is the refill
+        # interval, not a hard cooldown); otherwise on the per-ability cooldown.
+        if cost["charges"] > 0:
+            if charge_pool(caster, ability_id, ability) <= 0:
+                return "no charges"
+        elif tick < caster.ability_cooldowns.get(ability_id, 0):
+            return "on cooldown"
+        if caster.mana < cost["mana"]:
+            return "not enough mana"
+        # HP cost may never be self-lethal.
+        if cost["hp"] > 0 and caster.hp <= cost["hp"]:
+            return "not enough health"
+        return None
+
+    def effective_cooldown(caster, ability: dict) -> int:
+        """cooldown_ticks after cooldown_reduction_percent (a non-skill stat, 0
+        unless gear grants it). Floors at 0 -- a cooldown cannot go negative."""
+        cdr = caster.derived_stat("cooldown_reduction", 0.0)
+        base = ability["cooldown_ticks"]
+        return base if cdr <= 0 else max(0, round(base * (1.0 - cdr / 100.0)))
+
+    def pay(caster, ability_id: str, ability: dict, eng: TickEngine) -> None:
+        cost = ability["cost"]
+        caster.mana -= cost["mana"]
+        if cost["hp"] > 0:
+            caster.hp = max(1.0, caster.hp - cost["hp"])
+        cooldown = effective_cooldown(caster, ability)
+        if cost["charges"] > 0:
+            caster.ability_charges[ability_id] = charge_pool(caster, ability_id, ability) - 1
+            eng.schedule(cooldown, CHARGE_REFILL, {
+                "caster_id": caster.id, "ability_id": ability_id,
+                "maximum": cost["charges"],
+            })
+        else:
+            caster.ability_cooldowns[ability_id] = eng.tick + cooldown
+        gcd = ability["global_cooldown_ticks"]
+        if gcd > 0 and hasattr(caster, "global_cooldown_until"):
+            caster.global_cooldown_until = eng.tick + gcd
+
+    # ---- targeting / resolution --------------------------------------------
+
+    def pools_for(caster_is_player: bool):
+        """(enemies, friends) for a caster. Offensive effects land on enemies,
+        friendly on friends -- the whole of the no-friendly-fire rule."""
+        if caster_is_player:
+            return floor.monsters, floor.players
+        return floor.players, floor.monsters
+
+    def in_area(pool, impact, radius) -> list:
+        return [e for e in pool.values()
+                if e.alive and hex_distance(e.tile, impact) <= radius]
+
+    def make_effect(spec: dict, caster, ability_id: str, tick: int) -> Effect:
+        """Build a timed Effect from an effect spec, snapshotting any damage off
+        the caster's stats now so it never re-scales while it lingers."""
+        kind = spec["kind"]
+        expires = tick + spec["duration_ticks"]
+        if kind == "dot":
+            roll = spec["damage_min"] + random.random() * (spec["damage_max"] - spec["damage_min"])
+            amount = power_from(caster, spec["power"]) * roll
+            return Effect(
+                effect_id=ability_id, kind="dot", expires_tick=expires,
+                source_id=caster.id, tick_amount=amount,
+                interval=spec["interval_ticks"], next_tick=tick + spec["interval_ticks"],
+                damage_type=normalize_damage_type(spec["damage_type"], combat_constants),
+                train_power=dict(spec["power"]),
+            )
+        if kind == "hot":
+            return Effect(
+                effect_id=ability_id, kind="hot", expires_tick=expires,
+                source_id=caster.id, tick_amount=spec["magnitude"],
+                interval=spec["interval_ticks"], next_tick=tick + spec["interval_ticks"],
+            )
+        if kind in ("buff", "debuff"):
+            return Effect(effect_id=ability_id, kind=kind, expires_tick=expires,
+                          source_id=caster.id, magnitude=spec["magnitude"], stat=spec["stat"])
+        if kind == "shield":
+            return Effect(effect_id=ability_id, kind="shield", expires_tick=expires,
+                          source_id=caster.id, absorb_remaining=spec["magnitude"])
+        if kind in ("fortify", "vulnerability"):
+            return Effect(effect_id=ability_id, kind=kind, expires_tick=expires,
+                          source_id=caster.id, magnitude=spec["magnitude"])
+        if kind == "slow":
+            return Effect(effect_id=ability_id, kind="slow", expires_tick=expires,
+                          source_id=caster.id, slow_fraction=spec["slow_fraction"])
+        if kind == "haste":
+            return Effect(effect_id=ability_id, kind="haste", expires_tick=expires,
+                          source_id=caster.id, haste_fraction=spec["haste_fraction"])
+        # stun / root / silence / disarm / invulnerable / taunt: plain timed
+        # gates. Taunt keeps source_id (the caster) so the AI knows who pulled.
+        return Effect(effect_id=ability_id, kind=kind, expires_tick=expires,
+                      source_id=caster.id)
+
+    def apply_damage(caster, target, spec: dict, is_player: bool, eng) -> list[dict]:
+        """One damage effect against one target, through the combat pipeline."""
+        roll = spec["damage_min"] + random.random() * (spec["damage_max"] - spec["damage_min"])
+        weapon_damage = power_from(caster, spec["power"]) * roll
+        damage_type = normalize_damage_type(spec["damage_type"], combat_constants)
+        result = resolve_attack(caster, target, weapon_damage, damage_type, combat_constants)
+        events = [result]
+        if result["result"] != "hit":
+            return events
+        if is_player:
+            if on_threat is not None:
+                on_threat(target, caster.id)
+            dmg = result["damage"]
+            for stat, coeff in spec["power"].items():
+                events.extend(award_xp(caster, stat, dmg * dealt_rate * coeff, xp_table))
+            events.extend(award_xp(caster, "precision", dmg * dealt_rate * 0.5, xp_table))
+            if not target.alive:
+                events.extend(monster_death_payout(
+                    caster, target, monsters_cfg, rewards, xp_table, eng,
+                    conversions=conversions))
+        elif not target.alive:
+            eng.schedule(0, PLAYER_DEFEATED, {"player_id": target.id, "killer_id": caster.id})
+        return events
+
+    def resolve(caster, is_player: bool, ability: dict, ability_id: str,
+                impact, eng: TickEngine) -> list[dict]:
+        enemies, friends = pools_for(is_player)
+        radius = ability["aoe_radius"]
+        results: list[dict] = []
+        for spec in ability["effects"]:
+            kind = spec["kind"]
+            pool = enemies if kind in OFFENSIVE_KINDS else friends
+            for target in in_area(pool, impact, radius):
+                if kind == "damage":
+                    results.extend(apply_damage(caster, target, spec, is_player, eng))
+                elif kind == "heal":
+                    healed = target.heal(spec["magnitude"])
+                    results.append({"type": "effect_applied", "target": target.id,
+                                    "effect_id": ability_id, "kind": "heal",
+                                    "amount": healed, "target_hp": target.hp})
+                elif kind == "cleanse":
+                    removed = effects.cleanse(target.active_effects)
+                    results.append({"type": "effect_applied", "target": target.id,
+                                    "effect_id": ability_id, "kind": "cleanse",
+                                    "removed": removed})
+                else:
+                    effects.apply_timed(target.active_effects,
+                                        make_effect(spec, caster, ability_id, eng.tick))
+                    if kind in OFFENSIVE_KINDS and is_player and on_threat is not None:
+                        on_threat(target, caster.id)
+                    results.append({"type": "effect_applied", "target": target.id,
+                                    "effect_id": ability_id, "kind": kind})
+        return results
+
+    def deliver(caster, is_player: bool, ability: dict, ability_id: str,
+                impact, eng: TickEngine) -> list[dict]:
+        """Post-cast delivery: fly a projectile if the ability has one, else
+        resolve on the spot."""
+        speed = ability["projectile_speed_tiles"]
+        dist = hex_distance(caster.tile, impact)
+        if speed > 0 and dist > 0:
+            travel = max(1, math.ceil(dist / speed))
+            eng.schedule(travel, ABILITY_IMPACT, {
+                "caster_id": caster.id, "is_player": is_player,
+                "ability_id": ability_id, "impact": list(impact),
+            })
+            return [{"type": "projectile", "caster": caster.id, "ability_id": ability_id,
+                     "from": list(caster.tile), "to": list(impact), "travel_ticks": travel}]
+        events = resolve(caster, is_player, ability, ability_id, impact, eng)
+        return [ability_used_event(caster, ability_id, ability, impact, events)] + events
+
+    def ability_used_event(caster, ability_id, ability, impact, results) -> dict:
+        return {"type": "ability_used", "caster": caster.id, "ability_id": ability_id,
+                "tile": list(impact), "aoe_radius": ability["aoe_radius"], "results": results}
+
+    # ---- player intent ------------------------------------------------------
 
     def handle_use_ability(intent: dict, eng: TickEngine) -> list[dict]:
         player_id = intent.get("player_id")
@@ -99,84 +287,101 @@ def register(
             return [{"type": "error", "reason": "target off floor", "player_id": player_id}]
         if hex_distance(player.tile, impact) > ability["range"]:
             return [{"type": "error", "reason": "out of range", "player_id": player_id}]
-        if eng.tick < player.ability_cooldowns.get(ability_id, 0):
-            return [{"type": "error", "reason": "on cooldown", "player_id": player_id}]
-        if player.mana < ability["mana_cost"]:
-            return [{"type": "error", "reason": "not enough mana", "player_id": player_id}]
+        reason = gate(player, ability_id, ability, eng.tick)
+        if reason is not None:
+            return [{"type": "error", "reason": reason, "player_id": player_id}]
 
-        # Commit: pay the cost and start the cooldown before resolving, so the
-        # cast is spent whether or not it happened to catch anything.
-        player.mana -= ability["mana_cost"]
-        player.ability_cooldowns[ability_id] = eng.tick + ability["cooldown_ticks"]
+        # Commit: pay the cost and start cooldowns before resolving, so the cast
+        # is spent whether or not it catches anything.
+        pay(player, ability_id, ability, eng)
+        player.cast_seq += 1
 
-        dealt_rate = xp_rates["combat"]["damage_dealt_rate"]
-        results: list[dict] = []
-        # Hostiles-only: a player ability hits monsters, never other players.
-        for monster in targets_in_area(floor.monsters, impact, ability["aoe_radius"]):
-            weapon_damage, damage_type = roll_damage(ability, player)
-            result = resolve_attack(player, monster, weapon_damage, damage_type,
-                                    combat_constants)
-            results.append(result)
-            if result["result"] != "hit":
-                continue
-            if on_threat is not None:
-                on_threat(monster, player_id)
-            dmg = result["damage"]
-            # Train the stats the ability scales off (a fire spell trains
-            # arcana, a cleave trains strength) plus precision, mirroring how a
-            # swing credits its driving stat -- an AoE hitting three monsters
-            # credits three hits' worth, exactly as three swings would.
-            for stat, coeff in ability["power"].items():
-                results.extend(award_xp(player, stat, dmg * dealt_rate * coeff, xp_table))
-            results.extend(award_xp(player, "precision", dmg * dealt_rate * 0.5, xp_table))
-            if not monster.alive:
-                results.extend(monster_death_payout(
-                    player, monster, monsters_cfg, rewards, xp_table, eng,
-                    conversions=conversions))
+        cast_ticks = ability["cast_ticks"]
+        if cast_ticks > 0:
+            player.pending_cast = ability_id
+            eng.schedule(cast_ticks, CAST_COMPLETE, {
+                "caster_id": player_id, "ability_id": ability_id,
+                "impact": list(impact), "seq": player.cast_seq,
+            })
+            return [{"type": "cast_started", "caster": player_id, "ability_id": ability_id,
+                     "cast_ticks": cast_ticks, "tile": list(impact)}]
+        return deliver(player, True, ability, ability_id, impact, eng)
 
-        return [{
-            "type": "ability_used",
-            "caster": player_id,
-            "ability_id": ability_id,
-            "tile": list(impact),
-            "aoe_radius": ability["aoe_radius"],
-            "results": results,
-        }] + results
+    def handle_cast_complete(payload: dict, eng: TickEngine) -> list[dict]:
+        player = floor.players.get(payload["caster_id"])
+        if player is None or not player.alive:
+            return []
+        # Superseded (moved / re-cast) or interrupted -> drop silently; the
+        # interrupt already announced itself.
+        if payload["seq"] != player.cast_seq:
+            return []
+        player.pending_cast = None
+        ability_id = payload["ability_id"]
+        ability = abilities_cfg[ability_id]
+        # A stun landing during the cast interrupts it.
+        if effects.is_stunned(player.active_effects):
+            return [{"type": "cast_interrupted", "caster": player.id,
+                     "ability_id": ability_id, "reason": "stunned"}]
+        return deliver(player, True, ability, ability_id, tuple(payload["impact"]), eng)
+
+    def handle_ability_impact(payload: dict, eng: TickEngine) -> list[dict]:
+        is_player = payload["is_player"]
+        pool = floor.players if is_player else floor.monsters
+        caster = pool.get(payload["caster_id"])
+        ability = abilities_cfg.get(payload["ability_id"])
+        if ability is None:
+            return []
+        # The caster may have died mid-flight; the projectile still lands, so
+        # fall back to a detached caster only for stat scaling that already got
+        # snapshotted at cast time. If the caster is gone entirely, drop.
+        if caster is None:
+            return []
+        impact = tuple(payload["impact"])
+        results = resolve(caster, is_player, ability, payload["ability_id"], impact, eng)
+        return [ability_used_event(caster, payload["ability_id"], ability, impact, results)] + results
+
+    def handle_charge_refill(payload: dict, eng: TickEngine) -> list[dict]:
+        pool = floor.players if payload["caster_id"] in floor.players else floor.monsters
+        caster = pool.get(payload["caster_id"])
+        if caster is None:
+            return []
+        aid = payload["ability_id"]
+        caster.ability_charges[aid] = min(payload["maximum"],
+                                          caster.ability_charges.get(aid, 0) + 1)
+        return []
+
+    # ---- monster action -----------------------------------------------------
 
     def handle_monster_ability(payload: dict, eng: TickEngine) -> list[dict]:
-        """A monster's ability, requested by the behaviour system. Cooldown is
-        the only gate -- monsters have no mana economy this version."""
+        """A monster's ability, requested by the behaviour system. Gated by the
+        same cost/cooldown rules as a player -- a template with a `resource`
+        pool runs dry under pressure; one without keeps cooldown-only casting."""
         monster = floor.monsters.get(payload["monster_id"])
         ability = abilities_cfg.get(payload["ability_id"])
         if monster is None or not monster.alive or ability is None:
             return []
         ability_id = payload["ability_id"]
-        if eng.tick < monster.ability_cooldowns.get(ability_id, 0):
-            return []   # still cooling down -- silently drop, as MONSTER_STRIKE does
-        monster.ability_cooldowns[ability_id] = eng.tick + ability["cooldown_ticks"]
-
+        if gate(monster, ability_id, ability, eng.tick) is not None:
+            return []   # can't afford / cooling down / stunned -- silently drop
+        pay(monster, ability_id, ability, eng)
         impact = (payload["target_q"], payload["target_r"])
-        results: list[dict] = []
-        # Hostiles-only: a monster ability hits players, never other monsters.
-        for player in targets_in_area(floor.players, impact, ability["aoe_radius"]):
-            weapon_damage, damage_type = roll_damage(ability, monster)
-            result = resolve_attack(monster, player, weapon_damage, damage_type,
-                                    combat_constants)
-            results.append(result)
-            if result["result"] == "hit" and not player.alive:
-                eng.schedule(0, PLAYER_DEFEATED, {
-                    "player_id": player.id,
-                    "killer_id": monster.id,
-                })
+        return deliver(monster, False, ability, ability_id, impact, eng)
 
-        return [{
-            "type": "ability_used",
-            "caster": payload["monster_id"],
-            "ability_id": ability_id,
-            "tile": list(impact),
-            "aoe_radius": ability["aoe_radius"],
-            "results": results,
-        }] + results
+    def interrupt_casts(player) -> list[dict]:
+        """Handed to movement: choosing to move cancels a cast in flight. Bumps
+        the seq so the scheduled completion drops, and names what it cancelled."""
+        if getattr(player, "pending_cast", None) is None:
+            return []
+        aid = player.pending_cast
+        player.pending_cast = None
+        player.cast_seq += 1
+        return [{"type": "cast_interrupted", "caster": player.id,
+                 "ability_id": aid, "reason": "moved"}]
 
     engine.register_intent_handler(USE_ABILITY_INTENT, handle_use_ability)
+    engine.register_action_handler(CAST_COMPLETE, handle_cast_complete)
+    engine.register_action_handler(ABILITY_IMPACT, handle_ability_impact)
+    engine.register_action_handler(CHARGE_REFILL, handle_charge_refill)
     engine.register_action_handler(MONSTER_ABILITY, handle_monster_ability)
+
+    return interrupt_casts

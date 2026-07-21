@@ -100,7 +100,11 @@ def test_monsters_regenerate_health_and_have_no_mana_pool(store):
     engine.step([])
 
     assert monster.hp > 1.0
-    assert not hasattr(monster, "mana"), "monsters should not grow a mana pool"
+    # A template that declares no `resource` block gets max_mana 0, and regen
+    # only tops up a pool that exists -- so cave_rat has no mana economy and its
+    # mana never moves (the opt-in monster resource pool, gep/entities.py).
+    assert monster.max_mana == 0
+    assert monster.mana == 0
 
 
 def test_regeneration_emits_no_events(store):

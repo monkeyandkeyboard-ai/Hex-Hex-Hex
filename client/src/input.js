@@ -25,7 +25,15 @@ function onKeyDown(e) {
   if (!Number.isInteger(slot) || slot < 1) return;
   const ability = state.selfAbilities[slot - 1];
   if (!ability) return;
-  const tile = getHoveredTile();
+  // A self-targeted ability always aims at the caster, so it fires without
+  // needing the cursor over your own tile; everything else aims at the hover.
+  let tile;
+  if (ability.targeting === "self") {
+    const me = state.players.get(state.playerId);
+    tile = me && me.tile;
+  } else {
+    tile = getHoveredTile();
+  }
   if (!tile) return;
   e.preventDefault();
   sendIntent({ intent_type: "use_ability", ability_id: ability.id,

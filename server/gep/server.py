@@ -30,7 +30,9 @@ from gep.floor_state import FloorState
 from gep.floor_manager import FloorManager
 from gep.spawner import spawn_floor
 from gep.stats import compute_max_hp, compute_max_mana
+from gep.effects import effects_payload
 from gep.systems import abilities, combat_system, floor_exits, gathering, movement
+from gep.systems import effects as effects_system
 from gep.systems import inventory_system, monster_ai, regeneration, respawn
 from gep.tick import TickEngine
 from gep import xp
@@ -228,7 +230,15 @@ def build_floor_state(floor_number: int, cfg: ConfigStore, on_change_floor,
         power_scaling=cfg.power_scaling,
         on_threat=notify_threat,
     )
-    abilities.register(
+    effects_system.register(
+        engine, floor,
+        xp_rates=cfg.xp_rates,
+        xp_table=cfg.xp_table,
+        monsters_cfg=cfg.monsters,
+        rewards=cfg.rewards,
+        conversions=cfg.conversions,
+    )
+    interrupt_casts = abilities.register(
         engine, floor,
         abilities_cfg=cfg.abilities,
         monsters_cfg=cfg.monsters,
@@ -240,7 +250,13 @@ def build_floor_state(floor_number: int, cfg: ConfigStore, on_change_floor,
         on_threat=notify_threat,
         conversions=cfg.conversions,
     )
-    movement.register(engine, floor, on_move=break_engagement,
+
+    # Moving drops both auto-combat and any cast in flight -- movement knows
+    # about neither, it just calls the one hook it was handed.
+    def on_move(player):
+        return (break_engagement(player) or []) + (interrupt_casts(player) or [])
+
+    movement.register(engine, floor, on_move=on_move,
                       conversions=cfg.conversions)
     floor_exits.register(engine, floor, on_change_floor)
     inventory_system.register(engine, floor, cfg.weapons,
@@ -317,7 +333,11 @@ def _abilities_payload(player: Player, abilities_cfg: dict, items, tick: int) ->
             "range": a["range"],
             "aoe_radius": a["aoe_radius"],
             "cooldown_ticks": a["cooldown_ticks"],
-            "mana_cost": a["mana_cost"],
+            "cast_ticks": a["cast_ticks"],
+            "mana_cost": a["cost"]["mana"],
+            "hp_cost": a["cost"]["hp"],
+            "charges": a["cost"]["charges"],
+            "charges_left": player.ability_charges.get(aid) if a["cost"]["charges"] > 0 else None,
             "ready_tick": player.ability_cooldowns.get(aid, 0),
         })
     return out
@@ -416,6 +436,7 @@ def floor_snapshot(
                 "alive": m.alive,
                 "visual": m.visual,
                 "facing": m.facing,
+                "effects": effects_payload(m.active_effects, tick),
             }
             for mid, m in floor.monsters.items()
         },
@@ -433,6 +454,7 @@ def floor_snapshot(
                 "inventory": resolve_inventory(p.inventory_snapshot(), items, resources),
                 "equipment": resolve_equipment(p.equipment.to_dict(), items, resources),
                 "abilities": _abilities_payload(p, abilities_cfg, items, tick),
+                "effects": effects_payload(p.active_effects, tick),
             }
             for pid, p in floor.players.items()
         },
@@ -478,6 +500,7 @@ def build_broadcasts(results, floors, player_floor, connected, cfg) -> list[tupl
                     "inventory": resolve_inventory(p.inventory_snapshot(), cfg.items, cfg.resources),
                     "equipment": resolve_equipment(p.equipment.to_dict(), cfg.items, cfg.resources),
                     "abilities": _abilities_payload(p, cfg.abilities, cfg.items, result.tick),
+                    "effects": effects_payload(p.active_effects, result.tick),
                 })
         out.append((recipients, {
             "tick": result.tick,

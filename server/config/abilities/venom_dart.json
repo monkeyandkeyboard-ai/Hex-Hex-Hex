@@ -1,0 +1,17 @@
+{
+  "id": "venom_dart",
+  "display_name": "Venom Dart",
+  "source": "core",
+  "requirement": { "skill": "arcana", "level": 5 },
+  "targeting": "target_enemy",
+  "range": 5,
+  "aoe_radius": 0,
+  "cooldown_ticks": 8,
+  "cast_ticks": 0,
+  "projectile_speed_tiles": 3,
+  "cost": { "mana": 10 },
+  "effects": [
+    { "kind": "damage", "power": { "arcana": 0.4 }, "damage_min": 0.3, "damage_max": 0.5, "damage_type": "magical" },
+    { "kind": "dot", "power": { "arcana": 0.3 }, "damage_min": 0.2, "damage_max": 0.3, "damage_type": "magical", "duration_ticks": 6, "interval_ticks": 2 }
+  ]
+}

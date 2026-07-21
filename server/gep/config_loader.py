@@ -6,6 +6,7 @@ on a malformed file rather than partway through a tick.
 import json
 from pathlib import Path
 
+from gep import effects
 from gep.items import BASE_REQUIRED_KEYS, MAX_TIER, MIN_TIER, ItemRegistry
 from gep.crossdomain import validate_conversions
 from gep.rewards import RewardService
@@ -21,10 +22,27 @@ COMBAT_SKILLS = (
 )
 
 # Stats an item base or modifier may grant. Combat skills plus the derived
-# stats that are not skills in their own right. Every implicit and every
-# modifier is checked against this at load, so a typo'd stat name is a startup
-# failure rather than an item that silently grants nothing.
-ITEM_STATS = frozenset(COMBAT_SKILLS) | {"critical_strike_chance"}
+# (non-skill) stats combat reads through entity.derived_stat. Every implicit
+# and every modifier is checked against this at load, so a typo'd stat name is
+# a startup failure rather than an item that silently grants nothing.
+#
+# All derived stats are DORMANT at 0: combat reads each one but no base value
+# supplies it, so behaviour is unchanged until an item or affix grants it.
+# Cull one by removing it here -- its combat read then always sees 0. NOTE: a
+# stat name must not end in `_percent` or `_more`, which the modifier-key
+# grammar (statblock.py) reserves for the increased/more pools; a "percent"
+# stat is therefore a plain name whose value combat divides by 100.
+DERIVED_STATS = frozenset({
+    "critical_strike_chance",     # 0..1 chance to crit
+    "critical_strike_multiplier", # added to the base crit multiplier
+    "life_leech",                 # % of damage dealt healed to the attacker
+    "life_on_hit",                # flat heal per landing hit
+    "thorns",                     # flat damage reflected to an attacker
+    "damage_reduction",           # % less damage taken
+    "cooldown_reduction",         # % shorter ability cooldowns
+    "attack_speed",               # % faster weapon swings
+})
+ITEM_STATS = frozenset(COMBAT_SKILLS) | DERIVED_STATS
 
 _MONSTER_REQUIRED = {
     "id",
@@ -81,23 +99,23 @@ _PREFAB_REQUIRED = {
     "footprint",
 }
 
+# The minimal author-facing shape. Everything else (cost, cast time, and the
+# `effects` list itself) is optional and filled in by _normalize_abilities, so
+# a legacy damage ability written with top-level damage_min/max/power still
+# loads -- it is rewritten into the canonical {cost, effects:[...]} form once,
+# at load, and systems/abilities.py only ever sees the canonical shape.
 _ABILITY_REQUIRED = {
     "id",
     "display_name",
     "source",        # "core" (skill-gated) | "item" (only via a granting item)
-    "targeting",     # "ground" | "target_enemy" | "self"
+    "targeting",     # "ground" | "target_enemy" | "self" | "ally"
     "range",         # max hex distance from caster to the impact tile
     "aoe_radius",    # 0 = single tile
     "cooldown_ticks",
-    "mana_cost",
-    "power",         # {stat: coefficient}, same shape as power_scaling stats
-    "damage_min",    # multiplier on computed power (weapon model)
-    "damage_max",
-    "damage_type",
 }
 
 _ABILITY_SOURCES = ("core", "item")
-_ABILITY_TARGETING = ("ground", "target_enemy", "self")
+_ABILITY_TARGETING = ("ground", "target_enemy", "self", "ally")
 
 
 class ConfigError(Exception):
@@ -466,11 +484,57 @@ def _validate_modifiers(modifiers: list) -> None:
             raise ConfigError(f"modifier {code}: 'family' must be a non-empty string")
 
 
+def _normalize_abilities(abilities: dict) -> None:
+    """Rewrite every ability into the one canonical shape systems/abilities.py
+    reads, in place. Authors may still write the legacy top-level damage form
+    (power/damage_min/damage_max/damage_type/mana_cost) -- it is folded into a
+    single `damage` effect and a `cost` block here so the runtime never has to
+    know two shapes. Fills defaults for cast time, projectile, and gating too.
+    """
+    for a in abilities.values():
+        # Cost block. Legacy `mana_cost` becomes cost.mana; hp/charges default 0
+        # (0 charges = not charge-gated).
+        cost = dict(a.get("cost") or {})
+        cost.setdefault("mana", a.get("mana_cost", 0))
+        cost.setdefault("hp", 0)
+        cost.setdefault("charges", 0)
+        a["cost"] = cost
+
+        a.setdefault("global_cooldown_ticks", 0)
+        a.setdefault("cast_ticks", 0)
+        a.setdefault("interruptible", True)
+        a.setdefault("projectile_speed_tiles", 0)
+
+        # Effects. If the author gave an explicit list, keep it; otherwise
+        # synthesise the one damage effect the legacy fields described.
+        if "effects" not in a:
+            a["effects"] = [{
+                "kind": "damage",
+                "power": a.get("power", {}),
+                "damage_min": a.get("damage_min", 0.0),
+                "damage_max": a.get("damage_max", 0.0),
+                "damage_type": a.get("damage_type", "physical"),
+            }]
+        for e in a["effects"]:
+            e.setdefault("power", {})
+            e.setdefault("damage_min", 0.0)
+            e.setdefault("damage_max", 0.0)
+            e.setdefault("damage_type", "physical")
+            e.setdefault("interval_ticks", 1)
+            e.setdefault("duration_ticks", 0)
+            e.setdefault("magnitude", 0.0)
+            e.setdefault("stat", None)
+            e.setdefault("slow_fraction", 0.0)
+            e.setdefault("haste_fraction", 0.0)
+
+
 def _validate_abilities(abilities: dict, combat_constants: dict) -> None:
     """Every ability must be resolvable by systems/abilities.py: a known
-    targeting mode and damage type, stats it scales off that combat actually
-    reads, and a coherent source/requirement pairing. Checked at load so a
-    typo in an ability file is a startup error, never a mid-cast crash.
+    targeting mode, a coherent source/requirement pairing, sane costs/timing,
+    and effects whose kinds and fields the resolver understands. Runs after
+    _normalize_abilities, so it validates the canonical {cost, effects} shape.
+    Checked at load so a typo in an ability file is a startup error, never a
+    mid-cast crash.
     """
     known_types = combat_constants["damage_type_weighting"].keys()
     for aid, a in abilities.items():
@@ -494,18 +558,56 @@ def _validate_abilities(abilities: dict, combat_constants: dict) -> None:
                 )
             if not isinstance(req.get("level"), (int, float)) or req["level"] < 1:
                 raise ConfigError(f"ability {aid}: requirement 'level' must be a number >= 1")
-        for stat in a["power"]:
-            if stat not in COMBAT_SKILLS:
-                raise ConfigError(f"ability {aid}: power scales off unknown stat {stat!r}")
-        if a["damage_type"].lower() not in known_types:
-            raise ConfigError(f"ability {aid}: unknown damage_type {a['damage_type']!r}")
-        for field in ("range", "aoe_radius", "cooldown_ticks"):
+        for field in ("range", "aoe_radius", "cooldown_ticks",
+                      "global_cooldown_ticks", "cast_ticks"):
             if not isinstance(a[field], int) or a[field] < 0:
                 raise ConfigError(f"ability {aid}: {field!r} must be an integer >= 0")
-        if a["mana_cost"] < 0:
-            raise ConfigError(f"ability {aid}: 'mana_cost' must be >= 0")
-        if a["damage_min"] > a["damage_max"]:
-            raise ConfigError(f"ability {aid}: damage_min > damage_max")
+        if not isinstance(a["projectile_speed_tiles"], (int, float)) or a["projectile_speed_tiles"] < 0:
+            raise ConfigError(f"ability {aid}: 'projectile_speed_tiles' must be a number >= 0")
+        for key in ("mana", "hp", "charges"):
+            if not isinstance(a["cost"][key], (int, float)) or a["cost"][key] < 0:
+                raise ConfigError(f"ability {aid}: cost {key!r} must be a number >= 0")
+        if not a["effects"]:
+            raise ConfigError(f"ability {aid}: must have at least one effect")
+        for e in a["effects"]:
+            _validate_effect(aid, e, known_types)
+
+
+def _validate_effect(aid: str, e: dict, known_types) -> None:
+    kind = e.get("kind")
+    if kind not in effects.EFFECT_KINDS:
+        raise ConfigError(f"ability {aid}: unknown effect kind {kind!r}")
+    # Damage-bearing effects scale off combat stats and carry a damage type.
+    if kind in ("damage", "dot"):
+        for stat in e["power"]:
+            if stat not in COMBAT_SKILLS:
+                raise ConfigError(f"ability {aid}: effect power scales off unknown stat {stat!r}")
+        if e["damage_type"].lower() not in known_types:
+            raise ConfigError(f"ability {aid}: unknown damage_type {e['damage_type']!r}")
+        if e["damage_min"] > e["damage_max"]:
+            raise ConfigError(f"ability {aid}: effect damage_min > damage_max")
+    # Every timed kind needs a positive duration; periodic kinds a positive
+    # interval. Immediate damage/heal have neither.
+    if kind in effects.TIMED_KINDS:
+        if not isinstance(e["duration_ticks"], int) or e["duration_ticks"] <= 0:
+            raise ConfigError(f"ability {aid}: {kind!r} effect needs duration_ticks > 0")
+    if kind in effects.PERIODIC_KINDS:
+        if not isinstance(e["interval_ticks"], int) or e["interval_ticks"] <= 0:
+            raise ConfigError(f"ability {aid}: {kind!r} effect needs interval_ticks > 0")
+    if kind in ("buff", "debuff"):
+        if e["stat"] not in COMBAT_SKILLS:
+            raise ConfigError(f"ability {aid}: {kind!r} effect stat {e['stat']!r} is not a combat skill")
+    if kind == "slow":
+        if not (0 < e["slow_fraction"] < 1):
+            raise ConfigError(f"ability {aid}: slow effect needs 0 < slow_fraction < 1")
+    if kind == "haste":
+        if not (0 < e["haste_fraction"] < 1):
+            raise ConfigError(f"ability {aid}: haste effect needs 0 < haste_fraction < 1")
+    if kind in ("heal", "hot", "shield") and e["magnitude"] <= 0:
+        raise ConfigError(f"ability {aid}: {kind!r} effect needs magnitude > 0")
+    # fortify/vulnerability carry a 0..1 fraction of damage reduced/amplified.
+    if kind in ("fortify", "vulnerability") and not (0 < e["magnitude"] <= 1):
+        raise ConfigError(f"ability {aid}: {kind!r} effect needs 0 < magnitude <= 1")
 
 
 class ConfigStore:
@@ -548,6 +650,7 @@ class ConfigStore:
         self.abilities = (
             _load_dir(abilities_dir, _ABILITY_REQUIRED) if abilities_dir.is_dir() else {}
         )
+        _normalize_abilities(self.abilities)
         _validate_abilities(self.abilities, self.combat_constants)
         self._validate_item_ability_grants()
 

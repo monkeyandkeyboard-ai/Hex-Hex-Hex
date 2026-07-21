@@ -35,6 +35,23 @@ export function initEvents(logElement) {
   logEl = logElement;
 }
 
+// Keep a monster's effect list roughly in step between snapshots so its
+// nameplate can show what is on it. The authoritative list is re-sent every
+// snapshot; this just avoids a stale gap in between. Players' own strip is
+// driven by the periodic player_update, so this only touches monsters.
+function applyEntityEffect(ev, delta) {
+  const m = state.monsters.get(ev.target);
+  if (!m) return;
+  if (!Array.isArray(m.effects)) m.effects = [];
+  if (delta > 0) {
+    if (!m.effects.some(e => e.effect_id === ev.effect_id && e.kind === ev.kind)) {
+      m.effects.push({ effect_id: ev.effect_id, kind: ev.kind });
+    }
+  } else {
+    m.effects = m.effects.filter(e => !(e.effect_id === ev.effect_id && e.kind === ev.kind));
+  }
+}
+
 function logEvent(text, cls = "") {
   if (!logEl) return;
   const div = document.createElement("div");
@@ -133,6 +150,7 @@ export function applySnapshot(msg) {
     if (self.mana !== undefined) state.selfMana = self.mana;
     if (self.max_mana !== undefined) state.selfMaxMana = self.max_mana;
     if (self.abilities) state.selfAbilities = self.abilities;
+    if (self.effects) state.selfEffects = self.effects;
     state.selfSkills = { ...(self.skills || {}) };
     if (self.inventory) state.selfInventory = self.inventory;
     if (self.equipment) state.selfEquipment = { ...self.equipment };
@@ -254,6 +272,7 @@ function applyEvent(ev) {
         if (ev.mana !== undefined) state.selfMana = ev.mana;
         if (ev.max_mana !== undefined) state.selfMaxMana = ev.max_mana;
         if (ev.abilities) state.selfAbilities = ev.abilities;
+        if (ev.effects) state.selfEffects = ev.effects;
         state.selfSkills = { ...ev.skills };
         if (ev.inventory) state.selfInventory = ev.inventory;
         if (ev.equipment) state.selfEquipment = { ...ev.equipment };
@@ -270,8 +289,56 @@ function applyEvent(ev) {
         until: performance.now() + 350,
       });
       if (ev.caster === state.playerId) {
+        state.selfCast = null;   // a cast-time ability has now resolved
         const name = (state.selfAbilities.find(a => a.id === ev.ability_id) || {}).display_name;
         logEvent(`Cast ${name || ev.ability_id}`, "combat");
+      }
+      break;
+    }
+    case "cast_started":
+      if (ev.caster === state.playerId) {
+        state.selfCast = { ability_id: ev.ability_id, cast_ticks: ev.cast_ticks, start_tick: state.tick };
+        const name = (state.selfAbilities.find(a => a.id === ev.ability_id) || {}).display_name;
+        logEvent(`Casting ${name || ev.ability_id}…`, "combat");
+      }
+      break;
+    case "cast_interrupted":
+      if (ev.caster === state.playerId) {
+        state.selfCast = null;
+        logEvent(`Cast interrupted (${ev.reason})`, "combat");
+      }
+      break;
+    case "projectile": {
+      // Cosmetic: flash the destination so a projectile ability reads as
+      // travelling to a point. The impact resolves server-side on arrival.
+      state.abilityFlashes.push({
+        q: ev.to[0], r: ev.to[1], radius: 0, until: performance.now() + 300,
+      });
+      break;
+    }
+    case "effect_applied": {
+      // Ground truth for the local player's effect strip rides the periodic
+      // player_update; here we keep monster nameplates fresh between snapshots.
+      applyEntityEffect(ev, +1);
+      break;
+    }
+    case "effect_expired": {
+      applyEntityEffect(ev, -1);
+      if (state.selfCast && ev.target === state.playerId && ev.kind === "stun") {
+        state.selfCast = null;   // a stun that interrupted our cast
+      }
+      break;
+    }
+    case "effect_tick": {
+      // Periodic dot/hot: update the target's live HP and log for the player.
+      if (ev.target_hp !== undefined) {
+        const m = state.monsters.get(ev.target);
+        if (m) m.hp = ev.target_hp;
+        if (ev.target === state.playerId) state.selfHp = ev.target_hp;
+      }
+      if (ev.target === state.playerId) {
+        const verb = ev.kind === "dot" ? `Suffered ${ev.amount.toFixed(1)}` : `Healed ${ev.amount.toFixed(1)}`;
+        logEvent(verb, "combat");
       }
       break;
     }

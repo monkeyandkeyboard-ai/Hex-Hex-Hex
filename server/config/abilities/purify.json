@@ -1,0 +1,15 @@
+{
+  "id": "purify",
+  "display_name": "Purify",
+  "source": "core",
+  "requirement": { "skill": "mana_attunement", "level": 5 },
+  "targeting": "self",
+  "range": 0,
+  "aoe_radius": 0,
+  "cooldown_ticks": 12,
+  "cost": { "mana": 12 },
+  "effects": [
+    { "kind": "cleanse" },
+    { "kind": "fortify", "magnitude": 0.25, "duration_ticks": 6 }
+  ]
+}

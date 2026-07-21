@@ -27,6 +27,7 @@ another entry in that shape (0%-20%, speed 1), not a special case.
 """
 import random
 
+from gep import effects
 from gep.combat import normalize_damage_type, power_from, resolve_attack
 from gep.floor_state import FloorState
 from gep.actions import MONSTER_STRIKE, PLAYER_DEFEATED
@@ -102,6 +103,14 @@ def register(
             player.combat_target = None
             player.attack_seq += 1
 
+    def effective_speed(player, profile) -> int:
+        """The weapon's speed_ticks after attack_speed_percent (a non-skill stat,
+        0 unless gear grants it). Higher attack speed shortens the cadence; the
+        result floors at 1 tick -- a swing cannot land faster than once a tick."""
+        aspd = player.derived_stat("attack_speed", 0.0)
+        base = profile["speed_ticks"]
+        return base if aspd <= 0 else max(1, round(base / (1.0 + aspd / 100.0)))
+
     def swing(player, monster, eng: TickEngine) -> list[dict]:
         """One resolved attack plus everything that follows from it."""
         profile = weapon_profile(player.weapon_id)
@@ -111,6 +120,7 @@ def register(
         target_id = monster.id
         player_id = player.id
         events = face_target(player, monster)
+        speed_ticks = effective_speed(player, profile)
 
         # power is the ceiling of this swing's potential; the weapon's own
         # damage_min/max is a multiplier on it, not an absolute range, so a
@@ -144,12 +154,12 @@ def register(
                 # Nothing left to auto-attack.
                 end_engagement(player)
 
-        player.weapon_ready_tick = eng.tick + profile["speed_ticks"]
+        player.weapon_ready_tick = eng.tick + speed_ticks
 
         # Queue the next swing for the moment the weapon comes back up. The
         # seq check in the handler drops this if the engagement ended first.
         if player.combat_target == target_id:
-            eng.schedule(profile["speed_ticks"], "auto-attack", {
+            eng.schedule(speed_ticks, "auto-attack", {
                 "player_id": player_id,
                 "target_id": target_id,
                 "seq": player.attack_seq,
@@ -163,6 +173,10 @@ def register(
         player = floor.players.get(player_id)
         if player is None or not player.alive:
             return [{"type": "error", "reason": "invalid attacker", "player_id": player_id}]
+        if effects.is_stunned(player.active_effects):
+            return [{"type": "error", "reason": "stunned", "player_id": player_id}]
+        if effects.is_disarmed(player.active_effects):
+            return [{"type": "error", "reason": "disarmed", "player_id": player_id}]
 
         monster = floor.monsters.get(target_id)
         if monster is None or not monster.alive:
@@ -208,6 +222,12 @@ def register(
             end_engagement(player)
             return [{"type": "engagement_ended", "player_id": player_id, "reason": "target gone"}]
 
+        # Stunned or disarmed: hold the engagement but do not swing. Re-check
+        # next tick so auto-combat resumes the moment the effect lifts.
+        if effects.is_stunned(player.active_effects) or effects.is_disarmed(player.active_effects):
+            eng.schedule(1, "auto-attack", payload)
+            return []
+
         if eng.tick < player.weapon_ready_tick:
             # Shouldn't normally happen, but never busy-swing: wait it out.
             eng.schedule(max(1, player.weapon_ready_tick - eng.tick), "auto-attack", payload)
@@ -228,6 +248,8 @@ def register(
             return []
         if player is None or not player.alive:
             return []
+        if effects.is_stunned(monster.active_effects) or effects.is_disarmed(monster.active_effects):
+            return []   # a stunned or disarmed monster cannot swing
         if eng.tick < monster.weapon_ready_tick:
             return []   # still on cooldown -- silently drop the request
 

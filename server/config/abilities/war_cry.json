@@ -1,0 +1,16 @@
+{
+  "id": "war_cry",
+  "display_name": "War Cry",
+  "source": "core",
+  "requirement": { "skill": "strength", "level": 5 },
+  "targeting": "self",
+  "range": 0,
+  "aoe_radius": 0,
+  "cooldown_ticks": 20,
+  "global_cooldown_ticks": 2,
+  "cost": { "mana": 8 },
+  "effects": [
+    { "kind": "buff", "stat": "strength", "magnitude": 5, "duration_ticks": 15 },
+    { "kind": "shield", "magnitude": 30, "duration_ticks": 15 }
+  ]
+}

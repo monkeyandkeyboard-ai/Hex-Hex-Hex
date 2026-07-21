@@ -20,6 +20,7 @@ Cadence for both modes is per-template config, not constants here.
 """
 import random
 
+from gep import effects
 from gep.actions import CLEAR_THREAT, MONSTER_ABILITY, MONSTER_STRIKE
 from gep.floor_state import FloorState
 from gep.hexgrid import facing_from_delta, hex_distance
@@ -67,7 +68,12 @@ def register(
         cfg = movement_cfg(monster.template_id)
         key = "pursue_interval_ticks" if monster.threat_target else "wander_interval_ticks"
         default = 2 if monster.threat_target else 6
-        return max(1, int(cfg.get(key, default)))
+        base = max(1, int(cfg.get(key, default)))
+        # Slow stretches the think cadence and haste shortens it -- the
+        # monster-side expression of the same effects that pace a player's step
+        # delay. A monster interval can drop below its base under haste (unlike
+        # a player's floored step), so a hasted monster genuinely acts faster.
+        return max(1, round(base * effects.pace_factor(monster.active_effects)))
 
     def face_toward(monster, tile) -> list[dict]:
         """Turn to look at a tile without moving (used when already adjacent).
@@ -153,13 +159,14 @@ def register(
         if best is not None:
             add_threat(monster, best.id)
 
-    def pursue(monster, eng: TickEngine) -> list[dict]:
+    def pursue(monster, eng: TickEngine, forced_target=None) -> list[dict]:
         """One step along the path to the hunted player.
 
         The target's live tile is fed to pathfinding every cycle rather than a
-        path being cached, so the monster re-routes as the player moves.
+        path being cached, so the monster re-routes as the player moves. A
+        `forced_target` (a taunt) overrides the threat table for its duration.
         """
-        target_id = monster.threat_target
+        target_id = forced_target or monster.threat_target
         target = floor.players.get(target_id)
         if target is None or not target.alive:
             # Target left the floor or died -- drop just that entry and resume
@@ -197,6 +204,11 @@ def register(
                     "target_r": target.tile[1],
                 })
 
+        # Rooted: may still strike/cast (handled above) but cannot close the
+        # distance. Face the target and hold.
+        if effects.is_rooted(monster.active_effects):
+            return face_toward(monster, target.tile)
+
         # find_path treats the goal as reachable even when occupied, so a path
         # to the player always exists if any route does.
         path = find_path(monster.tile, target.tile, floor.is_passable)
@@ -227,6 +239,17 @@ def register(
 
         if not monster.alive:
             return []
+
+        # A stunned monster does nothing this cycle (it still re-armed above, so
+        # it resumes once the stun lifts).
+        if effects.is_stunned(monster.active_effects):
+            return []
+
+        # A taunt forces this monster onto its caster for the taunt's duration,
+        # overriding whatever the threat table would pick -- the tank's pull.
+        taunt = effects.taunt_source(monster.active_effects)
+        if taunt is not None and taunt in floor.players and floor.players[taunt].alive:
+            return pursue(monster, eng, forced_target=taunt)
 
         # Notice a nearby player before deciding what to do this cycle, so an
         # idle monster that a player walks up to pursues on the same think

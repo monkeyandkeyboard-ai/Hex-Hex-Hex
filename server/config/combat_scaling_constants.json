@@ -13,5 +13,6 @@
     "electric": 0.75
   },
   "arcana_scaled_damage_types": ["magical", "fire", "ice", "electric"],
-  "default_damage_type": "physical"
+  "default_damage_type": "physical",
+  "critical_strike_multiplier_base": 1.5
 }

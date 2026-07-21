@@ -1,0 +1,14 @@
+{
+  "id": "provoke",
+  "display_name": "Provoke",
+  "source": "core",
+  "requirement": { "skill": "constitution", "level": 5 },
+  "targeting": "ground",
+  "range": 5,
+  "aoe_radius": 1,
+  "cooldown_ticks": 10,
+  "cost": { "mana": 6 },
+  "effects": [
+    { "kind": "taunt", "duration_ticks": 8 }
+  ]
+}

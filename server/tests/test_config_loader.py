@@ -21,11 +21,13 @@ def test_loads_real_config_dir():
     assert str(1) in store.xp_table
     assert str(2000) in store.xp_table
     assert isinstance(store.modifiers, list)
-    # Every rollable stat must be present at all nine tiers -- a stat that
-    # stops partway up would silently become impossible to roll on high-tier
-    # gear, which no other assertion would catch.
+    # Every modifier must name a known stat, and every stat that *is* rollable
+    # must be present at all nine tiers -- a stat that stops partway up would
+    # silently become impossible to roll on high-tier gear. Not every ITEM_STAT
+    # need be rollable: the derived stats (crit, leech, thorns, ...) are dormant
+    # vocabulary combat reads but no affix has to grant yet.
     stats = {m["stat"] for m in store.modifiers}
-    assert stats == set(ITEM_STATS)
+    assert stats <= set(ITEM_STATS)
     for stat in stats:
         tiers = sorted(m["tier"] for m in store.modifiers if m["stat"] == stat)
         assert tiers == list(range(MIN_TIER, MAX_TIER + 1)), stat

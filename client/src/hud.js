@@ -16,8 +16,9 @@ const EQUIP_SLOTS = [
 ];
 
 let hpFill, hpText, manaFill, manaText, tickInfo, floorLabel, abilityBar;
+let effectStrip, castBar, castBarFill, castBarLabel;
 let skillsPane, inventoryPane, equipmentPane, tooltip;
-let lastAbilitySig = "";
+let lastAbilitySig = "", lastEffectSig = "";
 let sendIntent = () => {};
 
 // Signature strings of the last render, to skip DOM churn when unchanged
@@ -40,6 +41,10 @@ export function initHud() {
   manaFill   = document.getElementById("mana-fill");
   manaText   = document.getElementById("mana-text");
   abilityBar = document.getElementById("ability-bar");
+  effectStrip = document.getElementById("effect-strip");
+  castBar     = document.getElementById("cast-bar");
+  castBarFill = document.getElementById("cast-bar-fill");
+  castBarLabel = document.getElementById("cast-bar-label");
   tickInfo   = document.getElementById("tick-info");
   floorLabel = document.getElementById("floor-label");
   skillsPane    = document.getElementById("tab-skills");
@@ -114,7 +119,10 @@ function hideTooltip() {
 const STAT_LABELS = {
   strength: "Strength", dexterity: "Dexterity", precision: "Precision",
   arcana: "Arcana", mana_attunement: "Mana Attunement", constitution: "Constitution",
-  critical_strike_chance: "Crit Chance",
+  critical_strike_chance: "Crit Chance", critical_strike_multiplier: "Crit Damage",
+  life_leech: "Life Leech", life_on_hit: "Life on Hit", thorns: "Thorns",
+  damage_reduction: "Damage Reduction", cooldown_reduction: "Cooldown Reduction",
+  attack_speed: "Attack Speed",
 };
 
 function statLabel(stat) {
@@ -263,6 +271,42 @@ function renderAbilityBar() {
   }).join("");
 }
 
+const EFFECT_LABELS = {
+  buff: "Buff", debuff: "Debuff", dot: "DoT", hot: "Regen",
+  shield: "Shield", stun: "Stun", root: "Root", slow: "Slow",
+  haste: "Haste", silence: "Silence", disarm: "Disarm",
+  invulnerable: "Immune", fortify: "Fortify", vulnerability: "Vuln",
+  taunt: "Taunt",
+};
+
+function renderEffectStrip() {
+  const fx = state.selfEffects || [];
+  const sig = JSON.stringify(fx);
+  if (sig === lastEffectSig) return;
+  lastEffectSig = sig;
+  effectStrip.innerHTML = fx.map((e) => {
+    const label = e.stat && (e.kind === "buff" || e.kind === "debuff")
+      ? statLabel(e.stat) : (EFFECT_LABELS[e.kind] || e.kind);
+    const rem = e.remaining_ticks !== undefined && e.remaining_ticks > 0
+      ? `<span class="rem">${e.remaining_ticks}</span>` : "";
+    return `<span class="effect-pip ${e.kind}" title="${label}">${label}${rem}</span>`;
+  }).join("");
+}
+
+function renderCastBar() {
+  const cast = state.selfCast;
+  if (!cast || cast.cast_ticks <= 0) {
+    if (castBar.style.display !== "none") castBar.style.display = "none";
+    return;
+  }
+  const elapsed = state.tick - cast.start_tick;
+  const pct = Math.max(0, Math.min(100, (elapsed / cast.cast_ticks) * 100));
+  castBar.style.display = "block";
+  castBarFill.style.width = pct.toFixed(0) + "%";
+  const name = (state.selfAbilities.find(a => a.id === cast.ability_id) || {}).display_name;
+  castBarLabel.textContent = name || cast.ability_id;
+}
+
 export function updateHud() {
   const pct = state.selfMaxHp > 0 ? (state.selfHp / state.selfMaxHp) * 100 : 0;
   if (hpFill) hpFill.style.width = pct.toFixed(1) + "%";
@@ -271,6 +315,8 @@ export function updateHud() {
   if (manaFill) manaFill.style.width = mpct.toFixed(1) + "%";
   if (manaText) manaText.textContent = `${Math.ceil(state.selfMana)} / ${Math.ceil(state.selfMaxMana)}`;
   if (abilityBar) renderAbilityBar();
+  if (effectStrip) renderEffectStrip();
+  if (castBar) renderCastBar();
   if (tickInfo) tickInfo.textContent = `tick ${state.tick}  |  ${state.tickDuration.toFixed(2)}s`;
   if (floorLabel && state.floorNumber !== null) floorLabel.textContent = `Floor ${state.floorNumber}`;
 

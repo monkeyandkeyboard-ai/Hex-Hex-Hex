@@ -11,6 +11,7 @@ special-cases "player vs monster" -- one resolution function serves PvE and
 import random
 from dataclasses import dataclass, field
 
+from gep import effects
 from gep.config_loader import COMBAT_SKILLS
 from gep.items import is_instance
 from gep.statblock import EMPTY, ResolvedStats, build_stats
@@ -94,6 +95,23 @@ class Player:
     # worth carrying across a session, and an empty dict just means everything
     # is ready.
     ability_cooldowns: dict[str, int] = field(default_factory=dict)
+    # Tick a shared global cooldown lifts; abilities that declare one cannot be
+    # chained inside it. Transient, same reasoning as ability_cooldowns.
+    global_cooldown_until: int = 0
+    # ability_id -> charges remaining, for abilities that gate on a charge pool
+    # instead of (or as well as) a cooldown. Absent id means "not charge-gated".
+    ability_charges: dict[str, int] = field(default_factory=dict)
+    # Live timed effects (gep/effects.py): dots, buffs, shields, stuns, ...
+    # Transient like cooldowns -- a mid-flight poison at logout is not worth
+    # carrying across a session.
+    active_effects: list = field(default_factory=list)
+    # In-flight cast, for cast-time abilities: bumped whenever a cast starts,
+    # moves, or is interrupted, so a resolution scheduled by a superseded cast
+    # drops instead of landing (the move_seq/attack_seq staleness trick).
+    cast_seq: int = 0
+    # ability_id of a cast currently in flight (cast_ticks not yet elapsed), or
+    # None. Lets a move or stun interrupt name what it cancelled.
+    pending_cast: str | None = None
     alive: bool = True
     # Which spritesheet column the client draws, updated as the player walks
     # and whenever they turn to face something they are attacking.
@@ -133,12 +151,53 @@ class Player:
         self.stats = build_stats(self.equipment.to_dict().values(), items)
 
     def combat_stat(self, skill: str) -> float:
-        """The skill level, with equipment modifiers applied.
+        """The skill level, with equipment modifiers and timed effects applied.
 
-        The level is the baseline (phase 1); everything gear contributes
-        resolves on top of it through the ordered pipeline in statblock.py.
+        The level is the baseline; everything gear contributes resolves on top
+        of it through the ordered pipeline in statblock.py. A timed buff/debuff
+        (gep/effects.py) is an additive term on the result -- deliberately kept
+        outside the gear aggregation so the two layers stay independent.
         """
-        return self.stats.resolve(skill, self.skills.combat.get(skill, 1))
+        return (
+            self.stats.resolve(skill, self.skills.combat.get(skill, 1))
+            + effects.stat_bonus(self.active_effects, skill)
+        )
+
+    def derived_stat(self, name: str, base: float = 0.0) -> float:
+        """A non-skill combat stat (crit chance, thorns, leech, ...): the value
+        aggregated from gear plus any timed effect, over a caller-supplied base.
+
+        Distinct from combat_stat, whose baseline is a skill level -- these
+        stats have no level, so their baseline is 0 (or a config floor). Reads
+        through the same stable `ResolvedStats.resolve` contract the buff seam
+        uses, so it stays valid across the equipment-aggregation rework.
+        """
+        return self.stats.resolve(name, base) + effects.stat_bonus(self.active_effects, name)
+
+    def take_damage(self, amount: float) -> float:
+        """Apply `amount` of damage after mitigation, spending shields last.
+        Returns how much a shield absorbed. The single vitality-mutation path,
+        so every mitigation layer covers every damage source -- swing, ability
+        and dot alike."""
+        if effects.is_invulnerable(self.active_effects):
+            return amount   # wholly negated; reported as fully "absorbed"
+        amount *= effects.damage_taken_multiplier(self.active_effects)
+        dr = self.derived_stat("damage_reduction", 0.0)
+        if dr:
+            amount *= max(0.0, 1.0 - dr / 100.0)
+        absorbed = effects.consume_absorb(self.active_effects, amount)
+        self.hp = max(0.0, self.hp - (amount - absorbed))
+        if self.hp <= 0:
+            self.alive = False
+        return absorbed
+
+    def heal(self, amount: float) -> float:
+        """Restore HP, never past max_hp. Returns the amount actually restored."""
+        if amount <= 0 or not self.alive:
+            return 0.0
+        before = self.hp
+        self.hp = min(self.max_hp, self.hp + amount)
+        return self.hp - before
 
     def add_item(self, item_id: str, quantity: int) -> bool:
         """Stack with existing slot first, then find an empty slot.
@@ -197,9 +256,17 @@ class Monster:
     # that damage landed.
     threat_table: dict[str, float] = field(default_factory=dict)
     weapon_ready_tick: int = 0
-    # ability_id -> tick next usable. Monster abilities are cooldown-gated only
-    # (no mana economy this version); this is that gate's state.
+    # ability_id -> tick next usable.
     ability_cooldowns: dict[str, int] = field(default_factory=dict)
+    # Resource economy for monster casts. A template that declares a `resource`
+    # block gets a real pool its abilities spend and regenerate, so a caster
+    # runs dry under pressure. Templates that do not opt in keep max_mana 0,
+    # which the ability handler reads as "cooldown-only" -- the old behaviour,
+    # no config migration (mirrors how aggro_radius 0 keeps passive aggro).
+    mana: float = 0.0
+    max_mana: float = 0.0
+    # Live timed effects (gep/effects.py), same as Player.
+    active_effects: list = field(default_factory=list)
     alive: bool = True
     # Set only for spawns inside a prefab's rarity radius (gep/prefabs.py +
     # gep/spawner.py); combat_system.py prefers this over the template's own
@@ -225,7 +292,34 @@ class Monster:
         self.threat_table = {} if player_id is None else {player_id: 1.0}
 
     def combat_stat(self, skill: str) -> float:
-        return self.stats.get(skill, 0)
+        return self.stats.get(skill, 0) + effects.stat_bonus(self.active_effects, skill)
+
+    def derived_stat(self, name: str, base: float = 0.0) -> float:
+        """Non-skill stat for a monster. Monsters carry no gear, so this is the
+        template's flat value (usually absent -> base) plus any timed effect --
+        the same accessor combat calls on a player, so one code path serves
+        both attacker and target."""
+        return self.stats.get(name, base) + effects.stat_bonus(self.active_effects, name)
+
+    def take_damage(self, amount: float) -> float:
+        if effects.is_invulnerable(self.active_effects):
+            return amount
+        amount *= effects.damage_taken_multiplier(self.active_effects)
+        dr = self.derived_stat("damage_reduction", 0.0)
+        if dr:
+            amount *= max(0.0, 1.0 - dr / 100.0)
+        absorbed = effects.consume_absorb(self.active_effects, amount)
+        self.hp = max(0.0, self.hp - (amount - absorbed))
+        if self.hp <= 0:
+            self.alive = False
+        return absorbed
+
+    def heal(self, amount: float) -> float:
+        if amount <= 0 or not self.alive:
+            return 0.0
+        before = self.hp
+        self.hp = min(self.max_hp, self.hp + amount)
+        return self.hp - before
 
     def roll_damage(self) -> float:
         return self.damage_min + random.random() * (self.damage_max - self.damage_min)
@@ -248,7 +342,11 @@ def roll_monster(
 
     max_hp = compute_max_hp(stats["constitution"], stat_scaling)
     combat = template["combat"]
-    return Monster(
+    # Optional resource pool: a template opts into a mana economy for its casts
+    # by declaring `resource: {max}`. Absent -> pool stays 0, read downstream as
+    # "cooldown-only", preserving templates that never mention a resource.
+    resource_max = float(template.get("resource", {}).get("max", 0))
+    monster = Monster(
         id=monster_id,
         template_id=template["id"],
         floor_number=0,
@@ -263,4 +361,7 @@ def roll_monster(
         level=template["level"],
         visual=dict(template.get("visual", {})),
         reward_table_override=reward_table_override,
+        mana=resource_max,
+        max_mana=resource_max,
     )
+    return monster

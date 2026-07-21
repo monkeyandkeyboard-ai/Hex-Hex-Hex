@@ -11,7 +11,7 @@ Move model:
 Movement speed is a property of the player (or their active transport).
 Base speed = 1 tile/tick. Transport can grant speed 2+.
 """
-from gep import crossdomain
+from gep import crossdomain, effects
 from gep.floor_state import FloorState
 from gep.hexgrid import facing_from_delta
 from gep.pathfinding import find_path
@@ -48,6 +48,13 @@ def register(engine: TickEngine, floor: FloorState, on_move=None,
         )
         return max(1, int(resolved))
 
+    def step_delay(player) -> int:
+        """Ticks between move steps. Normally 1; slow stretches it (a crawl even
+        at base speed, where reducing tiles-per-step below 1 could not express a
+        slow) and haste can only pull it back toward 1 -- a player cannot
+        sub-tick, so haste below the floor is lost, by the movement model."""
+        return max(1, round(1 * effects.pace_factor(player.active_effects)))
+
     def handle_move_intent(intent: dict, eng: TickEngine) -> list[dict]:
         player_id = intent.get("player_id")
         player = floor.players.get(player_id)
@@ -55,6 +62,9 @@ def register(engine: TickEngine, floor: FloorState, on_move=None,
             return [{"type": "error", "reason": f"unknown player {player_id!r}"}]
         if not player.alive:
             return [{"type": "error", "reason": "dead players cannot move", "player_id": player_id}]
+        # Root and stun both forbid movement (a stun forbids everything).
+        if effects.is_rooted(player.active_effects) or effects.is_stunned(player.active_effects):
+            return [{"type": "error", "reason": "immobilized", "player_id": player_id}]
 
         target = _tile_from_intent(intent)
         if not floor.is_valid_tile(target):
@@ -147,7 +157,7 @@ def register(engine: TickEngine, floor: FloorState, on_move=None,
             steps_taken += 1
 
         if remaining:
-            eng.schedule(1, "move-step", {
+            eng.schedule(step_delay(player), "move-step", {
                 "player_id": player_id,
                 "remaining": remaining,
                 "speed": speed,

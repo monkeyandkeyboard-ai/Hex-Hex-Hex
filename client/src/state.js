@@ -58,6 +58,12 @@ export const state = {
   // Transient AoE hit markers for the renderer: [{ tiles: Set<"q,r">, until }].
   // `until` is a wall-clock ms timestamp; the renderer drops expired ones.
   abilityFlashes: [],
+  // Our own active effects, as the server reports them: [{ effect_id, kind,
+  // stat, remaining_ticks, absorb_remaining }]. Presentation only.
+  selfEffects: [],
+  // An in-flight cast for the local player, or null: { ability_id, cast_ticks,
+  // start_tick }. Drives the cast bar; cleared on completion or interrupt.
+  selfCast: null,
   // skill -> { level, xp, xp_next }
   selfSkills: {},
   // 28-element array, each null or { item_id, quantity }

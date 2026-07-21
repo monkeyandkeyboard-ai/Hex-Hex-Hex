@@ -1,0 +1,15 @@
+{
+  "id": "hex",
+  "display_name": "Hex",
+  "source": "core",
+  "requirement": { "skill": "arcana", "level": 8 },
+  "targeting": "target_enemy",
+  "range": 5,
+  "aoe_radius": 0,
+  "cooldown_ticks": 12,
+  "cost": { "mana": 16 },
+  "effects": [
+    { "kind": "silence", "duration_ticks": 4 },
+    { "kind": "vulnerability", "magnitude": 0.3, "duration_ticks": 8 }
+  ]
+}

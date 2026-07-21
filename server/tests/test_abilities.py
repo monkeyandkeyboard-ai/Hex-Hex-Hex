@@ -134,6 +134,7 @@ def test_single_target_ability_hits_only_the_tile_it_lands_on(store):
 # --- AoE --------------------------------------------------------------------
 
 def test_aoe_hits_every_monster_in_radius(store):
+    import random
     floor = make_floor()
     player = make_player(store, arcana=200)
     floor.players["p1"] = player
@@ -143,7 +144,17 @@ def test_aoe_hits_every_monster_in_radius(store):
     far = add_monster(store, floor, (0, 5), "far")       # distance 2, out
     engine, threat = setup(store, floor)
 
-    events = cast(engine, "fireburst", 0, 3)
+    # Seed locally (and restore) so the two in-radius hits do not ride on the
+    # global RNG state left by whatever tests ran before -- even at precision
+    # 400 a bare ~5% miss chance per target makes an unseeded hit-set assertion
+    # flaky. State is restored so downstream tests see the RNG they otherwise
+    # would.
+    rng_state = random.getstate()
+    random.seed(1)
+    try:
+        events = cast(engine, "fireburst", 0, 3)
+    finally:
+        random.setstate(rng_state)
     struck = {e["target"] for e in events
               if e.get("type") == "combat_result" and e["result"] == "hit"}
     assert {"centre", "near"} <= struck
@@ -224,7 +235,7 @@ def test_mana_is_spent_on_a_successful_cast(store):
     engine, _ = setup(store, floor)
 
     cast(engine, "fireburst", 0, 3)
-    assert player.mana == 100 - store.abilities["fireburst"]["mana_cost"]
+    assert player.mana == 100 - store.abilities["fireburst"]["cost"]["mana"]
 
 
 # --- monster casts ----------------------------------------------------------

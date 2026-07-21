@@ -22,6 +22,34 @@
     #mana-fill { background: #2f6fb0; }
     #tick-info { margin-left: auto; color: #555; }
 
+    /* Active-effect strip: buff/debuff/dot/shield/control pips for the player. */
+    .effect-strip { display: inline-flex; gap: 4px; margin-left: 12px; }
+    .effect-pip {
+      display: inline-flex; align-items: center; gap: 3px; padding: 1px 6px;
+      border-radius: 3px; font-size: 10px; line-height: 1.4; color: #eee;
+      border: 1px solid rgba(255,255,255,0.15);
+    }
+    .effect-pip .rem { color: #cfcfd6; opacity: 0.7; }
+    .effect-pip.buff { background: #244d2a; }
+    .effect-pip.hot, .effect-pip.shield { background: #21506b; }
+    .effect-pip.debuff, .effect-pip.slow { background: #5a4a1e; }
+    .effect-pip.dot, .effect-pip.vulnerability { background: #5a2f1e; }
+    .effect-pip.stun, .effect-pip.root, .effect-pip.silence,
+    .effect-pip.disarm, .effect-pip.taunt { background: #5a1e4d; }
+    .effect-pip.haste, .effect-pip.fortify, .effect-pip.invulnerable { background: #244d2a; }
+
+    /* Cast bar: a progress fill under the map centre while casting. */
+    #cast-bar {
+      position: absolute; left: 50%; bottom: 70px; transform: translateX(-50%);
+      width: 180px; height: 16px; background: #1a1a1e; border: 1px solid #33333a;
+      border-radius: 4px; overflow: hidden; pointer-events: none;
+    }
+    #cast-bar-label {
+      position: absolute; inset: 0; display: flex; align-items: center;
+      justify-content: center; font-size: 10px; color: #e8e8ee; z-index: 1;
+    }
+    #cast-bar-fill { height: 100%; width: 0%; background: #6b4fb0; transition: width 0.1s linear; }
+
     /* Ability bar: overlays the bottom-centre of the map. */
     #ability-bar {
       position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%);
@@ -190,11 +218,13 @@
     <span id="mana-text">---</span>
     <span id="floor-label" style="margin-left:12px;color:#888">Floor --</span>
     <span id="tick-info">tick 0  |  1.0s</span>
+    <span id="effect-strip" class="effect-strip"></span>
   </div>
 
   <div id="game-area">
     <div id="canvas-wrap">
       <canvas id="game"></canvas>
+      <div id="cast-bar" style="display:none"><span id="cast-bar-label"></span><div id="cast-bar-fill"></div></div>
       <div id="ability-bar"></div>
     </div>
     <div id="sidebar">
