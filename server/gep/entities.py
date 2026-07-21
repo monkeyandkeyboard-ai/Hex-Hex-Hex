@@ -89,6 +89,11 @@ class Player:
     # 6 bag slots hold bag items that expand inventory
     bag_slots: list[str | None] = field(default_factory=lambda: [None] * BAG_SLOTS)
     weapon_ready_tick: int = 0
+    # ability_id -> tick the ability is next usable. Transient like
+    # weapon_ready_tick, never persisted: a cooldown mid-flight at logout is not
+    # worth carrying across a session, and an empty dict just means everything
+    # is ready.
+    ability_cooldowns: dict[str, int] = field(default_factory=dict)
     alive: bool = True
     # Which spritesheet column the client draws, updated as the player walks
     # and whenever they turn to face something they are attacking.
@@ -192,6 +197,9 @@ class Monster:
     # that damage landed.
     threat_table: dict[str, float] = field(default_factory=dict)
     weapon_ready_tick: int = 0
+    # ability_id -> tick next usable. Monster abilities are cooldown-gated only
+    # (no mana economy this version); this is that gate's state.
+    ability_cooldowns: dict[str, int] = field(default_factory=dict)
     alive: bool = True
     # Set only for spawns inside a prefab's rarity radius (gep/prefabs.py +
     # gep/spawner.py); combat_system.py prefers this over the template's own

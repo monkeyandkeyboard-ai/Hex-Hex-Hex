@@ -19,7 +19,28 @@
     .bar { display: inline-block; width: 80px; height: 10px; background: #222; border-radius: 3px; vertical-align: middle; margin: 0 4px; }
     .bar-fill { height: 100%; border-radius: 3px; transition: width 0.2s; }
     #hp-fill  { background: #c0392b; }
+    #mana-fill { background: #2f6fb0; }
     #tick-info { margin-left: auto; color: #555; }
+
+    /* Ability bar: overlays the bottom-centre of the map. */
+    #ability-bar {
+      position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%);
+      display: flex; gap: 6px; pointer-events: none;
+    }
+    .ability-slot {
+      position: relative; width: 46px; height: 46px; background: #1a1a1e;
+      border: 1px solid #33333a; border-radius: 6px; overflow: hidden;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      font-size: 10px; color: #cfcfd6; text-align: center; line-height: 1.1;
+    }
+    .ability-slot .key { color: #7fa8d0; font-weight: bold; }
+    .ability-slot .name { font-size: 8px; color: #999; padding: 0 2px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 44px; }
+    .ability-slot.unavailable { opacity: 0.45; }
+    /* Cooldown sweep: a dark curtain that shrinks from full to empty. */
+    .ability-slot .cooldown {
+      position: absolute; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6);
+    }
 
     #game-area { display: flex; flex: 1; overflow: hidden; }
 
@@ -164,6 +185,9 @@
     <span class="bar-label">HP</span>
     <span class="bar"><span id="hp-fill" class="bar-fill" style="width:100%"></span></span>
     <span id="hp-text">---</span>
+    <span class="bar-label" style="margin-left:12px">MP</span>
+    <span class="bar"><span id="mana-fill" class="bar-fill" style="width:100%"></span></span>
+    <span id="mana-text">---</span>
     <span id="floor-label" style="margin-left:12px;color:#888">Floor --</span>
     <span id="tick-info">tick 0  |  1.0s</span>
   </div>
@@ -171,6 +195,7 @@
   <div id="game-area">
     <div id="canvas-wrap">
       <canvas id="game"></canvas>
+      <div id="ability-bar"></div>
     </div>
     <div id="sidebar">
       <div id="tab-bar">

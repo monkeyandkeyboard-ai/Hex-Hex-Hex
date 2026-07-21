@@ -1,0 +1,15 @@
+{
+  "id": "heavy_strike",
+  "display_name": "Heavy Strike",
+  "source": "core",
+  "requirement": { "skill": "strength", "level": 5 },
+  "targeting": "target_enemy",
+  "range": 1,
+  "aoe_radius": 0,
+  "cooldown_ticks": 6,
+  "mana_cost": 0,
+  "power": { "strength": 1.0 },
+  "damage_min": 1.4,
+  "damage_max": 2.2,
+  "damage_type": "physical"
+}

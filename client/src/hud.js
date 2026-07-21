@@ -15,8 +15,9 @@ const EQUIP_SLOTS = [
   ["feet", "Feet"],
 ];
 
-let hpFill, hpText, tickInfo, floorLabel;
+let hpFill, hpText, manaFill, manaText, tickInfo, floorLabel, abilityBar;
 let skillsPane, inventoryPane, equipmentPane, tooltip;
+let lastAbilitySig = "";
 let sendIntent = () => {};
 
 // Signature strings of the last render, to skip DOM churn when unchanged
@@ -36,6 +37,9 @@ export function setIntentSender(fn) {
 export function initHud() {
   hpFill     = document.getElementById("hp-fill");
   hpText     = document.getElementById("hp-text");
+  manaFill   = document.getElementById("mana-fill");
+  manaText   = document.getElementById("mana-text");
+  abilityBar = document.getElementById("ability-bar");
   tickInfo   = document.getElementById("tick-info");
   floorLabel = document.getElementById("floor-label");
   skillsPane    = document.getElementById("tab-skills");
@@ -236,10 +240,37 @@ function renderEquipment() {
   }).join("") + `<div class="pane-hint">Click a filled slot to unequip</div>`;
 }
 
+function renderAbilityBar() {
+  // Cooldown depends on the live tick, so re-render whenever the ability set
+  // *or* the tick moves; the signature folds both in.
+  const sig = JSON.stringify(state.selfAbilities) + "@" + state.tick +
+    "/" + Math.floor(state.selfMana);
+  if (sig === lastAbilitySig) return;
+  lastAbilitySig = sig;
+
+  abilityBar.innerHTML = state.selfAbilities.map((a, i) => {
+    const cooling = Math.max(0, a.ready_tick - state.tick);
+    const curtain = a.cooldown_ticks > 0
+      ? Math.min(100, (cooling / a.cooldown_ticks) * 100) : 0;
+    // Unusable = cooling down or not enough mana: greyed so the player can see
+    // at a glance why a key does nothing.
+    const unusable = cooling > 0 || state.selfMana < a.mana_cost;
+    return `<div class="ability-slot ${unusable ? "unavailable" : ""}" title="${a.display_name}">
+      <span class="key">${i + 1}</span>
+      <span class="name">${a.display_name}</span>
+      <div class="cooldown" style="height:${curtain.toFixed(0)}%"></div>
+    </div>`;
+  }).join("");
+}
+
 export function updateHud() {
   const pct = state.selfMaxHp > 0 ? (state.selfHp / state.selfMaxHp) * 100 : 0;
   if (hpFill) hpFill.style.width = pct.toFixed(1) + "%";
   if (hpText) hpText.textContent = `${Math.ceil(state.selfHp)} / ${Math.ceil(state.selfMaxHp)}`;
+  const mpct = state.selfMaxMana > 0 ? (state.selfMana / state.selfMaxMana) * 100 : 0;
+  if (manaFill) manaFill.style.width = mpct.toFixed(1) + "%";
+  if (manaText) manaText.textContent = `${Math.ceil(state.selfMana)} / ${Math.ceil(state.selfMaxMana)}`;
+  if (abilityBar) renderAbilityBar();
   if (tickInfo) tickInfo.textContent = `tick ${state.tick}  |  ${state.tickDuration.toFixed(2)}s`;
   if (floorLabel && state.floorNumber !== null) floorLabel.textContent = `Floor ${state.floorNumber}`;
 

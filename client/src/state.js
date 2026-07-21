@@ -49,6 +49,15 @@ export const state = {
   // Our own player's live stats (kept updated from player_update events)
   selfHp: 0,
   selfMaxHp: 1,
+  selfMana: 0,
+  selfMaxMana: 1,
+  // Castable abilities, as sent by the server: [{ id, display_name,
+  // targeting, range, aoe_radius, cooldown_ticks, mana_cost, ready_tick }].
+  // Derived server-side from skills + equipment; the client only draws it.
+  selfAbilities: [],
+  // Transient AoE hit markers for the renderer: [{ tiles: Set<"q,r">, until }].
+  // `until` is a wall-clock ms timestamp; the renderer drops expired ones.
+  abilityFlashes: [],
   // skill -> { level, xp, xp_next }
   selfSkills: {},
   // 28-element array, each null or { item_id, quantity }

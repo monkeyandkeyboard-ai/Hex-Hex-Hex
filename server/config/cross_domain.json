@@ -42,9 +42,9 @@
       "per_level": 0.25
     },
     {
-      "_note": "Farming is stamina work. Sideways into traversal, which is utility with no combat edge.",
+      "_note": "Farming is stamina work: it deepens the haul from a node, the same lever mineralogy pulls. It used to feed move_speed, but movement advances a whole tile per tick, so any move_speed under 2 truncated to 1 and 2 was an instant doubling -- the stat had no usable middle. Gather amount has the smooth range move_speed lacked.",
       "source": { "kind": "non_combat_skill", "name": "farming" },
-      "target": "move_speed",
+      "target": "gather_yield",
       "class": "increased",
       "per_level": 0.2
     }

@@ -27,11 +27,11 @@ another entry in that shape (0%-20%, speed 1), not a special case.
 """
 import random
 
-from gep.combat import normalize_damage_type, resolve_attack
+from gep.combat import normalize_damage_type, power_from, resolve_attack
 from gep.floor_state import FloorState
 from gep.actions import MONSTER_STRIKE, PLAYER_DEFEATED
 from gep.hexgrid import facing_toward
-from gep.payout import award_rewards
+from gep.payout import monster_death_payout
 from gep.tick import TickEngine
 from gep.xp import award_xp
 
@@ -75,8 +75,7 @@ def register(
         whichever stats the weapon's class draws on (melee -> strength,
         ranged -> dexterity+strength, magic -> arcana), per power_scaling.json."""
         weapon_class = weapon_classes[weapon_type]
-        scaling = power_scaling[weapon_class]["stats"]
-        return sum(player.combat_stat(stat) * coeff for stat, coeff in scaling.items())
+        return power_from(player, power_scaling[weapon_class]["stats"])
     def face_target(player, monster) -> list[dict]:
         """Turn the attacker to look at what they are hitting.
 
@@ -139,20 +138,9 @@ def register(
             events.extend(award_xp(player, "precision", dmg * dealt_rate * 0.5, xp_table))
 
             if not monster.alive:
-                template = monsters_cfg.get(monster.template_id, {})
-                xp_base = template.get("xp_reward", {}).get("combat_base", 0)
-                events.extend(award_xp(player, "constitution", xp_base * 0.1, xp_table))
-                events.append({"type": "monster_died", "monster_id": target_id,
-                               "tile": list(monster.tile)})
-                reward_table = monster.reward_table_override or template["reward_table"]
-                events.extend(award_rewards(player, reward_table, rewards,
-                                            conversions=conversions))
-                respawn_ticks = template.get("respawn_ticks", 60)
-                eng.schedule(respawn_ticks, "respawn-monster", {
-                    "monster_id": target_id,
-                    "template_id": monster.template_id,
-                    "tile": list(monster.tile),
-                })
+                events.extend(monster_death_payout(
+                    player, monster, monsters_cfg, rewards, xp_table, eng,
+                    conversions=conversions))
                 # Nothing left to auto-attack.
                 end_engagement(player)
 

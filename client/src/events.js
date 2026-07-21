@@ -130,6 +130,9 @@ export function applySnapshot(msg) {
   if (self) {
     state.selfHp = self.hp;
     state.selfMaxHp = self.max_hp;
+    if (self.mana !== undefined) state.selfMana = self.mana;
+    if (self.max_mana !== undefined) state.selfMaxMana = self.max_mana;
+    if (self.abilities) state.selfAbilities = self.abilities;
     state.selfSkills = { ...(self.skills || {}) };
     if (self.inventory) state.selfInventory = self.inventory;
     if (self.equipment) state.selfEquipment = { ...self.equipment };
@@ -248,9 +251,27 @@ function applyEvent(ev) {
       if (ev.player_id === state.playerId) {
         state.selfHp = ev.hp;
         state.selfMaxHp = ev.max_hp;
+        if (ev.mana !== undefined) state.selfMana = ev.mana;
+        if (ev.max_mana !== undefined) state.selfMaxMana = ev.max_mana;
+        if (ev.abilities) state.selfAbilities = ev.abilities;
         state.selfSkills = { ...ev.skills };
         if (ev.inventory) state.selfInventory = ev.inventory;
         if (ev.equipment) state.selfEquipment = { ...ev.equipment };
+      }
+      break;
+    }
+    case "ability_used": {
+      // Cosmetic only: flash the impacted hexes so an AoE reads as an area,
+      // not a single hit. The server has already resolved every result; the
+      // combat_result events that ride alongside carry the actual damage.
+      state.abilityFlashes.push({
+        q: ev.tile[0], r: ev.tile[1],
+        radius: ev.aoe_radius || 0,
+        until: performance.now() + 350,
+      });
+      if (ev.caster === state.playerId) {
+        const name = (state.selfAbilities.find(a => a.id === ev.ability_id) || {}).display_name;
+        logEvent(`Cast ${name || ev.ability_id}`, "combat");
       }
       break;
     }

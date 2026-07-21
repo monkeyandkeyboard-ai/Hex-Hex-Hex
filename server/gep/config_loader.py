@@ -81,6 +81,24 @@ _PREFAB_REQUIRED = {
     "footprint",
 }
 
+_ABILITY_REQUIRED = {
+    "id",
+    "display_name",
+    "source",        # "core" (skill-gated) | "item" (only via a granting item)
+    "targeting",     # "ground" | "target_enemy" | "self"
+    "range",         # max hex distance from caster to the impact tile
+    "aoe_radius",    # 0 = single tile
+    "cooldown_ticks",
+    "mana_cost",
+    "power",         # {stat: coefficient}, same shape as power_scaling stats
+    "damage_min",    # multiplier on computed power (weapon model)
+    "damage_max",
+    "damage_type",
+}
+
+_ABILITY_SOURCES = ("core", "item")
+_ABILITY_TARGETING = ("ground", "target_enemy", "self")
+
 
 class ConfigError(Exception):
     pass
@@ -136,6 +154,7 @@ MONSTER_MOVEMENT_DEFAULTS: dict = {
     "wander_interval_ticks": 6,   # ticks between wander attempts
     "wander_chance": 0.5,         # probability of stepping on each attempt
     "pursue_interval_ticks": 2,   # ticks between steps while hunting a player
+    "aggro_radius": 0,            # how far it notices players unprompted; 0 = passive
 }
 
 
@@ -151,6 +170,8 @@ def _normalize_monster_movement(monsters: dict[str, dict]) -> None:
                 raise ConfigError(f"monster {monster_id}: {field!r} must be an integer >= 1")
         if not 0 <= move["wander_chance"] <= 1:
             raise ConfigError(f"monster {monster_id}: 'wander_chance' must be within 0..1")
+        if not isinstance(move["aggro_radius"], int) or move["aggro_radius"] < 0:
+            raise ConfigError(f"monster {monster_id}: 'aggro_radius' must be an integer >= 0")
         data["movement"] = move
 
 
@@ -445,6 +466,48 @@ def _validate_modifiers(modifiers: list) -> None:
             raise ConfigError(f"modifier {code}: 'family' must be a non-empty string")
 
 
+def _validate_abilities(abilities: dict, combat_constants: dict) -> None:
+    """Every ability must be resolvable by systems/abilities.py: a known
+    targeting mode and damage type, stats it scales off that combat actually
+    reads, and a coherent source/requirement pairing. Checked at load so a
+    typo in an ability file is a startup error, never a mid-cast crash.
+    """
+    known_types = combat_constants["damage_type_weighting"].keys()
+    for aid, a in abilities.items():
+        if a["source"] not in _ABILITY_SOURCES:
+            raise ConfigError(f"ability {aid}: source must be one of {_ABILITY_SOURCES}")
+        if a["targeting"] not in _ABILITY_TARGETING:
+            raise ConfigError(f"ability {aid}: targeting must be one of {_ABILITY_TARGETING}")
+        # A core ability is unlocked by meeting a skill requirement; an item
+        # ability is unlocked only by the granting item and must not also carry
+        # a skill gate, or it would be half core and half item.
+        has_req = "requirement" in a
+        if a["source"] == "core" and not has_req:
+            raise ConfigError(f"ability {aid}: a core ability needs a 'requirement'")
+        if a["source"] == "item" and has_req:
+            raise ConfigError(f"ability {aid}: an item ability must not have a 'requirement'")
+        if has_req:
+            req = a["requirement"]
+            if req.get("skill") not in COMBAT_SKILLS:
+                raise ConfigError(
+                    f"ability {aid}: requirement skill {req.get('skill')!r} is not a combat skill"
+                )
+            if not isinstance(req.get("level"), (int, float)) or req["level"] < 1:
+                raise ConfigError(f"ability {aid}: requirement 'level' must be a number >= 1")
+        for stat in a["power"]:
+            if stat not in COMBAT_SKILLS:
+                raise ConfigError(f"ability {aid}: power scales off unknown stat {stat!r}")
+        if a["damage_type"].lower() not in known_types:
+            raise ConfigError(f"ability {aid}: unknown damage_type {a['damage_type']!r}")
+        for field in ("range", "aoe_radius", "cooldown_ticks"):
+            if not isinstance(a[field], int) or a[field] < 0:
+                raise ConfigError(f"ability {aid}: {field!r} must be an integer >= 0")
+        if a["mana_cost"] < 0:
+            raise ConfigError(f"ability {aid}: 'mana_cost' must be >= 0")
+        if a["damage_min"] > a["damage_max"]:
+            raise ConfigError(f"ability {aid}: damage_min > damage_max")
+
+
 class ConfigStore:
     def __init__(self, config_dir: str | Path):
         root = Path(config_dir)
@@ -479,6 +542,15 @@ class ConfigStore:
         )
         self._validate_item_generation()
 
+        # Abilities load before monsters (monster templates reference them) and
+        # are validated against the item bases that grant the item-only ones.
+        abilities_dir = root / "abilities"
+        self.abilities = (
+            _load_dir(abilities_dir, _ABILITY_REQUIRED) if abilities_dir.is_dir() else {}
+        )
+        _validate_abilities(self.abilities, self.combat_constants)
+        self._validate_item_ability_grants()
+
         self.cross_domain = _load_json(root / "cross_domain.json")
         self.conversions = self.cross_domain.get("conversions", [])
         # ITEM_STATS is passed in rather than imported by crossdomain, so the
@@ -493,6 +565,7 @@ class ConfigStore:
         _validate_monster_stats(self.monsters)
         _normalize_monster_visuals(self.monsters)
         _normalize_monster_movement(self.monsters)
+        self._validate_monster_abilities()
 
         self.resource_categories = _load_json(root / "resource_categories.json")
         self.resources = _load_dir(root / "resources", _RESOURCE_REQUIRED)
@@ -532,6 +605,34 @@ class ConfigStore:
                 f"world.json: default_equipment_state {state!r} is not in config/weapons/"
             )
         return state
+
+    def _validate_item_ability_grants(self) -> None:
+        """An item base's optional `grants_ability` must name a real ability,
+        and that ability must be an item-source one -- granting a core
+        (skill-gated) ability from an item would make it obtainable two ways,
+        contradicting the 'item is the only source' contract that item
+        abilities exist to provide."""
+        for code, base in self.item_bases.items():
+            aid = base.get("grants_ability")
+            if aid is None:
+                continue
+            if aid not in self.abilities:
+                raise ConfigError(f"item base {code}: grants unknown ability {aid!r}")
+            if self.abilities[aid]["source"] != "item":
+                raise ConfigError(
+                    f"item base {code}: grants {aid!r}, which is a 'core' ability; "
+                    f"only 'item'-source abilities may be item-granted"
+                )
+
+    def _validate_monster_abilities(self) -> None:
+        """Every id in a monster template's optional `abilities` list must name
+        a real ability."""
+        for monster_id, data in self.monsters.items():
+            for aid in data.get("abilities", []):
+                if aid not in self.abilities:
+                    raise ConfigError(
+                        f"monster {monster_id}: unknown ability {aid!r}"
+                    )
 
     def _validate_floor_ruleset(self) -> None:
         """The exit separation window must be satisfiable for every floor.

@@ -1,0 +1,15 @@
+{
+  "id": "fireburst",
+  "display_name": "Fireburst",
+  "source": "core",
+  "requirement": { "skill": "arcana", "level": 5 },
+  "targeting": "ground",
+  "range": 6,
+  "aoe_radius": 1,
+  "cooldown_ticks": 8,
+  "mana_cost": 12,
+  "power": { "arcana": 1.0 },
+  "damage_min": 0.6,
+  "damage_max": 1.1,
+  "damage_type": "fire"
+}

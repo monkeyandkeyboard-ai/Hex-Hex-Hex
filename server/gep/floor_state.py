@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 
 from gep.entities import Monster, Player
 from gep.floorgen import FloorLayout
+from gep.hexgrid import hex_line
 
 Tile = tuple[int, int]
 
@@ -86,6 +87,19 @@ class FloorState:
             if monster.tile == tile and monster.alive:
                 return False
         return True
+
+    def sight_clear(self, a: Tile, b: Tile) -> bool:
+        """True if nothing walls off the straight line from `a` to `b`.
+
+        Sight is a terrain question, not an occupancy one: a monster can see a
+        player standing behind another monster, but not through a cliff. The
+        endpoints are excluded -- the viewer's own tile and the target's tile
+        are never what blocks the view -- so only the tiles strictly between
+        them must be terrain-passable. Used for proximity aggro
+        (gep/systems/monster_ai.py); impassable terrain blocks sight.
+        """
+        line = hex_line(a, b)
+        return all(self.is_terrain_passable(t) for t in line[1:-1])
 
     def player_at(self, tile: Tile) -> Player | None:
         for p in self.players.values():

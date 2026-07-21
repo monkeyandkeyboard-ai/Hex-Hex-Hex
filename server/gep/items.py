@@ -349,6 +349,16 @@ class ItemRegistry:
         base = self.base_of(item_id)
         return base["equipment_slot"] if base else None
 
+    def granted_ability(self, item_id: str) -> str | None:
+        """The ability id an equipped item grants, or None. Item-granted
+        abilities are the only source of certain abilities (see
+        systems/abilities.py:known_abilities), so this is how a rare drop can
+        carry a skill no amount of levelling unlocks."""
+        base = self.base_of(item_id)
+        if base is None:
+            return None
+        return base.get("grants_ability")
+
     def _flavor_name(self, serialized: str, base_name: str, tier: int) -> str:
         """'{adjective} {noun} {base name} T{tier}'. Seeded from the item's
         own serialized string rather than the ambient RNG: runtime_stats() is

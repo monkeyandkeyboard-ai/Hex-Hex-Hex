@@ -14,6 +14,11 @@ Kinds private to a single system stay in that system.
 # Combat owns pacing; asking more often than the weapon allows is a no-op.
 MONSTER_STRIKE = "monster-strike"
 
+# Behaviour -> abilities: this monster wants to use an ability centred on a
+# tile. The abilities system owns the cooldown gate, the hostiles-only target
+# set, and resolution; asking while the ability is on cooldown is a no-op.
+MONSTER_ABILITY = "monster-ability"
+
 # Combat -> respawn: this player's health hit zero. Combat reports it and
 # stops caring; the defeat lifecycle is decided by the respawn system.
 PLAYER_DEFEATED = "player-defeated"

@@ -655,6 +655,31 @@ function resourceStyle(resourceId) {
   return cat || { node_color: COLORS.resource, dot_color: COLORS.resourceDot };
 }
 
+// Fading overlay on the hexes an ability struck. Purely cosmetic -- the server
+// has already resolved the hit; this just makes an AoE read as an area. Each
+// flash carries an impact tile, an AoE radius, and a wall-clock expiry; the
+// tiles in radius are enumerated from axial offsets (radius is small, 0-2), so
+// this never walks the whole floor.
+const FLASH_MS = 350;
+function drawAbilityFlashes() {
+  const now = performance.now();
+  state.abilityFlashes = state.abilityFlashes.filter(f => f.until > now);
+  for (const f of state.abilityFlashes) {
+    const alpha = Math.max(0, (f.until - now) / FLASH_MS) * 0.55;
+    for (let dq = -f.radius; dq <= f.radius; dq++) {
+      const rLo = Math.max(-f.radius, -dq - f.radius);
+      const rHi = Math.min(f.radius, -dq + f.radius);
+      for (let dr = rLo; dr <= rHi; dr++) {
+        const [cx, cy] = hexToPixel(f.q + dq, f.r + dr);
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        drawTileAt(cx, cy, "#ff8a3c", "#ffd0a8");
+        ctx.restore();
+      }
+    }
+  }
+}
+
 function drawDot(q, r, color, size = 5) {
   const [cx, cy] = hexToPixel(q, r);
   ctx.beginPath();
@@ -1213,6 +1238,8 @@ export function render() {
     drawContactShadow(q, rv, 0.8);
     drawPropSprite(q, rv, spriteId);
   }
+
+  drawAbilityFlashes();
 
   // Monsters and players share one sprite pass.
   // The tinted hex marks the tile an entity logically occupies, so it stays

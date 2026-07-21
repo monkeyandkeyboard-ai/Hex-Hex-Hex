@@ -20,7 +20,7 @@ Cadence for both modes is per-template config, not constants here.
 """
 import random
 
-from gep.actions import CLEAR_THREAT, MONSTER_STRIKE
+from gep.actions import CLEAR_THREAT, MONSTER_ABILITY, MONSTER_STRIKE
 from gep.floor_state import FloorState
 from gep.hexgrid import facing_from_delta, hex_distance
 from gep.pathfinding import find_path, hex_neighbors
@@ -34,9 +34,11 @@ def register(
     floor: FloorState,
     monsters_cfg: dict,
     rng: random.Random | None = None,
+    abilities_cfg: dict | None = None,
 ):
     """Returns `notify_threat(entity, attacker_id)` for combat to call."""
     roll = rng or random
+    abilities = abilities_cfg or {}
 
     # Reverse index: player id -> ids of monsters holding that player in their
     # threat table. This is what makes dropping a dead player O(1) in the
@@ -117,6 +119,40 @@ def register(
         combat = monsters_cfg.get(monster.template_id, {}).get("combat", {})
         return int(combat.get("attack_range_tiles", 1))
 
+    def aggro_radius(monster) -> int:
+        """How far a monster notices players on its own, before being hit.
+
+        Default 0 = passive: the monster only ever acquires a target through
+        combat's notify_threat (damage landed), which is the entire behaviour
+        before proximity aggro existed. So every template that does not opt in
+        keeps its old damage-only aggro with no config migration.
+        """
+        cfg = monsters_cfg.get(monster.template_id, {})
+        return int(cfg.get("movement", {}).get("aggro_radius", 0))
+
+    def monster_ability_ids(monster) -> list[str]:
+        return monsters_cfg.get(monster.template_id, {}).get("abilities", [])
+
+    def acquire_target(monster) -> None:
+        """Passive proximity aggro: latch onto the nearest visible player in
+        range. Only reached when the threat slot is empty, so it never fights
+        an existing target for attention; once latched, aggro is sticky (the
+        table entry persists until the target dies or leaves the floor, dropped
+        in pursue) -- there is no leash by design.
+        """
+        radius = aggro_radius(monster)
+        if radius <= 0:
+            return
+        best, best_d = None, radius + 1
+        for player in floor.players.values():
+            if not player.alive:
+                continue
+            d = hex_distance(monster.tile, player.tile)
+            if d <= radius and d < best_d and floor.sight_clear(monster.tile, player.tile):
+                best, best_d = player, d
+        if best is not None:
+            add_threat(monster, best.id)
+
     def pursue(monster, eng: TickEngine) -> list[dict]:
         """One step along the path to the hunted player.
 
@@ -137,11 +173,29 @@ def register(
         # strike" handler, the cooldown, and the outcome. Scheduling a named
         # action rather than calling combat keeps the two unable to see each
         # other (see the module docstring).
-        if hex_distance(monster.tile, target.tile) <= attack_range(monster):
+        dist = hex_distance(monster.tile, target.tile)
+        if dist <= attack_range(monster):
             eng.schedule(0, MONSTER_STRIKE, {
                 "monster_id": monster.id,
                 "player_id": target.id,
             })
+
+        # Ask for any ability whose range reaches the target. As with the basic
+        # strike, this is a request, not a resolution: the abilities handler
+        # owns the cooldown gate and the AoE resolution, and drops the request
+        # silently if the ability is still cooling down. The AI only needs each
+        # ability's range to decide when it is worth asking.
+        for ability_id in monster_ability_ids(monster):
+            ability = abilities.get(ability_id)
+            if ability is None:
+                continue
+            if dist <= int(ability.get("range", 1)):
+                eng.schedule(0, MONSTER_ABILITY, {
+                    "monster_id": monster.id,
+                    "ability_id": ability_id,
+                    "target_q": target.tile[0],
+                    "target_r": target.tile[1],
+                })
 
         # find_path treats the goal as reachable even when occupied, so a path
         # to the player always exists if any route does.
@@ -173,6 +227,12 @@ def register(
 
         if not monster.alive:
             return []
+
+        # Notice a nearby player before deciding what to do this cycle, so an
+        # idle monster that a player walks up to pursues on the same think
+        # rather than wandering one more step first.
+        if not monster.threat_target:
+            acquire_target(monster)
 
         return pursue(monster, eng) if monster.threat_target else wander(monster)
 

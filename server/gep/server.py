@@ -30,7 +30,7 @@ from gep.floor_state import FloorState
 from gep.floor_manager import FloorManager
 from gep.spawner import spawn_floor
 from gep.stats import compute_max_hp, compute_max_mana
-from gep.systems import combat_system, floor_exits, gathering, movement
+from gep.systems import abilities, combat_system, floor_exits, gathering, movement
 from gep.systems import inventory_system, monster_ai, regeneration, respawn
 from gep.tick import TickEngine
 from gep import xp
@@ -211,7 +211,8 @@ def build_floor_state(floor_number: int, cfg: ConfigStore, on_change_floor,
     regeneration.register(engine, floor, cfg.stat_scaling)
     respawn.register(engine, floor, save_player=db.save_player,
                      on_relocate=on_relocate)
-    notify_threat = monster_ai.register(engine, floor, monsters_cfg=cfg.monsters)
+    notify_threat = monster_ai.register(engine, floor, monsters_cfg=cfg.monsters,
+                                        abilities_cfg=cfg.abilities)
     break_engagement = combat_system.register(
         engine, floor,
         weapons=cfg.weapons,
@@ -226,6 +227,18 @@ def build_floor_state(floor_number: int, cfg: ConfigStore, on_change_floor,
         weapon_classes=cfg.weapon_classes,
         power_scaling=cfg.power_scaling,
         on_threat=notify_threat,
+    )
+    abilities.register(
+        engine, floor,
+        abilities_cfg=cfg.abilities,
+        monsters_cfg=cfg.monsters,
+        combat_constants=cfg.combat_constants,
+        xp_rates=cfg.xp_rates,
+        xp_table=cfg.xp_table,
+        rewards=cfg.rewards,
+        items=cfg.items,
+        on_threat=notify_threat,
+        conversions=cfg.conversions,
     )
     movement.register(engine, floor, on_move=break_engagement,
                       conversions=cfg.conversions)
@@ -288,9 +301,31 @@ def resolve_event_items(event: dict, items, resources: dict) -> dict:
     return event
 
 
+def _abilities_payload(player: Player, abilities_cfg: dict, items, tick: int) -> list[dict]:
+    """The player's castable abilities and their live cooldown state, so the
+    client can draw an ability bar and grey out what is unusable. Derived from
+    skills + equipment every snapshot (known_abilities); the client never
+    decides what a player knows, only draws what the server reports."""
+    known = abilities.known_abilities(player, abilities_cfg, items)
+    out = []
+    for aid in sorted(known):
+        a = abilities_cfg[aid]
+        out.append({
+            "id": aid,
+            "display_name": a["display_name"],
+            "targeting": a["targeting"],
+            "range": a["range"],
+            "aoe_radius": a["aoe_radius"],
+            "cooldown_ticks": a["cooldown_ticks"],
+            "mana_cost": a["mana_cost"],
+            "ready_tick": player.ability_cooldowns.get(aid, 0),
+        })
+    return out
+
+
 def floor_snapshot(
     floor: FloorState, tick: int, tick_duration: float, xp_table: dict, biomes: dict,
-    items, resources: dict, resource_categories: dict,
+    items, resources: dict, resource_categories: dict, abilities_cfg: dict,
 ) -> dict:
     layout = floor.layout
     return {
@@ -392,9 +427,12 @@ def floor_snapshot(
                 "facing": p.facing,
                 "hp": p.hp,
                 "max_hp": p.max_hp,
+                "mana": p.mana,
+                "max_mana": p.max_mana,
                 "skills": _skills_payload(p, xp_table),
                 "inventory": resolve_inventory(p.inventory_snapshot(), items, resources),
                 "equipment": resolve_equipment(p.equipment.to_dict(), items, resources),
+                "abilities": _abilities_payload(p, abilities_cfg, items, tick),
             }
             for pid, p in floor.players.items()
         },
@@ -434,9 +472,12 @@ def build_broadcasts(results, floors, player_floor, connected, cfg) -> list[tupl
                     "player_id": pid,
                     "hp": p.hp,
                     "max_hp": p.max_hp,
+                    "mana": p.mana,
+                    "max_mana": p.max_mana,
                     "skills": _skills_payload(p, cfg.xp_table),
                     "inventory": resolve_inventory(p.inventory_snapshot(), cfg.items, cfg.resources),
                     "equipment": resolve_equipment(p.equipment.to_dict(), cfg.items, cfg.resources),
+                    "abilities": _abilities_payload(p, cfg.abilities, cfg.items, result.tick),
                 })
         out.append((recipients, {
             "tick": result.tick,
@@ -546,7 +587,7 @@ async def run_server():
         try:
             await ws.send(json.dumps(floor_snapshot(
                 floor, engine.tick, engine.tick_duration, cfg.xp_table, cfg.biomes,
-                cfg.items, cfg.resources, cfg.resource_categories,
+                cfg.items, cfg.resources, cfg.resource_categories, cfg.abilities,
             )))
 
             async for raw in ws:
@@ -627,7 +668,7 @@ async def run_server():
                         try:
                             await ws.send(json.dumps(floor_snapshot(
                                 fs, fe.tick, fe.tick_duration, cfg.xp_table, cfg.biomes,
-                                cfg.items, cfg.resources, cfg.resource_categories,
+                                cfg.items, cfg.resources, cfg.resource_categories, cfg.abilities,
                             )))
                         except websockets.exceptions.ConnectionClosed:
                             pass

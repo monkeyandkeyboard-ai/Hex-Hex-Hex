@@ -32,6 +32,17 @@ def normalize_damage_type(damage_type: str | None, constants: dict) -> str:
     return key if key in weighting else default
 
 
+def power_from(entity, scaling: dict) -> float:
+    """The ceiling of an attack's damage potential: a weighted sum of whichever
+    stats a source draws on. `scaling` is {stat: coefficient} -- a weapon
+    class's block from power_scaling.json, or an ability's own `power` block.
+    One implementation so weapons and abilities scale off stats identically;
+    `combat_stat` applies equipment modifiers for players and is a plain lookup
+    for monsters, so this serves both.
+    """
+    return sum(entity.combat_stat(stat) * coeff for stat, coeff in scaling.items())
+
+
 def resolve_attack(attacker, target, weapon_damage: float, damage_type: str, constants: dict) -> dict:
     dex_t = target.combat_stat("dexterity")
     prec_a = attacker.combat_stat("precision")

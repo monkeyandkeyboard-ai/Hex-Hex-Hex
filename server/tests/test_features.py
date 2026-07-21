@@ -309,7 +309,7 @@ def test_the_client_can_derive_blocked_tiles_without_being_sent_them():
     cfg = ConfigStore(pathlib.Path(__file__).resolve().parents[1] / "config")
     state, _ = build_floor_state(11, cfg, lambda *a: None)
     snap = floor_snapshot(state, 0, 0.6, cfg.xp_table, cfg.biomes, cfg.items,
-                          cfg.resources, cfg.resource_categories)
+                          cfg.resources, cfg.resource_categories, cfg.abilities)
     assert "blocked" not in snap, "the per-tile array should not be on the wire"
 
     import base64
@@ -338,7 +338,7 @@ def _snapshot_for(floor_number):
     state, _ = build_floor_state(floor_number, cfg, lambda *a: None)
     return cfg, state, floor_snapshot(
         state, 0, 0.6, cfg.xp_table, cfg.biomes, cfg.items,
-        cfg.resources, cfg.resource_categories,
+        cfg.resources, cfg.resource_categories, cfg.abilities,
     )
 
 

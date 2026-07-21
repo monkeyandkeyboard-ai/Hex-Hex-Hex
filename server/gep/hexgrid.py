@@ -91,6 +91,49 @@ def hex_distance(a: tuple[int, int], b: tuple[int, int]) -> int:
     return max(abs(ax - bx), abs(ay - by), abs(az - bz))
 
 
+def _cube(tile: tuple[int, int]) -> tuple[int, int, int]:
+    q, r = tile
+    return (q, -q - r, r)
+
+
+def _cube_round(x: float, y: float, z: float) -> tuple[int, int]:
+    """Round fractional cube coords to the nearest hex, preserving x+y+z==0."""
+    rx, ry, rz = round(x), round(y), round(z)
+    dx, dy, dz = abs(rx - x), abs(ry - y), abs(rz - z)
+    if dx > dy and dx > dz:
+        rx = -ry - rz
+    elif dy > dz:
+        ry = -rx - rz
+    else:
+        rz = -rx - ry
+    return (int(rx), int(rz))  # back to axial (q, r)
+
+
+def hex_line(a: tuple[int, int], b: tuple[int, int]) -> list[tuple[int, int]]:
+    """Every tile a straight line from `a` to `b` passes through, endpoints
+    included. Cube linear interpolation rounded to hexes -- the standard
+    hex line-draw. Used for line-of-sight (gep/floor_state.py:sight_clear);
+    shares its coordinate logic with hexgrid.js but the client has no need to
+    draw lines yet, so this is server-only for now.
+
+    The tiny epsilon nudge keeps samples that land exactly on a hex edge from
+    rounding inconsistently, which would make the line asymmetric a->b vs b->a.
+    """
+    n = hex_distance(a, b)
+    if n == 0:
+        return [a]
+    ax, ay, az = _cube(a)
+    bx, by, bz = _cube(b)
+    tiles = []
+    for i in range(n + 1):
+        t = i / n
+        x = ax + (bx - ax) * t + 1e-6
+        y = ay + (by - ay) * t + 2e-6
+        z = az + (bz - az) * t - 3e-6
+        tiles.append(_cube_round(x, y, z))
+    return tiles
+
+
 def ring_tiles(radius: int, ring_radius: int) -> list[tuple[int, int]]:
     """Tiles at exactly `ring_radius` from center, in canonical order.
     `ring_radius` must be <= radius.

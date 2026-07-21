@@ -10,6 +10,26 @@ export function initInput(canvasEl, sendFn) {
   sendIntent = sendFn;
   canvasEl.addEventListener("click", onClick);
   canvasEl.addEventListener("touchend", onTouch, { passive: false });
+  window.addEventListener("keydown", onKeyDown);
+}
+
+// Number keys 1..N cast the ability in that slot at the hovered tile. The
+// server owns targeting rules and every gate (range, cooldown, mana, whether
+// the player even knows it); a press it rejects just comes back as an error
+// event. Ground and target_enemy abilities both aim at the tile under the
+// cursor -- for a single-target ability you hover the monster, for an AoE you
+// hover where you want it to land.
+function onKeyDown(e) {
+  if (e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
+  const slot = Number(e.key);
+  if (!Number.isInteger(slot) || slot < 1) return;
+  const ability = state.selfAbilities[slot - 1];
+  if (!ability) return;
+  const tile = getHoveredTile();
+  if (!tile) return;
+  e.preventDefault();
+  sendIntent({ intent_type: "use_ability", ability_id: ability.id,
+               target_q: tile[0], target_r: tile[1] });
 }
 
 function tileKey(q, r) { return `${q},${r}`; }
